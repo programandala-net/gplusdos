@@ -9,6 +9,10 @@ suitable for studying and editing it with the Vim editor.
 
 == History
 
-2016-03-05:: Copied the the original HTML files, renamed them after
-their initial ROM addresses, and converted them to one single text
-file with the help of Arno Unkrig's `html2text`.
+2016-03-05::
+
+- Copied the original HTML files, renamed them after their initial ROM
+  addresses, and converted them to one single text file with the help
+  of Arno Unkrig's `html2text`.
+- Converted routine titles and descriptions to Z80 assembler comments.
+- Fixed the splitted lines.
