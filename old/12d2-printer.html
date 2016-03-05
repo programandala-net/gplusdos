@@ -1,0 +1,587 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The Printer routines </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="hookcode.htm">Previous</a></td>
+<td><a href="flags.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The Printer routines </font></b>
+
+<font size=+2>THE 'NORMAL SCREENDUMP' SUBROUTINE</font>
+This routine dumps a normal screendump to the printer. It can be called also by using
+command code 58 (#3A).
+
+<a NAME="12D2 COPS"></a>12D2 COPS       CALL <a href="misc1.htm#0527 SYSTEM_Z">#0527,SYSTEM_Z</a>      If a system file has been loaded
+12D5            CALL Z,<a href="rsysvar.htm#2080 JCOPS">#2080,JCOPS</a>       call it's screendump routine.
+12D8            LD   HL,16384            Start of screen.
+12DB            LD   DE,<a href="rsysvar.htm#2022 N/72_LSPC">#2022,N/72_LSPC</a>  Print the escape sequence for n/72 inch
+12DE            CALL <a href="#140B PO_ESC_SEQ">#140B,PO_ESC_SEQ</a>    line feeds.
+12E1            LD   A,8                 Make it 8/72.
+12E3            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>
+<a NAME="12E6 C1_LINE"></a>12E6 C1_LINE    LD   DE,<a href="rsysvar.htm#202A GRAPH_DPI">#202A,GRAPH_DPI</a>  Print the escape sequence for a normal
+12E9            CALL <a href="#140B PO_ESC_SEQ">#140B,PO_ESC_SEQ</a>    screendump. (60 dpi)
+12EC            LD   A,0                 Signal '256 dot columns will follow'
+12EE            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>          to the printer.
+12F1            LD   A,1
+12F3            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>
+12F6            PUSH HL
+<a NAME="12F7 C1_CHAR"></a>12F7 C1_CHAR    LD   B,8                 Eight pixels in each byte.
+<a NAME="12F9 C1_PIXEL"></a>12F9 C1_PIXEL   PUSH HL
+<a NAME="12FA C1_PIXROW"></a>12FA C1_PIXROW  CALL <a href="#13E3 PIXEL_COL">#13E3,PIXEL_COL</a>     Get pixel colour.
+12FD            AND  #04
+12FF            JR   NZ,<a href="#1302 C1_ADDDOT">#1302,C1_ADDDOT</a>  Jump with colour codes 4-7 (no dot).
+1301            SCF                      Set a dot for colour codes 0-3.
+<a NAME="1302 C1_ADDDOT"></a>1302 C1_ADDDOT  LD   A,(#3E4F)           Incorporate one dot in dot column.
+1305            RLA
+1306            LD   (#3E4F),A
+1309            INC  H                   Next pixel row.
+130A            LD   A,H
+130B            AND  #07
+130D            JR   NZ,<a href="#12FA C1_PIXROW">#12FA,C1_PIXROW</a>  Repeat until all eight pixelrows have
+                                         been 'scanned'.
+130F            LD   A,(#3E4F)
+1312            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>          Print the dot column.
+1315            POP  HL                  Repeat until all eight pixels in a byte
+1316            DJNZ <a href="#12F9 C1_PIXEL">#12F9,C1_PIXEL</a>      have been printed. One character cell
+                                         (64 pixels) has been printed now.
+1318            INC  L                   Next character position.
+1319            LD   A,L
+131A            AND  #1F
+131C            JR   NZ,<a href="#12F7 C1_CHAR">#12F7,C1_CHAR</a>    Loop for all 32 character columns.
+131E            CALL <a href="#132E ADV_PAPER">#132E,ADV_PAPER</a>     Advance printer paper one line.
+1321            POP  HL
+1322            LD   A,H                 Make HL point to the next screen third
+1323            ADD  A,8                 'N_CHARROW' will adjust HL if 
+1325            LD   H,A                 necessary.
+1326            CALL <a href="#13FE N_CHARROW">#13FE,N_CHARROW</a>     Calculate the address of the next
+1329            JR   NZ,<a href="#12E6 C1_LINE">#12E6,C1_LINE</a>    characterrow and loop until end of
+                                         pixel area reached.
+132B            JP   <a href="#13D7 DUMP_EXIT">#13D7,DUMP_EXIT</a>     Exit via 'DUMP_EXIT' to reset printer.
+
+<font size=+2>THE 'ADVANCE PRINTER PAPER' SUBROUTINE</font>
+This subroutine advances the paper by sending a CR (carriage return) and (when needed) a
+LF (line feed) to the printer.
+
+<a NAME="132E ADV_PAPER"></a>132E ADV_PAPER  LD   A,13                Send a CR to the printer.
+1330            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>
+1333            LD   A,(#2008)           This is 'LFEED'.
+1336            AND  A
+1337            RET  Z                   Return if no LF has to be printed.
+1338            LD   A,10                Otherwise send a LF.
+133A            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>
+133D            RET                      Finished.
+
+<font size=+2>THE 'GREYSCALE SCREENDUMP' SUBROUTINE</font>
+This routine prints a large screendump. It can also be called by using command code 66
+(#42).
+
+<a NAME="133E COPS2"></a>133E COPS2      CALL <a href="misc1.htm#0527 SYSTEM_Z">#0527,SYSTEM_Z</a>      If a system file has been loaded
+1341            CALL Z,<a href="rsysvar.htm#2083 JCOPS2">#2083,JCOPS2</a>      call it's screendump routine.
+1344            LD   HL,#57E0            Address of the lowest pixelrow of the
+                                         charactersquare in bottom left corner.
+1347            LD   DE,<a href="rsysvar.htm#2022 N/72_LSPC">#2022,N/72_LSPC</a>  Print the escape sequence for n/72
+134A            CALL <a href="#140B PO_ESC_SEQ">#140B,PO_ESC_SEQ</a>    inch line feeds.
+134D            LD   A,6                 Make it 6/72.
+134F            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>
+1352            LD   B,128               There are 128 2-pixel columns.
+1354            LD   C,8                 8 pixels make one byte. Start with
+                                         leftmost bit in a byte.
+<a NAME="1356 C2_2PIXCOL"></a>1356 C2_2PIXCOL PUSH BC
+1357            PUSH HL
+1358            LD   DE,<a href="rsysvar.htm#2052 GREY_BITIM">#2052,GREY_BITIM</a> Print the escape sequence for the
+135B            CALL <a href="#140B PO_ESC_SEQ">#140B,PO_ESC_SEQ</a>    greyscale bitimage mode.
+135E            LD   B,24                There are 24 characterrows.
+<a NAME="1360 C2_SCRROW"></a>1360 C2_SCRROW  PUSH BC
+1361            PUSH HL
+1362            LD   B,8                 A character has 8 pixelrows.
+<a NAME="1364 C2_PIXROW"></a>1364 C2_PIXROW  PUSH BC
+1365            PUSH HL
+1366            LD   DE,#3BD6            Clear the buffer for the 2 pixels.
+1369            LD   B,3
+<a NAME="136B C2_CLRBUF"></a>136B C2_CLRBUF  XOR  A
+136C            LD   (DE),A
+136D            INC  DE
+136E            DJNZ <a href="#136B C2_CLRBUF">#136B,C2_CLRBUF</a>
+1370            LD   B,2                 The dot columns for 2 pixels are build
+                                         up each time.
+<a NAME="1372 C2_2PIX"></a>1372 C2_2PIX    PUSH BC
+1373            PUSH HL
+1374            LD   B,C
+1375            CALL <a href="#13E3 PIXEL_COL">#13E3,PIXEL_COL</a>     Get the colour of the (B-1)th pixel.
+1378            AND  #07                 Keep only the least significant 3 bits
+137A            INC  A                   Make the range 1..8.
+137B            LD   B,A
+137C            LD   C,0                 Set the bit in the C register which
+137E            SCF                      corresponds to the colour.
+<a NAME="137F C2_MK_MASK"></a>137F C2_MK_MASK RL   C
+1381            DJNZ <a href="#137F C2_MK_MASK">#137F,C2_MK_MASK</a>
+1383            LD   DE,<a href="rsysvar.htm#205A GREYSCALE">#205A,GREYSCALE</a>  DE points to the 'GREYSCALE' table.
+1386            LD   HL,#3BD6            HL points to the 2-pixel buffer.
+1389            LD   B,3                 Each pixel is printed as 3*3 dots.
+<a NAME="138B C2_DOTCOL"></a>138B C2_DOTCOL  PUSH BC
+138C            LD   B,3
+<a NAME="138E C2_DOTROW"></a>138E C2_DOTROW  LD   A,(DE)              Get colour pattern.
+138F            AND  C                   Only keep the bit with the right 
+1390            LD   A,(HL)              colour.
+1391            JR   Z,<a href="#1394 C2_ADD_DOT">#1394,C2_ADD_DOT</a>  Jump if bit isn't set.
+1393            SCF                      Otherwise set this dot.
+<a NAME="1394 C2_ADD_DOT"></a>1394 C2_ADD_DOT RL   A                   Incorporate this dot.
+1396            LD   (HL),A
+1397            INC  DE                  Next entry in 'GREYSCALE' table.
+1398            DJNZ <a href="#138E C2_DOTROW">#138E,C2_DOTROW</a>     Repeat for 3 dotrows.
+139A            INC  HL
+139B            POP  BC
+139C            DJNZ <a href="#138B C2_DOTCOL">#138B,C2_DOTCOL</a>     Repeat for 3 dotcolumns.
+139E            POP  HL
+139F            POP  BC
+13A0            DEC  C                   Next pixel.
+13A1            DJNZ <a href="#1372 C2_2PIX">#1372,C2_2PIX</a>       Two pixels are handled at a time.
+13A3            LD   B,3                 Three dotcolumns are to be printed.
+13A5            LD   HL,#3BD6
+<a NAME="13A8 C2_PRT3X3"></a>13A8 C2_PRT3X3  LD   A,(HL)              Print each dotcolumn in turn.
+13A9            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>
+13AC            INC  HL
+13AD            DJNZ <a href="#13A8 C2_PRT3X3">#13A8,C2_PRT3X3</a>     Repeat for all three.
+13AF            POP  HL
+13B0            DEC  H                   Next pixelrow.
+13B1            POP  BC                  Repeat for the eight pixelrows in a
+13B2            DJNZ <a href="#1364 C2_PIXROW">#1364,C2_PIXROW</a>     character square.
+13B4            POP  HL
+13B5            LD   A,L                 One character row up.
+13B6            SUB  32
+13B8            LD   L,A
+13B9            JR   NC,<a href="#13BF C2_CHRROW">#13BF,C2_CHRROW</a>  Jump if still within the same third.
+13BB            LD   A,H                 Otherwise update MSB of address.
+13BC            SUB  8
+13BE            LD   H,A
+<a NAME="13BF C2_CHRROW"></a>13BF C2_CHRROW  POP  BC
+13C0            DJNZ <a href="#1360 C2_SCRROW">#1360,C2_SCRROW</a>     Repeat for the 24 rows on the screen.
+13C2            CALL <a href="#132E ADV_PAPER">#132E,ADV_PAPER</a>     Advance the paper.
+13C5            POP  HL
+13C6            POP  BC
+13C7            DEC  C                   Skip the two pixels which have already
+13C8            DEC  C                   been printed.
+13C9            JR   NZ,<a href="#13CE C2_BYTE">#13CE,C2_BYTE</a>    Jump if not all pixels within this
+                                         byte have been printed.
+13CB            LD   C,8                 Otherwise reset 'pixels in a byte'
+13CD            INC  HL                  counter and point to the next
+                                         character position to the right.
+<a NAME="13CE C2_BYTE"></a>13CE C2_BYTE    DJNZ <a href="#1356 C2_2PIXCOL">#1356,C2_2PIXCOL</a>    Repeat for the 128 2-pixelcolumns.
+13D0            LD   B,4                 Advance the paper for four lines.
+<a NAME="13D2 C2_ADVPAP"></a>13D2 C2_ADVPAP  CALL <a href="#132E ADV_PAPER">#132E,ADV_PAPER</a>
+13D5            DJNZ <a href="#13D2 C2_ADVPAP">#13D2,C2_ADVPAP</a>
+<a NAME="13D7 DUMP_EXIT"></a>13D7 DUMP_EXIT  LD   DE,<a href="rsysvar.htm#2022 N/72_LSPC">#2022,N/72_LSPC</a>  Print the escape sequence for n/72 inch
+13DA            CALL <a href="#140B PO_ESC_SEQ">#140B,PO_ESC_SEQ</a>    line feeds.
+13DD            LD   A,(#2007)           Make it (LSPCE)/72.
+13E0            JP   <a href="#15C9 PNTP">#15C9,PNTP</a>          Exit via 'PNTP'.
+
+<font size=+2>THE 'PIXEL COLOUR' SUBROUTINE</font>
+This routine returns with the low 3 bits of the A register holding the colour of the Bth
+pixel from address HL (i.e. the paper colour for an 'off' pixel and the ink colour for an
+'on' pixel). 
+
+<a NAME="13E3 PIXEL_COL"></a>13E3 PIXEL_COL  PUSH HL                  Save address of current 8-pixels.
+13E4            PUSH BC                  Save pixel number (range 1..8).
+13E5            XOR  A
+13E6            SCF
+<a NAME="13E7 PIXEL_COL1"></a>13E7 PIXEL_COL1 RLA                      Now set (B-1)th bit of A (range 0..7).
+13E8            DJNZ <a href="#13E7 PIXEL_COL1">#13E7,PIXEL_COL1</a>
+13EA            AND  (HL)                Zero flag now reflects state of pixel
+13EB            PUSH AF                  (i.e. set means pixel set).
+13EC            LD   A,H                 Calculate attribute address.
+13ED            RRCA
+13EE            RRCA
+13EF            RRCA
+13F0            AND  #03
+13F2            OR   #58
+13F4            LD   H,A
+13F5            POP  AF
+13F6            LD   A,(HL)              Fetch the attribute.
+13F7            POP  BC
+13F8            POP  HL
+13F9            RET  NZ                  Return if ink colour is to be used.
+13FA            RRCA                     Otherwise move paper colour
+13FB            RRCA                     to the lower three bits.
+13FC            RRCA
+13FD            RET
+
+<font size=+2>THE 'NEXT CHAR. ROW ADDRESS' SUBROUTINE</font>
+This subroutine calculates the address of the next characterrow, if the end of the pixel
+area is reached a return with Zero set will be made.
+
+<a NAME="13FE N_CHARROW"></a>13FE N_CHARROW  LD   A,L                 Update low address byte to next
+                                         character row.
+13FF            ADD  A,32                The carry will be reset within display
+1401            LD   L,A                 thirds.
+1402            CCF                      Invert carry.
+1403            SBC  A,A                 A holds #FF within same third, 0 else.
+1404            AND  #F8                 A will hold #F8 (i.e. -8) within a
+1406            ADD  A,H                 third, but 0 when a new third is
+1407            LD   H,A                 reached. Update high byte (which was
+                                         already incremented by 8).
+1408            CP   #58                 Return with the Zero flag set if
+140A            RET                      attributes reached.
+
+<font size=+2>THE 'PRINT ESCAPE SEQUENCE' SUBROUTINE</font>
+This subroutine is used to send escape sequences to the printer. The start of the
+sequence is held in the DE register, a sequence ends with a CHR$ 128.
+
+<a NAME="140B PO_ESC_SEQ"></a>140B PO_ESC_SEQ LD   A,(DE)              Fetch a code.
+140C            CP   128
+140E            RET  Z                   Exit if it's 128.
+140F            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>          Otherwise send it to the printer.
+1412            INC  DE                  Continue until the sequence is
+1413            JR   <a href="#140B PO_ESC_SEQ">#140B,PO_ESC_SEQ</a>    finished.
+
+<font size=+2>THE '"P" CHANNEL OUTPUT' ROUTINE</font>
+This routine handles the +D's "P" channel, the @6 system variable (PCODE) signals if
+it's to be handled as a "t" or a "b" channel. (As with the Opus Discovery and the ZX
+Interface 1.) 
+
+<a NAME="1415 PCHAN_OUT"></a>1415 PCHAN_OUT  CALL <a href="misc1.htm#0527 SYSTEM_Z">#0527,SYSTEM_Z</a>      If the system file is loaded call the
+1418            CALL Z,<a href="rsysvar.htm#2086 JPCHAN">#2086,JPCHAN</a>      alternative routine.
+141B            LD   A,(#2006)           This is PCODE.
+141E            AND  A
+141F            LD   A,(#3E4F)           Fetch the code to be send to the
+1422            JP   NZ,<a href="#15C9 PNTP">#15C9,PNTP</a>       printer, send it right away if
+                                         (PCODE)=1, i.e. when the +D
+                                         mustn't interfere.
+1425            LD   HL,(#2063)          Jump to the appropriate 'output'
+1428            JP   (HL)                routine.
+
+This is the normal 'output' routine, but a few (control) characters are followed by one
+or two operands, these have to be handled different. This is done by altering the
+'output' routine address.
+
+<a NAME="1429 P_ALL"></a>1429 P_ALL      LD   HL,#2005            This is 'WIDTH'.
+142C            CP   32
+142E            JP   NC,<a href="#1517 P_NOCTRL">#1517,P_NOCTRL</a>   Jump if not a control code (>=32).
+1431            CP   6                   This is the "PRINT comma" code.
+1433            JP   C,<a href="#14D2 P_ESCAPE">#14D2,P_ESCAPE</a>    Jump with codes < 6.
+1436            JR   NZ,<a href="#1446 P_NOCOMMA">#1446,P_NOCOMMA</a>  Jump with codes > 6.
+1438            LD   A,(HL)              Fetch the number of characters per
+1439            SRL  A                   line, divide it by two.
+143B            LD   B,A
+143C            LD   HL,#3E4E            #3E4E holds the position on the
+                                         current line (i.e. the number of
+                                         characters already printed on this
+143F            SUB  (HL)                line).
+1440            JR   C,<a href="#1467 P_NEWLINE">#1467,P_NEWLINE</a>   Jump if already on 2nd half of line.
+1442            LD   H,B                 Otherwise jump with H holding the
+1443            JP   <a href="#14E9 P_TAB">#14E9,P_TAB</a>         center position of the line.
+
+<a NAME="1446 P_NOCOMMA"></a>1446 P_NOCOMMA  CP   8                   This is "cursor left" or "backspace".
+1448            JP   C,<a href="#14D2 P_ESCAPE">#14D2,P_ESCAPE</a>    Jump with codes < 8.
+144B            JR   NZ,<a href="#1459 P_NOBACK">#1459,P_NOBACK</a>   Jump with codes > 8 (examine further).
+144D            LD   HL,#3E4E            Get current position.
+1450            LD   A,(HL)
+1451            AND  A
+1452            RET  Z                   Return if already on leftmost position
+1453            DEC  (HL)                Otherwise decrement current position.
+1454            LD   A,127               This isn't "BACKSPACE", this is
+                                         "DELETE" !
+1456            JP   <a href="#15C9 PNTP">#15C9,PNTP</a>          Print a "DELETE".
+
+<a NAME="1459 P_NOBACK"></a>1459 P_NOBACK   CP   13                  This is "ENTER" or "CARRIAGE RETURN".
+145B            JR   C,<a href="#14D2 P_ESCAPE">#14D2,P_ESCAPE</a>    Jump with codes < 13.
+145D            JR   NZ,<a href="#1493 P_NOENTER">#1493,P_NOENTER</a>  Jump with codes > 13.
+145F            LD   HL,#2065            This flag, when set, indicates that a
+1462            BIT  1,(HL)              newline has already been send to the
+                                         printer. I.e. the previous line was
+                                         full (see #15C0).
+1464            RES  1,(HL)              Reset the flag.
+1466            RET  NZ                  Return if this newline has been send
+                                         already.
+<a NAME="1467 P_NEWLINE"></a>1467 P_NEWLINE  LD   HL,#2065            Signal 'newline has been send'.
+146A            RES  1,(HL)
+146C            LD   HL,#3E4E
+146F            LD   (HL),0              Set current position to 0.
+1471            LD   A,(#2008)           Fetch (LFEED), the number of line
+1474            AND  A                   feeds needed after a carriage return.
+1475            JR   Z,<a href="#147F P_CARRET">#147F,P_CARRET</a>    Jump if it is 0.
+1477            LD   B,A                 Otherwise send the line feeds.
+<a NAME="1478 P_LFEED"></a>1478 P_LFEED    LD   A,10                CHR$ 10 is line feed.
+147A            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>
+147D            DJNZ <a href="#1478 P_LFEED">#1478,P_LFEED</a>       Loop until (LFEED) line feeds send.
+<a NAME="147F P_CARRET"></a>147F P_CARRET   LD   A,13                Now send the carriage return.
+1481            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>
+1484            LD   A,(#2009)           Fetch (LMARG), that is the left margin
+1487            AND  A
+1488            RET  Z                   Return if it is 0.
+1489            LD   B,A                 Otherwise send (LMARG) spaces.
+148A            LD   (HL),A              Adjust current print position.
+<a NAME="148B P_LMARGE"></a>148B P_LMARGE   LD   A,32
+148D            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>
+1490            DJNZ <a href="#148B P_LMARGE">#148B,P_LMARGE</a>      Loop until (LMARG) spaces send.
+1492            RET                      Finished.
+
+Now the control codes with operands are handled. The control codes from INK to OVER
+(16..21) and ESC (27) require a single operand, whereas the control characters AT & TAB
+are required to be followed by two operands. The following routines leads to the control
+character code being stored in TVDATA-lo, the first operand in TVDATA-hi or the A
+register if there is only a single operand required, and the second operand in the A
+register. The ESC control code is handled separately, the single operand is send directly
+to the printer.
+
+<a NAME="1493 P_NOENTER"></a>1493 P_NOENTER  CP   16                  This is "INK control".
+1495            JR   C,<a href="#14D2 P_ESCAPE">#14D2,P_ESCAPE</a>    Jump with codes < 16.
+1497            CP   24                  This is "TAB control"+1.
+1499            JR   NC,<a href="#14D2 P_ESCAPE">#14D2,P_ESCAPE</a>   Jump with codes >= 24.
+149B            CP   22                  This is "AT control".
+149D            JR   NC,<a href="#14CD P_2_OPER">#14CD,P_2_OPER</a>   Jump with AT & TAB.
+149F            LD   DE,<a href="#14AC P_CONT">#14AC,P_CONT</a>     Otherwise the '"P" channel output'
+                                         routine is to be changed to 'P_CONT'.
+<a NAME="14A2 P_TV_1"></a>14A2 P_TV_1     LD   (23566),A           Store the control character code in
+                                         (TVDATA-lo).
+
+The current 'output' routine address is changed temporarily.
+
+<a NAME="14A5 P_CHANGE"></a>14A5 P_CHANGE   LD   HL,#2063            HL points to the 'output' routine
+14A8            LD   (HL),E              address. Enter the new 'output'
+14A9            INC  HL                  routine address and thereby force the
+14AA            LD   (HL),D              next character to be considered as an
+14AB            RET                      operand.
+
+Once the operands have been collected the routine continues.
+
+<a NAME="14AC P_CONT"></a>14AC P_CONT     LD   DE,<a href="#1429 P_ALL">#1429,P_ALL</a>      Restore the original address for
+14AF            CALL <a href="#14A5 P_CHANGE">#14A5,P_CHANGE</a>      'P_ALL'.
+14B2            LD   HL,(23566)          Fetch the control code and the first
+                                         operand if there are indeed two
+                                         operands (TVDATA).
+14B5            LD   D,A                 The 'last' operand and the control
+14B6            LD   A,L                 code are moved.
+14B7            CP   22
+14B9            JR   C,<a href="#14BF P_CO_TEMPS">#14BF,P_CO_TEMPS</a>  Jump if handling INK to OVER.
+14BB            JR   NZ,<a href="#14E9 P_TAB">#14E9,P_TAB</a>      Jump if handling TAB.
+14BD            JR   <a href="#1514 P_AT">#1514,P_AT</a>          Jump if handling AT.
+
+The control codes INK to OVER are handled by the 'main' ROM 'CO_TEMP' routine. It is
+entered with the control code in the A register and the parameter in the D register. Note
+that all changes are to the 'temporary' system variables.
+
+<a NAME="14BF P_CO_TEMPS"></a>14BF P_CO_TEMPS LD   HL,#2211,CO_TEMP_5  Return via the calling routine to
+14C2            EX   (SP),HL             'CO_TEMP' in the 'main' ROM.
+14C3            PUSH HL
+14C4            RET
+
+<a NAME="14C5 P_TV_2"></a>14C5 P_TV_2     LD   DE,<a href="#14AC P_CONT">#14AC,P_CONT</a>     Store the first operand in TVDATA-hi
+14C8            LD   (23567),A           and change the address of the 'output'
+14CB            JR   <a href="#14A5 P_CHANGE">#14A5,P_CHANGE</a>      routine to 'P_CONT'.
+
+Enter here when handling the control codes AT & TAB.
+
+<a NAME="14CD P_2_OPER"></a>14CD P_2_OPER   LD   DE,<a href="#14C5 P_TV_2">#14C5,P_TV_2</a>     The control code will be stored in
+14D0            JR   <a href="#14A2 P_TV_1">#14A2,P_TV_1</a>        TVDATA-lo and the address of the
+                                         'output' routine changed to 'P_TV_2'.
+
+<a NAME="14D2 P_ESCAPE"></a>14D2 P_ESCAPE   CP   27
+14D4            JR   NZ,<a href="#14E5 P_QUEST">#14E5,P_QUEST</a>    Print a '?' if it isn't ESC.
+14D6            LD   DE,<a href="#14DC P_ESC">#14DC,P_ESC</a>      Otherwise change the address of the
+14D9            JP   <a href="#14A5 P_CHANGE">#14A5,P_CHANGE</a>      'output' routine to 'P_ESC'.
+
+Enter here when handling the ESC control code, the character code following the ESC is
+send directly to the printer.
+
+<a NAME="14DC P_ESC"></a>14DC P_ESC      LD   DE,<a href="#1429 P_ALL">#1429,P_ALL</a>      Restore the original address for
+14DF            CALL <a href="#14A5 P_CHANGE">#14A5,P_CHANGE</a>      'P_ALL'.
+14E2            JP   <a href="#15C9 PNTP">#15C9,PNTP</a>          Send the code following the ESC to the
+                                         printer.
+
+A question mark is printed whenever an attempt is made to print an unprintable character
+code.
+
+<a NAME="14E5 P_QUEST"></a>14E5 P_QUEST    LD   A,63,"?"            The character '?'.
+14E7            JR   <a href="#1517 P_NOCTRL">#1517,P_NOCTRL</a>      Send it to the printer.
+
+Now deal with the TAB control code.
+
+<a NAME="14E9 P_TAB"></a>14E9 P_TAB      LD   A,(#2005)           Fetch (WIDTH), that is the line length
+14EC            LD   B,A
+14ED            LD   A,H                 Fetch the position where to TAB
+14EE            SUB  B                   (or AT) to.
+14EF            JR   C,<a href="#14F7 P_INRANGE">#14F7,P_INRANGE</a>   Jump if position is on this line.
+14F1            LD   HL,#046C,REPORT_B   Otherwise return to 'REPORT_B' in the
+14F4            EX   (SP),HL             'main' ROM ('Integer out of range').
+14F5            PUSH HL
+14F6            RET
+<a NAME="14F7 P_INRANGE"></a>14F7 P_INRANGE  LD   A,(#3E4E)           Fetch current position.
+14FA            LD   B,A
+14FB            LD   A,H
+14FC            SUB  B
+14FD            PUSH HL                  Print on a new line if print position
+14FE            CALL C,<a href="#1467 P_NEWLINE">#1467,P_NEWLINE</a>   exceeds TAB position.
+1501            POP  HL
+1502            LD   A,(#3E4E)           Fetch the current position again.
+1505            SUB  H                   Calculate the number of spaces wanted.
+1506            RET  Z                   Return if already there.
+1507            CPL                      The number is negative so make it
+1508            INC  A                   positive.
+1509            LD   B,A                 Print the needed spaces.
+<a NAME="150A P_SPACE"></a>150A P_SPACE    LD   A,32
+150C            PUSH BC
+150D            CALL <a href="#1429 P_ALL">#1429,P_ALL</a>
+1510            POP  BC
+1511            DJNZ <a href="#150A P_SPACE">#150A,P_SPACE</a>
+1513            RET
+
+Enter here when handling AT.
+
+<a NAME="1514 P_AT"></a>1514 P_AT       LD   H,D                 Store the second operand and continue
+1515            JR   <a href="#14E9 P_TAB">#14E9,P_TAB</a>         in the TAB routine.
+
+The 'not control' characters are divided into four groups: the ordinary characters, the
+tokens, the graphics and the user-defined graphics.
+
+<a NAME="1517 P_NOCTRL"></a>1517 P_NOCTRL   CP   128                 This is the first graphic.
+1519            JR   C,<a href="#1582 P_ASCII">#1582,P_ASCII</a>     Jump with ASCII characters (< 128).
+151B            CP   144                 This is the first UDG.
+151D            JR   NC,<a href="#1528 P_TOK&UDG">#1528,P_TOK&UDG</a>  Jump with UDG's and tokens.
+151F            LD   B,A                 Construct the graphic in the
+1520            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          calculator's memory area by calling
+1521            DEFW #0B38,PO_GR_1       'PO_GR_1' in the 'main' ROM.
+1523            LD   HL,23698            HL points to the start of the graphic
+                                         form; i.e. MEMBOT.
+1526            JR   <a href="#153F P_GRAPH">#153F,P_GRAPH</a>       Jump to print the graphic character.
+
+<a NAME="1528 P_TOK&UDG"></a>1528 P_TOK&UDG  SUB  165                 This is the RND token.
+152A            JR   C,P_UDGS            Jump with UDG's (< 165).
+152C            LD   HL,#0C10,PO_TOKENS  The routine indirectly jumps to the
+152F            EX   (SP),HL             'PO_TOKENS' routine in the 'main' ROM
+1530            PUSH HL                  to expand the token. That routine then
+1531            RET                      calls recursively the 'P_ALL' routine
+                                         above for each character of the token.
+
+<a NAME="1532 P_UDGS"></a>1532 P_UDGS     ADD  A,21                Adjust range, UDG's now from 0..20.
+1534            LD   BC,(23675)          BC points to the start of the UDG area
+1538            LD   H,0                 (UDG).
+153A            LD   L,A                 Pass the code to HL.
+153B            ADD  HL,HL               Each UDG is made by eight bytes, so
+153C            ADD  HL,HL               multiply the code by eight.
+153D            ADD  HL,HL
+153E            ADD  HL,BC
+<a NAME="153F P_GRAPH"></a>153F P_GRAPH    LD   DE,#3E3D            Move the eight bytes to the +Ds
+1542            LD   BC,8                internal printerbuffer.
+1545            LDIR
+
+Now the eight pixelrows are converted to eight dotcolumns.
+
+1547            PUSH IX
+1549            LD   IX,#3E4C            The last address of the dotcolumns.
+154D            LD   B,8                 Each graphic has eight pixelrows.
+<a NAME="154F P_GRAPH1"></a>154F P_GRAPH1   LD   HL,#3E3D            Address of the graphic's pixelrows.
+1552            LD   C,8                 Each pixelrow has eight pixels.
+<a NAME="1554 P_GRAPH2"></a>1554 P_GRAPH2   LD   D,(HL)              Each bit is moved in turn into the E
+1555            RR   D                   register.
+1557            LD   (HL),D
+1558            RL   E
+155A            INC  HL
+155B            DEC  C
+155C            JR   NZ,<a href="#1554 P_GRAPH2">#1554,P_GRAPH2</a>   Repeat for the eight pixels.
+155E            LD   (IX+0),E            Store the dotcolumn.
+1561            DEC  IX
+1563            DJNZ <a href="#154F P_GRAPH1">#154F,P_GRAPH1</a>      Repeat for the eight rows.
+1565            POP  IX
+1567            LD   DE,<a href="rsysvar.htm#202A GRAPH_DPI">#202A,GRAPH_DPI</a>  Print the escape sequence for
+156A            CALL <a href="#140B PO_ESC_SEQ">#140B,PO_ESC_SEQ</a>    graphic images.
+156D            LD   A,8                 Signal to the printer 'there follow
+156F            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>          eight bytes of bitimage data'.
+1572            LD   A,0
+1574            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>
+1577            LD   B,8                 Send the eight bytes to the printer.
+<a NAME="1579 P_GRAPH3"></a>1579 P_GRAPH3   LD   A,(HL)
+157A            CALL <a href="#15C9 PNTP">#15C9,PNTP</a>
+157D            INC  HL
+157E            DJNZ <a href="#1579 P_GRAPH3">#1579,P_GRAPH3</a>
+1580            JR   <a href="#15B4 P_UP_POS">#15B4,P_UP_POS</a>      Update the current position.
+
+Now deal with the printing of normal ASCII characters.
+
+<a NAME="1582 P_ASCII"></a>1582 P_ASCII    LD   HL,#2065
+1585            RES  1,(HL)              Reset 'newline already send' flag.
+1587            LD   (#3E4F),A
+158A            LD   A,(#200A)           Fetch (GRAPH), when it's 1 the +D
+158D            AND  A                   has to generate the graphic
+158E            LD   A,(#3E4F)           representation of some characters.
+1591            JR   Z,<a href="#15B1 P_OTHERS">#15B1,P_OTHERS</a>    Jump if the normal code has to be send
+
+Because some Spectrum characters aren't supported by all printers the +D can send the
+graphic representation of those characters instead of the original character code. The
+characters supported £, # and (c).
+
+1593            CP   96,"£"
+1595            JR   NZ,<a href="#159D P_NOPOUND">#159D,P_NOPOUND</a>  Jump if it isn't '£'.
+1597            LD   HL,<a href="rsysvar.htm#203A £_SIGN">#203A,£_SIGN</a>     Point to the bitimage data for £.
+159A            JP   <a href="#153F P_GRAPH">#153F,P_GRAPH</a>       Handle it as an ordinary graphic.
+<a NAME="159D P_NOPOUND"></a>159D P_NOPOUND  CP   35,"#"
+159F            JR   NZ,<a href="#15A7 P_NOHASH">#15A7,P_NOHASH</a>   Jump if it isn't '#'.
+15A1            LD   HL,<a href="rsysvar.htm#2042 #_SIGN">#2042,#_SIGN</a>     Point to the bitimage data for #.
+15A4            JP   <a href="#153F P_GRAPH">#153F,P_GRAPH</a>       Handle it as a graphic.
+<a NAME="15A7 P_NOHASH"></a>15A7 P_NOHASH   CP   127,"(c)"
+15A9            JR   NZ,<a href="#15B1 P_OTHERS">#15B1,P_OTHERS</a>   Jump to handle all non '(c)' characters.
+15AB            LD   HL,#204A,(c)_SIGN     Point to the bitimage data for (c).
+15AE            JP   <a href="#153F P_GRAPH">#153F,P_GRAPH</a>       Handle it as a graphic.
+
+Finally the normal characters can be send to the printer.
+
+<a NAME="15B1 P_OTHERS"></a>15B1 P_OTHERS   CALL <a href="#15C9 PNTP">#15C9,PNTP</a>          Send the character to the printer.
+<a NAME="15B4 P_UP_POS"></a>15B4 P_UP_POS   LD   A,(#3E4E)           Update the current position.
+15B7            INC  A
+15B8            LD   (#3E4E),A
+15BB            LD   HL,#2005            HL points to WIDTH.
+15BE            SUB  (HL)
+15BF            RET  C                   Return if the line isn't full yet.
+15C0            CALL <a href="#1467 P_NEWLINE">#1467,P_NEWLINE</a>     Otherwise someone has forgotten that
+15C3            LD   HL,#2065            printer lines aren't endless, so print
+15C6            SET  1,(HL)              a 'NEWLINE' and signal 'ignore next
+15C8            RET                      character if it is a CR'.
+
+<font size=+2>THE 'SEND A BYTE TO PRINTER' SUBROUTINE</font>
+This routine is also called by using command code 57 (#39). It sends the 8 bit code in
+the A register to the printer port, after checking if the printer is busy. The BREAK key
+is tested.
+
+<a NAME="15C9 PNTP"></a>15C9 PNTP       LD   (#3E4F),A           Store the code temporarily.
+<a NAME="15CC PNTP_1"></a>15CC PNTP_1     CALL <a href="misc1.htm#0497 TST_BREAK">#0497,TST_BREAK</a>     Exit if the BREAK key is pressed.
+15CF            IN   A,(247)             Test the BUSY line of the printer.
+15D1            BIT  7,A
+15D3            JR   NZ,<a href="#15CC PNTP_1">#15CC,PNTP_1</a>     Wait until printer isn't BUSY.
+15D5            IN   A,(247)
+15D7            BIT  7,A
+15D9            JR   NZ,<a href="#15CC PNTP_1">#15CC,PNTP_1</a>
+15DB            IN   A,(247)
+15DD            BIT  7,A
+15DF            JR   NZ,<a href="#15CC PNTP_1">#15CC,PNTP_1</a>
+15E1            LD   A,(#3E4F)           Send the code to the printer port.
+15E4            OUT  (247),A
+15E6            LD   A,(#3DDA)           Fetch current control port status.
+15E9            OR   #40                 Give a STROBE.
+15EB            OUT  (239),A
+15ED            AND  #BF                 Reset STROBE.
+15EF            OUT  (239),A
+15F1            LD   A,(#3E4F)           Return with the A register holding the
+                                         outputted byte, 'RET' forgotten?
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="hookcode.htm">Previous</a></td>
+<td><a href="flags.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

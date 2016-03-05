@@ -1,0 +1,82 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The patches </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="sysmsg.htm">Previous</a></td>
+<td><a href=".htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The patches </font></b>
+
+<font size=+2>THE 'OPENTYPE FILE OPEN/CLOSE' ROUTINE</font>
+This routine opens or closes an opentype file according to the contents of the A
+register. When it holds 0 a "D" channel is attached to the stream given in the DFCA. A
+non zero value closes the corresponding stream.
+
+<a NAME="3110 OTFOC"></a>3110 OTFOC      AND  A
+3111            JP   Z,<a href="stream.htm#2CB3 OPEN_CHAN">#2CB3,OPEN_CHAN</a>   Open a channel if A holds zero.
+3114            JP   <a href="stream.htm#2E5E CLOSE_STRM">#2E5E,CLOSE_STRM</a>    Otherwise close the stream.
+
+<font size=+2>THE 'CLOSE #' PATCH</font>
+This patch cures the bug related to CLOSEing 'OPENTYPE' files. Before the file is CLOSEd
+first the correct drive settings are send to the FDC.
+ 
+<a NAME="3117 CL_PATCH"></a>3117 CL_PATCH   LD   E,(IX+17)           Fetch sector and track.
+311A            LD   D,(IX+18)
+311D            LD   A,(IX+11)           Fetch drive number.
+3120            LD   (#3ACE),A
+3123            CALL <a href="disk.htm#071C SET_DRVSD">#071C,SET_DRVSD</a>     Select track, sector, side and drive.
+3126            CALL <a href="disk.htm#0B89 CFSM">#0B89,CFSM</a>          Close the file sector map.
+3129            RET                      Finished.
+
+<font size=+2>THE 'OPEN TEMPORARY OUTPUT' PATCH</font>
+This patch gives an error report when an attempt is made to open an existing OUTput file
+using a command code. A jump back to the 'open a temporary channel' routine is made if
+not using a command code.
+
+<a NAME="312A OP_T_PATCH"></a>312A OP_T_PATCH PUSH HL
+312B            LD   HL,(#2066)
+312E            LD   A,H
+312F            OR   L                   Jump back to the 'OP_TEMP' routine if
+3130            POP  HL                  'D_ERR_SP' is zero (this isn't the case
+3131            JP   Z,<a href="stream.htm#2D8F OP_TEMP6">#2D8F,OP_TEMP6</a>    during command code execution).
+3134            JP   <a href="errrst.htm#167C REP_28">#167C,REP_28</a>        Otherwise give 'File NAME used' error.
+
+<font size=+2>THE 'NEW' PATCH</font>
+When the file copy command is finished the +D jumps to the 'NEW' routine. With System 2a
+a selection is made for 48K or 128K 'NEW'
+
+<a NAME="3137 TO_NEW"></a>3137 TO_NEW     BIT  4,(IY+1)            Jump if not in 128K mode HL contains
+313B            JP   Z,<a href="restart.htm#004F UNPAGE_HL">#004F,UNPAGE_HL</a>   #11B7, the address of 48K 'NEW'.
+313E            CALL #5B00,SWAP          Call the paging subroutine of the 128.
+3141            DI
+3142            LD   BC,#00C7            Address of 128 'NEW' routine.
+3145            JP   <a href="restart.htm#0046 UNPAGE_BC">#0046,UNPAGE_BC</a>
+
+<font size=+2>THE 'END OF STATEMENT' ROUTINE</font>
+It isn't clear why IX should point to #000C during syntax checking.
+
+<a NAME="3148 ST_END_RAM"></a>3148 ST_END_RAM LD   IX,#000C
+314C            CALL <a href="misc1.htm#046E ST_END">#046E,ST_END</a>
+314F            LD   IX,#3AC3
+3153            RET
+
+<font size=+2>THE 'PCAT' ROUTINE</font>
+This routine is called by using command code 67, in System 2a the command code works.
+
+<a NAME="3154 PCAT"></a>3154 PCAT       CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      Drive defined?
+3157            LD   A,(#3E10)           Get 'CAT' type.
+315A            JP   <a href="basic1.htm#24B5 CAT_RUN">#24B5,CAT_RUN</a>       Do the CAT.
+
+315D - 39FF Unused locations (all set to #00).

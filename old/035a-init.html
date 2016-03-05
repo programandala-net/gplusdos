@@ -1,0 +1,122 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The initialise system routine </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="periodic.htm">Previous</a></td>
+<td><a href="misc1.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The initialise system routine </font></b>
+
+<font size=+2>THE 'SYSTEM-FILE' NAME</font>
+The following 11 bytes form the file description (directory description and filename) of
+a System-file.
+
+<a NAME="035A SYS_DESCR"></a>035A SYS_DESCR  DEFB 4
+035B            DEFM "+SYS*     "
+
+<font size=+2>THE '"AUTO*" FILE' UFIA</font>
+The following 22 bytes form the UFIA of the autoload file, which is loaded right after
+the system file.
+ 
+<a NAME="0365 AUTO_UFIA"></a>0365 AUTO_UFIA  DEFB #01                 Drive 1
+0366            DEFB #00
+0367            DEFB #00
+0368            DEFB "D"                 Device "D"
+0369            DEFB #01                 Dir. entry for BASIC file.
+036A            DEFM "AUTO*     "        Name of autoload file.
+0374            DEFB #00                 File type is BASIC.
+0375            DEFW #FFFF               Max. length.
+0377            DEFW #FFFF
+0379            DEFW #FFFF
+
+<font size=+2>THE 'RUN' COMMAND ROUTINE</font>
+The RUN command loads the system file.
+
+<a NAME="037B RUN"></a>037B RUN        SET  7,(IY+10)           Clear the 'jump' signal set by using
+                                         the 'RUN' command.
+037F            LD   IX,#3AC3
+0383            LD   A,1                 Signal 'drive 1 is being used'.
+0385            LD   (IX+11),A
+0388            LD   A,1                 Set drive 1.
+038A            LD   (#3DDA),A           Store it in the control port state.
+038D            OUT  (239),A             Activate.
+038F            CALL <a href="disk.htm#06B6 REST">#06B6,REST</a>          Move drive head to track 0.
+0392            LD   HL,<a href="#035A SYS_DESCR">#035A,SYS_DESCR</a>  Copy the file description to UFIA1.
+0395            LD   DE,#3E05
+0398            LD   BC,11
+039B            LDIR
+039D            LD   A,%00001000         Signal 'matching name and directory
+                                         description have to be found'.
+039F            CALL <a href="disk.htm#09A5 SCAN_CAT">#09A5,SCAN_CAT</a>      Search for the file.
+03A2            JP   NZ,<a href="errrst.htm#1652 REP_7">#1652,REP_7</a>      Give 'No "SYSTEM" file' error when file
+                                         not found.
+03A5            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Clear the whole screen.
+03A6            DEFW #0DAF,CL_ALL
+03A8            CALL <a href="misc2.htm#17A9 MESG_0">#17A9,MESG_0</a>        Print the 'SYSTEM LOADING' message.
+03AB            CALL <a href="disk.htm#0C04 LOAD_1ST">#0C04,LOAD_1ST</a>      Copy the file description (directory
+                                         description and filename) to UFIA2 and
+                                         load the first sector of the file into
+                                         the disk buffer.
+03AE            LD   HL,#3BD6            Copy the file header (the 9 bytes
+03B1            LD   DE,#3E29            consisting of filetype, length, etc.)
+03B4            LD   BC,9                to UFIA2.
+03B7            LDIR
+03B9            LD   (IX+13),9           Update the buffer pointer.
+03BD            LD   DE,(#3E2A)          Fetch the systemfile's length.
+03C1            LD   HL,#2000            Loadaddress is #2000.
+03C4            CALL <a href="disk.htm#079E LOAD_FILE">#079E,LOAD_FILE</a>     Load the system.
+03C7            LD   A,#44               Load the system.
+03C9            LD   (#3DE4),A           Signal 'System loaded'.
+03CC            XOR  A
+03CD            PUSH AF
+03CE            LD   HL,#2080
+03D1            LD   BC,#197F            Calculate checksum.
+<a NAME="03D4 RUN_CHKSUM"></a>03D4 RUN_CHKSUM POP  AF
+03D5            ADD  A,(HL)
+03D6            PUSH AF
+03D7            INC  HL
+03D8            DEC  BC
+03D9            LD   A,B
+03DA            OR   C
+03DB            JR   NZ,<a href="#03D4 RUN_CHKSUM">#03D4,RUN_CHKSUM</a>
+03DD            POP  AF
+03DE            LD   (HL),A
+03DF            XOR  A
+03E0            LD   (#3ACF),A           Clear FLAGS3.
+03E3            LD   (#2066),A
+03E6            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Clear the whole display.
+03E7            DEFW #0DAF,CL_ALL
+03E9            CALL <a href="misc1.htm#040C TAKE_PRTR">#040C,TAKE_PRTR</a>     If necessary takeover the "P" channel.
+03EC            CALL <a href="rsysvar.htm#209B JMSG3">#209B,JMSG3</a>         Print DOS copyright message.
+03EF            CALL <a href="misc1.htm#042D INIT_PRTR">#042D,INIT_PRTR</a>     If necessary initialize printer.
+03F2            LD   IX,<a href="#0365 AUTO_UFIA">#0365,AUTO_UFIA</a>  Point to autoload file ufia.
+03F6            CALL <a href="rsysvar.htm#2095 JHXFER">#2095,JHXFER</a>        Transfer UFIA to DFCA.
+03F9            LD   A,%00001000         Search for a file with specified name
+03FB            CALL <a href="disk.htm#09A5 SCAN_CAT">#09A5,SCAN_CAT</a>      and type.
+03FE            JP   NZ,<a href="errrst.htm#166C REP_20">#166C,REP_20</a>     "O.K. G+DOS" if no autoload file found
+0401            CALL <a href="flags.htm#1608 SIGN_4">#1608,SIGN_4</a>        Signal 'loading'.
+0404            JP   <a href="rsysvar.htm#2092 JLOAD">#2092,JLOAD</a>         Load the file.
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="periodic.htm">Previous</a></td>
+<td><a href="misc1.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The restart routines </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="">Previous</a></td>
+<td><a href="snapshot.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The restart routines </font></b>
+
+<font size=+2>THE 'POWER UP RESET' RESTART</font>
+When the Spectrum is turned on or the reset button is pressed, the +D ROM is paged in at
+address 0, i.e. the routine listed here is executed.
+
+<a NAME="0000 POWER_UP"></a>0000 POWER_UP   NOP
+0001            LD   BC,#0101
+0004            NOP
+0005            JP   <a href="misc1.htm#0533 POWER_UP2">#0533,POWER_UP2</a>     Jump to main routine.
+
+<font size=+2>THE 'USE G+DOS' RESTART</font>
+This is the main entry point to the +D system; it is paged in when the Z80 reaches
+address #0008, that is, the address of the 'main' ROM 'ERROR' routine.
+
+<a NAME="0008 START"></a>0008 START      LD   HL,(23645)          The address reached by the interpreter
+000B            LD   (23647),HL          (CH_ADD) is copied to the error pointer
+000E            JR   <a href="#0013 START2">#0013,START2</a>        (X_PTR) before proceeding.
+
+<font size=+2>THE 'CALL A MAIN ROM ROUTINE' RESTART</font>
+This routine allows for a subroutine in the 'main' ROM to be called from the 
++D system. It can be called by using a RST #10 instruction, followed by the 
+address of the 'main' ROM subroutine.
+
+<a NAME="0010 CALBAS"></a>0010 CALBAS     JP   <a href="misc1.htm#04A6 CALBAS_2">#04A6,CALBAS_2</a>      Jump forward.
+
+<font size=+2>THE 'START_2' ROUTINE</font>
+
+<a NAME="0013 START2"></a>0013 START2     JP   <a href="control.htm#013B START_3">#013B,START_3</a>       Continue with the +D systems main
+                                         entry routine.
+0016            DEFB #00,#00             Unused locations.
+
+<font size=+2>THE 'FLAGS ADDRESS' RESTART</font>
+This routine is used by the -BIT- routines at address #15F4, the original HL is saved
+and the flags address is loaded into HL.
+
+<a NAME="0018 F_ADDR"></a>0018 F_ADDR     EX   (SP),HL             Exchange RETurn address and HL.
+0019            PUSH HL                  Re-stack RETurn address.
+001A            LD   HL,#3ACF            Address of FLAGS3.
+001D            RET
+001E            DEFB #00,#00             Unused locations.
+
+<font size=+2>THE '+D ERROR' RESTART</font>
+A RST #20 followed by an one-byte error code will print the appropriate message, when
+the error occurred during the execution of a command code however, the error code will be
+returned in the A register with the Carry flag set.
+
+<a NAME="0020 DISC_ERR"></a>0020 DISC_ERR   LD   HL,(23645)          The address reached by the interpreter
+0023            LD   (23647),HL          is copied to the error pointer before
+0026            JR   <a href="#0035 DISC_ERR2">#0035,DISC_ERR2</a>     proceeding.
+
+<font size=+2>THE 'NEXT CHAR' RESTART</font>
+This routine gets the next character from a BASIC line, it does this by calling the RST
+#20 routine in the 'main' ROM.
+
+<a NAME="0028 NEXT_C"></a>0028 NEXT_C     RST  #10,<a href="#0010 CALBAS">CALBAS</a>          Call 'main' ROM 'NEXT_CHAR'.
+0029            DEFW #0020,NEXT_CHAR
+002B            RET
+
+<font size=+2>THE 'GET CHAR' ROUTINE</font>
+Get character by calling the 'main' ROM restart.
+
+<a NAME="002C GET_C"></a>002C GET_C      RST  #10,<a href="#0010 CALBAS">CALBAS</a>          Call 'main' ROM 'GET_CHAR'.
+002D            DEFW #0018,GET_CHAR
+002F            RET
+
+<font size=+2>THE 'SYNTAX-Z' RESTART</font>
+This corresponds to the 'main' ROM 'SYNTAX-Z' subroutine. A test of bit 7 of FLAGS will
+give the Zero flag set during syntax checking, and reset during execution.
+
+<a NAME="0030 SYNTAX_Z"></a>0030 SYNTAX_Z   BIT  7,(IY+1)            Test the runtime flag.
+0034            RET
+
+<font size=+2>THE 'DISC_ERR2' ROUTINE</font>
+
+<a NAME="0035 DISC_ERR2"></a>0035 DISC_ERR2  JP   <a href="errrout.htm#182D D_ERROR">#182D,D_ERROR</a>       Continue with the +D error routine.
+
+<font size=+2>THE 'MASKABLE INTERRUPT' RESTART</font>
+While the +D system is paged in, 'nothing' is done during an interrupt.
+
+<a NAME="0038 INT"></a>0038 INT        EI                       Enable interrupts before RETurning.
+0039            RET
+
+AN 'UNUSED' SUBROUTINE
+This is probably a piece of an older ROM version, it loads HL with (FRAMES) and CALLs
+another unused routine at #02E3.
+
+003A            LD   HL,(23672)          Get the two LSBs of FRAMES.
+003D            CALL #02E3
+0040            OUT  (231),A             Page-out.
+0042            DEFB #B5
+0043            DEFB #00,#00,#00
+
+<font size=+2>THE 'UNPAGE 128 ROM' SUBROUTINE</font>
+This routine pages out the +D system and returns to the 128K ROM at address #0049. That
+address contains a RET instruction so the effect is a jump to BC with the 128K ROM paged
+in.
+
+<a NAME="0046 UNPAGE_BC"></a>0046 UNPAGE_BC  PUSH BC                  Stack return address.
+<a NAME="0047 UNPAGE_0"></a>0047 UNPAGE_0   OUT  (231),A             Page out +D system.
+0049            RET                      ? This statement is not reached from
+                                         above.
+004A            DEFB #00,#00,#00,#00,#00 Unused locations.
+
+<font size=+2>THE 'UNPAGE' SUBROUTINE</font>
+This routine pages out the +D system and returns to the 'main' ROM at address #0052.
+That address contains a RET instruction so the effect is a jump to HL with the 'main' ROM
+paged in.
+
+<a NAME="004F UNPAGE_HL"></a>004F UNPAGE_HL  PUSH HL                  Stack return address.
+<a NAME="0050 UNPAGE_1"></a>0050 UNPAGE_1   OUT  (231),A             Page out +D system.
+0052            RET
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="">Previous</a></td>
+<td><a href="snapshot.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

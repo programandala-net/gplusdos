@@ -1,0 +1,803 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The stream handling routines</title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="basic2.htm">Previous</a></td>
+<td><a href="command.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The stream handling routines</font></b>
+
+<font size=+2>THE 'EVALUATE STREAM NUMBER' SUBROUTINE</font>
+A single numeric expression is evaluated and the result, in the range 0..15 is stored
+into 'STRM_NUM1'.
+
+<a NAME="2AEF EXPT_#NR"></a>2AEF EXPT_#NR   RST  #28,NEXT_C          Advance CH_ADD.
+<a NAME="2AF0 EXPT_#NR1"></a>2AF0 EXPT_#NR1  RST  #10,CALBAS          Evaluate stream number.
+2AF1            DEFW #1C82,EXPT_1NUM
+2AF3            RST  #30,<a href="restart.htm#0030 SYNTAX_Z">SYNTAX_Z</a>        Return if syntax is being checked.
+2AF4            RET  Z
+2AF5            PUSH AF
+2AF6            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Fetch the number.
+2AF7            DEFW #1E94,FIND_INT1
+2AF9            CP   16                  Give an error if it isn't in the range
+2AFB            JP   NC,<a href="errrst.htm#1656 REP_9">#1656,REP_9</a>      0..15. ('Invalid station' ?)
+2AFE            LD   (#3E03),A           Store stream number into 'STRM_NUM1'.
+2B01            POP  AF
+2B02            RET
+
+<font size=+2>THE 'MOVE' COMMAND SYNTAX ROUTINE</font>
+A 'MOVE' command requires two sets of parameters, for the 'input' channel, and for the
+'output' channel. These parameters are stored into the UFIA's.
+
+<a NAME="2B03 MOVE"></a>2B03 MOVE       CALL <a href="#2BAD EXPT_EXP1">#2BAD,EXPT_EXP1</a>     Evaluate stream or channel expression.
+2B06            CP   204,"TO"            The keyword 'TO' must be present,
+2B08            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      give an error if 'TO' is missing.
+2B0B            CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Exchange the UFIA's.
+2B0E            CALL <a href="#2BAD EXPT_EXP1">#2BAD,EXPT_EXP1</a>     Evaluate second stream or channel
+                                         expression.
+2B11            CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Exchange the UFIA's again.
+2B14            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax check.
+
+The actual 'MOVE' command reads a byte from the source channel or stream, and then
+writes it to the destination channel or stream. This is repeated until the first channel
+or stream reports 'End Of File'. 'SIGN_2' is called to signal to the 'D_INPUT' routine at
+#2EDC that the 'END of file' error isn't to be generated.
+
+2B17            CALL <a href="flags.htm#15FE SIGN_2">#15FE,SIGN_2</a>        See above.
+2B1A            LD   A,191,"IN"          This is the keyword 'IN', it is used to
+2B1C            LD   (#3E02),A           signal 'READ channel'.
+2B1F            CALL <a href="#2BDA OP_MOVE">#2BDA,OP_MOVE</a>       Open the source channel/stream.
+2B22            LD   HL,(23631)          Save (CHANS).
+2B25            PUSH HL
+2B26            LD   A,(#3E02)           Save 'DIR_DESCR1' into 'DIR_DESCR2'.
+2B29            LD   (#3E1E),A
+2B2C            CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Exchange the UFIA's.
+2B2F            LD   A,223,"OUT"         This is the keyword 'OUT'.
+2B31            LD   (#3E02),A           Signal 'WRITE channel'.
+2B34            LD   IX,#3AC3            Pointer to DFCA.
+2B38            CALL <a href="#2BDA OP_MOVE">#2BDA,OP_MOVE</a>       Open the destination channel/stream.
+2B3B            JR   NC,<a href="#2B49 MOVE_RUN1">#2B49,MOVE_RUN1</a>  Jump if opening was successfull. I.e.
+                                         file was 'new' or 'old' file was
+                                         overwritten.
+2B3D            LD   IX,(#3E1E)          Otherwise reclaim first channel (Second
+2B41            CALL <a href="#2B9E RECL_CHAN">#2B9E,RECL_CHAN</a>     wasn't opened so nothing to reclaim).
+2B44            POP  HL                  Drop (CHANS) address.
+2B45            POP  HL                  ?? Drop what?
+2B46            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+<a NAME="2B49 MOVE_RUN1"></a>2B49 MOVE_RUN1  CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Exchange UFIA's again.
+
+To my knowledge the instructions at #2B22, #2B25, #2B44 and from #2B4C to #2B58 aren't
+needed with the +D. With IF1 the Microdrive maps are situated between 23734 (end of
+Spectrum system variables) and (CHANS). The consequence of opening a new channel could be
+the creating of a new map. I.e. the channel information could move up and then the source
+channels address is to be recalculated. With the +D, however, nothing is situated between
+23734 and (CHANS).
+
+2B4C            POP  DE                  Retrieve 'old' (CHANS).
+2B4D            LD   HL,(23631)          Fetch 'new' (CHANS).
+2B50            OR   A                   Calculate the space which was inserted
+2B51            SBC  HL,DE               under (CHANS).
+2B53            LD   DE,(#3E05)          Adjust first channels address.
+2B57            ADD  HL,DE
+2B58            LD   (#3E05),HL
+<a NAME="2B5B MOVE_RUN2"></a>2B5B MOVE_RUN2  LD   HL,(#3E05)          Make 'current' the first channel.
+2B5E            LD   (23633),HL          (CURCHL)
+<a NAME="2B61 MOVE_RUN3"></a>2B61 MOVE_RUN3  RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call 'INPUT_A' in the 'main' ROM to
+2B62            DEFW #15E6,INPUT_A       read a byte.
+2B64            JR   C,<a href="#2B6A MOVE_RUN4">#2B6A,MOVE_RUN4</a>   Jump with acceptable codes.
+2B66            JR   Z,<a href="#2B61 MOVE_RUN3">#2B61,MOVE_RUN3</a>   Repeat if no byte read.
+2B68            JR   <a href="#2B75 MOVE_RUN5">#2B75,MOVE_RUN5</a>     Jump if EOF has been reached.
+
+An acceptable code has been found.
+
+<a NAME="2B6A MOVE_RUN4"></a>2B6A MOVE_RUN4  LD   HL,(#3E1E)          Make 'current' the 2nd channel.
+2B6D            LD   (23633),HL          (CURCHL)
+2B70            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Use 'main' ROM 'PRINT_A_2' to send the
+2B71            DEFW #15F2,PRINT_A_2     byte to the 2nd channel.
+2B73            JR   <a href="#2B5B MOVE_RUN2">#2B5B,MOVE_RUN2</a>     Repeat until EOF.
+
+EOF has been reached.
+
+<a NAME="2B75 MOVE_RUN5"></a>2B75 MOVE_RUN5  XOR  A                   Clear FLAGS3.
+2B76            LD   (#3ACF),A
+2B79            LD   HL,(23631)          Store current (CHANS).
+2B7C            PUSH HL
+2B7D            CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Exchange the UFIA's.
+2B80            CALL <a href="#2C12 CL_MOVE">#2C12,CL_MOVE</a>       Close the destination channel.
+2B83            CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Exchange the UFIA's again.
+
+Again the instructions at address #2B79, #2B7C and from #2B86 to #2B92 aren't needed
+with the +D.
+
+2B86            POP  DE                  Restore initial address of CHANS.
+2B87            LD   HL,(23631)          Fetch current (CHANS).
+2B8A            OR   A                   Calculate the amount of bytes reclaimed
+2B8B            SBC  HL,DE               after the deletion of the second
+                                          channel.
+2B8D            LD   DE,(#3E05)          Calculate the new start address of the
+2B91            ADD  HL,DE               first channel.
+2B92            LD   (#3E05),HL          And store it.
+2B95            CALL <a href="#2C12 CL_MOVE">#2C12,CL_MOVE</a>       Close the source channel.
+2B98            CALL <a href="#2C28 RECL_TEMP">#2C28,RECL_TEMP</a>     Reclaim temporary channels.
+2B9B            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+<font size=+2>THE 'RECLAIM CHANNEL' SUBROUTINE</font>
+This subroutine is used to reclaim the channel pointed to by IX.
+
+<a NAME="2B9E RECL_CHAN"></a>2B9E RECL_CHAN  LD   C,(IX+9)            Fetch channel length.
+2BA1            LD   B,(IX+10)
+2BA4            PUSH BC
+2BA5            PUSH IX                  Channel start to HL.
+2BA7            POP  HL
+2BA8            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call 'RECLAIM_2' in the 'main' ROM to
+2BA9            DEFW #19E8,RECLAIM_2     reclaim the channel.
+2BAB            POP  BC
+2BAC            RET
+
+<font size=+2>THE 'EVALUATE STRM. OR EXPR.' SUBROUTINE</font>
+This subroutine is used to check the syntax of the 'MOVE' command. If the 'current'
+character is a hash sign (#), then a stream number is evaluated. Otherwise a device
+expression is evaluated.
+
+<a NAME="2BAD EXPT_EXP1"></a>2BAD EXPT_EXP1  RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Advance CH_ADD.
+2BAE            CP   35,"#"              Jump to 'EXPT_#_NR' to evaluate stream
+2BB0            JP   Z,<a href="#2AEF EXPT_#NR">#2AEF,EXPT_#NR</a>    number if character is a '#'.
+<a NAME="2BB3 EXPT_EXP2"></a>2BB3 EXPT_EXP2  LD   (#3E04),A           Otherwise store device letter.
+2BB6            AND  #DF                 Only capitals.
+2BB8            CP   68,"D"              If device letter isn't "D" then
+2BBA            CALL NZ,<a href="syntax.htm#25C2 MD_SYN1">#25C2,MD_SYN1</a>    evaluate microdrive syntax.
+2BBD            CALL <a href="syntax.htm#25E2 EXPT_DEVN">#25E2,EXPT_DEVN</a>     Evaluate device number.
+2BC0            CALL <a href="syntax.htm#25A2 SEPARATOR">#25A2,SEPARATOR</a>     If there is a separator exit via
+2BC3            JP   Z,<a href="syntax.htm#2640 EXPT_FNAME">#2640,EXPT_FNAME</a>  'EXP_F_NAME' to evaluate a filename.
+2BC6            RST  #30,<a href="restart.htm#0030 SYNTAX_Z">SYNTAX_Z</a>
+2BC7            RET  Z                   Return if checking syntax.
+2BC8            PUSH AF
+2BC9            LD   A,(#3E04)           Fetch device letter.
+2BCC            AND  #DF                 Only capitals.
+2BCE            CP   68,"D"              If the device is "D" or "M" then there
+2BD0            JP   Z,<a href="errrst.htm#1648 REP_2">#1648,REP_2</a>       must be a name present. Give an error
+2BD3            CP   77,"M"              if no name specified.
+2BD5            JP   Z,<a href="errrst.htm#1648 REP_2">#1648,REP_2</a>
+2BD8            POP  AF
+2BD9            RET
+
+<font size=+2>THE 'USE STREAM OR CHANNEL' SUBROUTINE</font>
+This subroutine is used from the 'MOVE' command routine above to fetch the start address
+of the channel attached to a stream, or to open a channel and fetch its start address.
+
+<a NAME="2BDA OP_MOVE"></a>2BDA OP_MOVE    LD   A,(#3E03)           Fetch stream number.
+2BDD            INC  A                   Jump to open a temporary channel, i.e.
+2BDE            JR   Z,<a href="#2BEB OP_MOVE1">#2BEB,OP_MOVE1</a>    if the stream was nonexistent.
+2BE0            DEC  A
+2BE1            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Open the channel attached to stream A.
+2BE2            DEFW #1601,CHAN_OPEN
+2BE4            LD   HL,(23633)          Store the channels address (CURCHL)
+2BE7            LD   (#3E05),HL          into UFIA1.
+2BEA            RET                      Return.
+
+<a NAME="2BEB OP_MOVE1"></a>2BEB OP_MOVE1   LD   A,(#3E04)           Fetch device letter.
+2BEE            AND  #DF                 Capitals only.
+2BF0            CP   77,"M"
+2BF2            JR   Z,<a href="#2BF8 OP_MOVE2">#2BF8,OP_MOVE2</a>    Jump if it's a "M".
+2BF4            CP   68,"D"
+2BF6            JR   NZ,<a href="#2C09 OP_MOVE3">#2C09,OP_MOVE3</a>   Jump if it isn't a "D".
+<a NAME="2BF8 OP_MOVE2"></a>2BF8 OP_MOVE2   CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      Check if the drive is defined.
+2BFB            CALL <a href="#2CDF OP_TEMP_D">#2CDF,OP_TEMP_D</a>     Open a temporary "D" channel.
+2BFE            LD   A,(#3E05)           Save 'DIR_DESCR1' into 'PROG_NUM1'.
+2C01            LD   (#3E02),A
+2C04            LD   (#3E05),IX          Store channels address.
+2C08            RET
+
+<a NAME="2C09 OP_MOVE3"></a>2C09 OP_MOVE3   CP   78,"N"
+2C0B            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      Give an error if device isn't "N".
+2C0E            CALL <a href="flags.htm#1603 SIGN_3">#1603,SIGN_3</a>        Otherwise signal 'using network'.
+2C11            RET
+
+<font size=+2>THE 'CLOSE "MOVE" CHANNEL' SUBROUTINE</font>
+This is the opposite subroutine of the preceeding one, and is used to CLOSE the channel
+used by the 'MOVE' command routine. If 'STRM_NUM1' denotes that a stream was used,
+nothing is done.
+
+<a NAME="2C12 CL_MOVE"></a>2C12 CL_MOVE    LD   A,(#3E03)           Fetch stream number.
+2C15            INC  A
+2C16            RET  NZ                  Return if a stream has been used.
+2C17            LD   A,(#3E04)           Otherwise fetch device letter.
+2C1A            AND  #DF                 Only capitals.
+2C1C            CP   78,"N"
+2C1E            JR   Z,<a href="#2C27 CL_MOVE1">#2C27,CL_MOVE1</a>    Jump if it was "N".
+2C20            LD   IX,(#3E05)          Fetch channel address.
+2C24            JP   <a href="#2C57 CLOSE_CHAN">#2C57,CLOSE_CHAN</a>    Close the channel and exit.
+<a NAME="2C27 CL_MOVE1"></a>2C27 CL_MOVE1   RET
+
+<font size=+2>THE 'RECLAIM TEMP. CHANNELS' SUBROUTINE</font>
+This subroutine is called to reclaim from the CHANS all 'temporary' channels (i.e. with
+bit 7 of the channel specifier set).
+
+<a NAME="2C28 RECL_TEMP"></a>2C28 RECL_TEMP  LD   IX,(23631)          Point to the start of the channel area.
+2C2C            LD   DE,20               IX now points to the first
+2C2F            ADD  IX,DE               'non-standard' channel.
+<a NAME="2C31 RECL_T1"></a>2C31 RECL_T1    LD   A,(IX+0)
+2C34            CP   128                 Return if the end marker was found,
+2C36            RET  Z                   i.e. there are no more channels.
+2C37            LD   A,(IX+4)            Fetch channel specifier.
+2C3A            CP   196,"D"+128
+2C3C            JR   NZ,<a href="#2C43 RECL_T2">#2C43,RECL_T2</a>    Jump if not a temporary "D" channel.
+2C3E            CALL <a href="#2C57 CLOSE_CHAN">#2C57,CLOSE_CHAN</a>
+2C41            JR   <a href="#2C28 RECL_TEMP">#2C28,RECL_TEMP</a>
+
+Permanent "D" channels mustn't be closed, except when 'CLEAR #' was given.
+
+<a NAME="2C43 RECL_T2"></a>2C43 RECL_T2    CALL <a href="flags.htm#1621 TEST_1">#1621,TEST_1</a>
+2C46            JR   Z,<a href="#2C4D RECL_T3">#2C4D,RECL_T3</a>     Jump if not 'CLEAR # executing'.
+2C48            CALL <a href="#2B9E RECL_CHAN">#2B9E,RECL_CHAN</a>     Otherwise reclaim the channel.
+2C4B            JR   <a href="#2C28 RECL_TEMP">#2C28,RECL_TEMP</a>
+
+Skip this channel.
+
+<a NAME="2C4D RECL_T3"></a>2C4D RECL_T3    LD   E,(IX+9)            Fetch channel length.
+2C50            LD   D,(IX+10)
+2C53            ADD  IX,DE               Point to the next channel.
+2C55            JR   <a href="#2C31 RECL_T1">#2C31,RECL_T1</a>       Repeat for all channels.
+
+<font size=+2>THE 'CLOSE CHANNEL' SUBROUTINE</font>
+This subroutine closes the channel pointed to by IX.
+
+<a NAME="2C57 CLOSE_CHAN"></a>2C57 CLOSE_CHAN PUSH IX
+2C59            POP  HL
+2C5A            LD   DE,(23631)          (CHANS).
+2C5E            OR   A
+2C5F            SBC  HL,DE               Calculate channel offset.
+2C61            INC  HL
+2C62            LD   (#3DED),HL          The channel is CLOSEd by jumping into
+2C65            JP   <a href="#2E80 CLOSE_0">#2E80,CLOSE_0</a>       the 'CLOSE' routine
+
+<font size=+2>THE 'OPEN' COMMAND SYNTAX ROUTINE</font>
+This routine deals with the 'OPEN #' command concerning +D channels, Spectrum channels
+are handled by the 'main' ROM.
+
+<a NAME="2C68 OPEN"></a>2C68 OPEN       CALL <a href="#2AEF EXPT_#NR">#2AEF,EXPT_#NR</a>      Evaluate stream number.
+2C6B            CALL <a href="syntax.htm#25A2 SEPARATOR">#25A2,SEPARATOR</a>
+2C6E            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      Give an error if no separator found.
+2C71            CALL <a href="#2BB3 EXPT_EXP2">#2BB3,EXPT_EXP2</a>     Evaluate channel specifier.
+2C74            CP   13
+2C76            JR   Z,<a href="#2C85 OPEN_2">#2C85,OPEN_2</a>      Jump if no more parameters.
+2C78            CP   191,"IN"
+2C7A            JR   Z,<a href="#2C81 OPEN_1">#2C81,OPEN_1</a>      Jump if 'IN' specified.
+2C7C            CP   223,"OUT"
+2C7E            JP   NZ,<a href="errrst.htm#1648 REP_2">#1648,REP_2</a>      Give error if no 'OUT' specified.
+<a NAME="2C81 OPEN_1"></a>2C81 OPEN_1     LD   (#3E02),A           Store the channel type (IN or OUT) in
+                                         'PROG_NUM1'.
+2C84            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Advance CH_ADD.
+<a NAME="2C85 OPEN_2"></a>2C85 OPEN_2     CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax checking.
+2C88            LD   A,(#3E03)           Fetch stream number.
+2C8B            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call 'main' ROM 'STR_DATA1' routine; on
+2C8C            DEFW #1727,STR_DATA1     exit, BC holds 'stream data'.
+2C8E            LD   HL,17
+2C91            AND  A
+2C92            SBC  HL,BC               Give an error if the current stream was
+2C94            JP   C,<a href="errrst.htm#1680 REP_30">#1680,REP_30</a>      already used by the +D.
+2C97            LD   A,(#3E04)           Fetch channel specifier.
+2C9A            AND  #DF                 Only capitals.
+2C9C            CP   68,"D"
+2C9E            JR   Z,<a href="#2CA5 OPEN_3">#2CA5,OPEN_3</a>      Jump if opening a "D" channel.
+2CA0            CP   77,"M"              Give an error if not opening a "M"
+2CA2            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      channel.
+<a NAME="2CA5 OPEN_3"></a>2CA5 OPEN_3     CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      See if the drive is defined.
+2CA8            LD   A,#0A               Signal 'OPENTYPE file'.
+2CAA            LD   (#3E05),A
+2CAD            CALL <a href="#2CB3 OPEN_CHAN">#2CB3,OPEN_CHAN</a>     Open the channel.
+2CB0            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+<font size=+2>THE 'OPEN "D" CHANNEL' SUBROUTINE</font>
+This is the actual OPEN routine referred to the "D" channel.
+
+<a NAME="2CB3 OPEN_CHAN"></a>2CB3 OPEN_CHAN  LD   A,(#3E03)           Fetch stream number.
+2CB6            ADD  A,A                 The streams area entries are two bytes
+                                         each.
+2CB7            LD   HL,23574            Address of data for stream 0.
+2CBA            LD   E,A
+2CBB            LD   D,0
+2CBD            ADD  HL,DE               Index into STRMS area.
+2CBE            PUSH HL
+2CBF            CALL <a href="#2CDF OP_TEMP_D">#2CDF,OP_TEMP_D</a>     Open a temporary "D" channel. On return
+2CC2            POP  DE                  HL holds new channel offset.
+2CC3            RET  C                   Return when an error occurred.
+2CC4            BIT  0,(IX+12)
+2CC8            JR   Z,<a href="#2CD6 MAKE_PERM">#2CD6,MAKE_PERM</a>   Jump if this is a 'read' file.
+2CCA            IN   A,(227)             Read Floppy Disk Controller status.
+2CCC            BIT  6,A                 Test the 'write protect' bit.
+2CCE            JR   Z,<a href="#2CD6 MAKE_PERM">#2CD6,MAKE_PERM</a>   Jump if disk isn't write protected.
+
+<b>NOTE:</b> This doesn't work, the write protect bit of the FDC's status register is not
+adjusted with read commands. So the jump is always made.
+
+2CD0            CALL <a href="#2B9E RECL_CHAN">#2B9E,RECL_CHAN</a>     Otherwise reclaim the channel.
+2CD3            JP   <a href="errrst.htm#1672 REP_23">#1672,REP_23</a>        And give an error.
+<a NAME="2CD6 MAKE_PERM"></a>2CD6 MAKE_PERM  RES  7,(IX+4)            Make the channel permanent by resetting
+                                         bit 7 of the channel specifier.
+2CDA            EX   DE,HL               DE holds new channel offset.
+2CDB            LD   (HL),E              Store it into the STRMS area.
+2CDC            INC  HL
+2CDD            LD   (HL),D
+2CDE            RET                      Finished.
+
+<font size=+2>THE 'OPEN TEMP. "D" CHANNEL' SUBROUTINE</font>
+This subroutine is used to open a temporary "D" channel in the CHANS area.
+
+<a NAME="2CDF OP_TEMP_D"></a>2CDF OP_TEMP_D  LD   IX,(23631)          Start of channel area (CHANS).
+2CE3            LD   DE,20               Point to the first 'non-standard'
+2CE6            ADD  IX,DE               channel.
+<a NAME="2CE8 OP_TEMP1"></a>2CE8 OP_TEMP1   LD   A,(IX+0)
+2CEB            CP   128
+2CED            JR   Z,<a href="#2D24 OP_TEMP4">#2D24,OP_TEMP4</a>    Jump if end of CHANS area is reached.
+2CEF            LD   A,(IX+4)            Otherwise fetch channel specifier.
+2CF2            AND  #5F                 Clear bit 7 and make capital.
+2CF4            CP   68,"D"
+2CF6            JR   NZ,<a href="#2D1A OP_TEMP3">#2D1A,OP_TEMP3</a>   Jump if this isn't a "D" channel.
+2CF8            LD   A,(#3E01)           Fetch drive number.
+2CFB            CP   (IX+11)             Jump if this channel uses a different
+2CFE            JR   NZ,<a href="#2D1A OP_TEMP3">#2D1A,OP_TEMP3</a>   drive.
+2D00            PUSH IX
+2D02            POP  HL                  Start of channel to HL.
+2D03            LD   DE,20               Filename offset.
+2D06            ADD  HL,DE
+2D07            EX   DE,HL               DE points to the name of this channel.
+2D08            LD   HL,#3E06            HL points to the name of the channel to
+2D0B            LD   B,10                be opened.
+<a NAME="2D0D OP_TEMP2"></a>2D0D OP_TEMP2   LD   A,(DE)
+2D0E            XOR  (HL)
+2D0F            AND  #DF                 Capitalize.
+2D11            JR   NZ,<a href="#2D1A OP_TEMP3">#2D1A,OP_TEMP3</a>   Jump if not the same file.
+2D13            INC  HL
+2D14            INC  DE
+2D15            DJNZ <a href="#2D0D OP_TEMP2">#2D0D,OP_TEMP2</a>      Repeat for all 10 characters.
+2D17            JP   <a href="errrst.htm#1682 REP_31">#1682,REP_31</a>        Give an error if the channel already
+                                         exists.
+<a NAME="2D1A OP_TEMP3"></a>2D1A OP_TEMP3   LD   E,(IX+9)            Fetch the length of the channel.
+2D1D            LD   D,(IX+10)
+2D20            ADD  IX,DE               Point to the next channel.
+2D22            JR   <a href="#2CE8 OP_TEMP1">#2CE8,OP_TEMP1</a>      Repeat for all channels.
+
+The channel wasn't already present in memory so it can be opened.
+
+<a NAME="2D24 OP_TEMP4"></a>2D24 OP_TEMP4   PUSH IX
+2D26            LD   A,%0001000          Scan the CATalogue for a matching
+2D28            CALL <a href="disk.htm#09A5 SCAN_CAT">#09A5,SCAN_CAT</a>      filename.
+2D2B            LD   A,(#3E02)           Get channel type (read/write).
+2D2E            JP   NZ,<a href="#2D8A OP_TEMP5">#2D8A,OP_TEMP5</a>   Jump if file not found.
+2D31            CP   223,"OUT"
+2D33            JP   Z,<a href="patches.htm#312A OP_T_PATCH">#312A,OP_T_PATCH</a>  Jump if OUTput channel.
+2D36            LD   BC,551              Length of INput channel.
+2D39            CALL <a href="#2DF3 CHAN_SPC">#2DF3,CHAN_SPC</a>      Create the room for the channel.
+2D3C            CALL <a href="disk.htm#0D93 RPT_HL">#0D93,RPT_HL</a>        Make HL point to the CAT entry.
+2D3F            POP  IX
+2D41            CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      See if the drive is defined.
+2D44            NOP
+2D45            NOP
+2D46            NOP
+2D47            LD   A,0                 Signal 'READing'.
+2D49            LD   (IX+12),A
+2D4C            LD   BC,39               Offset of buffer from start of channel.
+2D4F            LD   (IX+15),C
+2D52            LD   (IX+16),B
+2D55            PUSH HL                  HL points to the CATalogue entry.
+2D56            PUSH IX                  IX points to the start of the channel.
+2D58            POP  HL
+2D59            LD   DE,19               Offset of directory description.
+2D5C            ADD  HL,DE
+2D5D            EX   DE,HL
+2D5E            POP  HL                  Pointer to CAT entry.
+2D5F            LD   BC,11               Move the directory description and the
+2D62            LD   A,(HL)              filename to the channel.
+2D63            LD   (#3E05),A           Store dir. descr. in UFIA1.
+2D66            LDIR
+2D68            INC  HL                  Skip length in sectors, i.e. point to
+2D69            INC  HL                  track and sector bytes.
+2D6A            LD   B,(HL)              Fetch first track and sector.
+2D6B            INC  HL
+2D6C            LD   C,(HL)
+2D6D            PUSH BC
+2D6E            LD   BC,196
+2D71            ADD  HL,BC               HL points to file header - 1 in CAT
+2D72            LD   A,(HL)              entry. That is the MSB of the file
+2D73            LD   (IX+18),A           length (number of 64K blocks).
+2D76            INC  HL
+2D77            LD   BC,9
+2D7A            LDIR                     Copy the file header to the channel.
+2D7C            LD   DE,#3FEA
+2D7F            LD   BC,22               Copy the SNAP registers (?).
+2D82            LDIR
+2D84            POP  DE                  Get track and sector in DE.
+2D85            CALL <a href="disk.htm#05CC RSAD">#05CC,RSAD</a>          Load the sector at DE.
+2D88            JR   <a href="#2DDC OP_TEMP8">#2DDC,OP_TEMP8</a>
+
+The file was not found, so if the channel isn't for OUTput give an error.
+
+<a NAME="2D8A OP_TEMP5"></a>2D8A OP_TEMP5   CP   191,"IN"
+2D8C            JP   Z,<a href="errrst.htm#1678 REP_26">#1678,REP_26</a>      Give error if it is an INput channel.
+<a NAME="2D8F OP_TEMP6"></a>2D8F OP_TEMP6   LD   BC,787              Length of OUTput channel.
+2D92            CALL <a href="#2DF3 CHAN_SPC">#2DF3,CHAN_SPC</a>      Create the room for the channel.
+2D95            POP  IX
+2D97            CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      See if the drive is defined.
+2D9A            NOP
+2D9B            NOP
+2D9C            NOP
+2D9D            LD   A,1                 Signal 'WRITEing'.
+2D9F            LD   (IX+12),A
+2DA2            LD   BC,275              Offset of databuffer from the start of
+2DA5            LD   (IX+15),C           the channel.
+2DA8            LD   (IX+16),B
+2DAB            CALL <a href="disk.htm#0AD9 OFSM_2">#0AD9,OFSM_2</a>        Open the file.
+2DAE            JR   Z,<a href="#2DBB OP_TEMP7">#2DBB,OP_TEMP7</a>    Jump if file doesn't exist (anymore).
+2DB0            LD   BC,787              Length of an OUTput channel.
+2DB3            PUSH IX                  Start of the channel to HL.
+2DB5            POP  HL
+2DB6            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Reclaim the channel.
+2DB7            DEFW #19E8,RECLAIM_2
+2DB9            SCF                      Signal 'error'.
+2DBA            RET                      Finished.
+
+<a NAME="2DBB OP_TEMP7"></a>2DBB OP_TEMP7   JP   <a href="#2DDC OP_TEMP8">#2DDC,OP_TEMP8</a>      Jump forward.
+
+Before the routine continues there are first some 'leftovers' from a earlier system
+version.
+
+2DBE            JR   Z,<a href="#2DDC OP_TEMP8">#2DDC,OP_TEMP8</a>
+2DC0            PUSH IX
+2DC2            POP  HL
+2DC3            LD   DE,230
+2DC6            ADD  HL,DE
+2DC7            EX   DE,HL
+2DC8            LD   HL,(#3E1E)
+2DCB            LD   BC,30
+2DCE            ADD  HL,BC
+2DCF            LD   BC,9
+2DD2            LDIR
+2DD4            LD   HL,#3FEA
+2DD7            LD   BC,20
+2DDA            LDIR
+
+Now continue with the 'OPEN a temporary "D" channel' routine.
+
+<a NAME="2DDC OP_TEMP8"></a>2DDC OP_TEMP8   PUSH IX
+2DDE            POP  DE                  Start of channel to DE.
+2DDF            LD   HL,<a href="#2E0B D_CH_DATA">#2E0B,D_CH_DATA</a>  Start of the "D" channel data.
+2DE2            LD   BC,11               Copy the 11 bytes channel data to the
+2DE5            LDIR                     channel area.
+2DE7            PUSH IX                  Start of channel to HL.
+2DE9            POP  HL
+2DEA            LD   DE,(23631)          HL-(CHANS)+1 gives the required 'stream
+2DEE            OR   A                   offset'.
+2DEF            SBC  HL,DE
+2DF1            INC  HL
+2DF2            RET                      Finished.
+
+<font size=+2>THE 'MAKE ROOM FOR CHANNEL' SUBROUTINE</font>
+This small subroutine creates room for a channel at the end of the CHANS area (i.e. just
+before the BASIC program).
+
+<a NAME="2DF3 CHAN_SPC"></a>2DF3 CHAN_SPC   LD   (#2E14),BC          Store the length of the channel into
+                                         the "D" channel data table.
+2DF7            LD   HL,(23635)          Fetch the start address of the channel
+2DFA            DEC  HL                  ((PROG)-1).
+2DFB            PUSH HL
+2DFC            PUSH BC
+2DFD            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Create the required space by calling
+2DFE            DEFW #1655,MAKE_ROOM     'main' ROM 'MAKE_ROOM'.
+2E00            POP  BC
+2E01            POP  HL                  Clear the created space.
+<a NAME="2E02 CHAN_SPC1"></a>2E02 CHAN_SPC1  LD   (HL),0
+2E04            INC  HL
+2E05            DEC  BC
+2E06            LD   A,B
+2E07            OR   C
+2E08            JR   NZ,<a href="#2E02 CHAN_SPC1">#2E02,CHAN_SPC1</a>
+2E0A            RET
+
+<font size=+2>THE '"D" CHANNEL DATA' TABLE</font>
+The '11' bytes that compose the initial part of a "D" channel are as follows:
+
+<a NAME="2E0B D_CH_DATA"></a>2E0B D_CH_DATA  DEFW #0008               Main ROM 'output' routine.
+2E0D            DEFW #0008               Main ROM 'input' routine.
+2E0F            DEFB "D"+128             Channel specifier.
+2E10            DEFW <a href="#2F5F DCHAN_OUT">#2F5F,DCHAN_OUT</a>     +D system 'output' routine.
+2E12            DEFW <a href="#2EDC D_INPUT">#2EDC,D_INPUT</a>       +D system 'input' routine.
+2E14            DEFW #0000               Length of a channel.
+
+<font size=+2>THE 'CLOSE #' COMMAND SYNTAX ROUTINE</font>
+Unlike the Interface 1 and the Opus Discovery, the +D doesn't page-in in the middle of
+the 'main' ROM 'CLOSE' routine. But because the 'main' ROM routine can't cope with +D
+channels a 'CLOSE' for those channels has to be available. In order to fail the normal
+syntax, 'CLOSE #*s' has to be used. The 'CLOSE #*' command closes all streams.
+
+<a NAME="2E16 CLOSE"></a>2E16 CLOSE      RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+2E17            CP   42,"*"
+2E19            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      Give an error if it isn't a '*'.
+2E1C            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+2E1D            CP   13
+2E1F            JR   Z,<a href="#2E34 CLOSE_ALL">#2E34,CLOSE_ALL</a>   Jump if statement ended with ENTER.
+2E21            CP   58,":"
+2E23            JR   Z,<a href="#2E34 CLOSE_ALL">#2E34,CLOSE_ALL</a>   Also if statement ended with a ':'.
+2E25            CALL <a href="#2AF0 EXPT_#NR1">#2AF0,EXPT_#NR1</a>     Evaluate stream number.
+2E28            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit when
+                                         syntax checking.
+2E2B            LD   A,(#3E03)           Fetch stream number.
+2E2E            CALL <a href="#2E5E CLOSE_STRM">#2E5E,CLOSE_STRM</a>    Close the stream.
+2E31            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+<a NAME="2E34 CLOSE_ALL"></a>2E34 CLOSE_ALL  CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit if
+2E37            JR   <a href="#2E46 CLEAR_1">#2E46,CLEAR_1</a>       syntax checking. Jump into the CLEAR#
+                                         routine.
+
+<font size=+2>THE 'CLEAR #' COMMAND ROUTINE</font>
+All streams are closed in turn, with bit 1 of FLAGS3 set to signal that the remaining
+buffer contents are to be erased (with the 'CLOSE #*' command all buffers are emptied,
+i.e. their contents are sent to the corresponding device).
+
+<a NAME="2E39 CLEAR"></a>2E39 CLEAR      RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Advance CH_ADD.
+2E3A            CP   35,"#"
+2E3C            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      Give an error if it isn't a '#'.
+2E3F            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>
+2E40            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax checking.
+2E43            CALL <a href="flags.htm#15F9 SIGN_1">#15F9,SIGN_1</a>        Signal 'CLEAR #'.
+<a NAME="2E46 CLEAR_1"></a>2E46 CLEAR_1    XOR  A                   Start with stream 0.
+<a NAME="2E47 CLEAR_2"></a>2E47 CLEAR_2    PUSH AF
+2E48            CALL <a href="#2E5E CLOSE_STRM">#2E5E,CLOSE_STRM</a>    Close this stream.
+2E4B            POP  AF
+2E4C            INC  A                   Next stream.
+2E4D            CP   16                  Repeat until all streams 0..15 have
+2E4F            JR   C,<a href="#2E47 CLEAR_2">#2E47,CLEAR_2</a>     been CLOSEd.
+2E51            CALL <a href="#2C28 RECL_TEMP">#2C28,RECL_TEMP</a>     Reclaim temporary channels.
+2E54            XOR  A
+2E55            LD   (#3DEF),A           Clear 'MAP_USED' (=POKE @7663,0).
+2E58            LD   (#3ACF),A           Clear FLAGS3.
+2E5B            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+<font size=+2>THE 'CLOSE A STREAM' SUBROUTINE</font>
+Any stream 0 to 15 may be CLOSEd by loading the stream number into A and then calling
+this subroutine. The unsent bytes in 'OUTput' files are sent or lost depending upon
+whether bit 1 of FLAGS3 is reset or set. First a call to 'STR_DATA1' in the 'main' ROM is
+made to fetch into BC the 'stream data' for the given stream, and to make HL point to the
+first of the two data bytes.
+
+<a NAME="2E5E CLOSE_STRM"></a>2E5E CLOSE_STRM RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call 'STR_DATA1'.
+2E5F            DEFW #1727,STR_DATA1
+2E61            LD   A,C
+2E62            OR   B                   Return if the stream is already CLOSEd
+2E63            RET  Z                   (i.e. stream data = 0).
+2E64            LD   (#3DED),BC          Store stream data.
+2E68            PUSH HL
+2E69            LD   HL,(23631)          Make HL point to the start of the
+2E6C            DEC  HL                  channel attached to the stream to be
+2E6D            ADD  HL,BC               CLOSEd ((CHANS)+'stream data').
+2E6E            EX   (SP),HL             HL now holds the address of the stream
+                                         data.
+2E6F            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          A call in the middle of the 'main' ROM
+2E70            DEFW #16EB,CLOSE_0       'CLOSE' routine is made to update STRMS
+                                         contents.
+2E72            POP  IX                  IX points to the start of the channel
+2E74            LD   A,B                 to be removed.
+2E75            OR   C
+2E76            RET  NZ                  Exit if the stream is one of 0 to 3.
+
+<b>NOTE:</b> Because this test tests for streams a disk channel attached to one of the streams
+0..3 can never be CLOSEd. If the test was made for 'standard' channels it had been possible to
+use streams 0..3 with "D" channels.
+
+2E77            LD   A,(IX+4)            Fetch channel specifier.
+2E7A            AND  #5F                 Clear bit 7 (temporary) and make
+                                         capital.
+2E7C            CP   68,"D"
+2E7E            JR   NZ,<a href="#2E8E CLOSE_1">#2E8E,CLOSE_1</a>    Jump if it isn't a "D" channel.
+<a NAME="2E80 CLOSE_0"></a>2E80 CLOSE_0    BIT  0,(IX+12)
+2E84            JR   Z,<a href="#2E8E CLOSE_1">#2E8E,CLOSE_1</a>     Jump if it is an 'INput' channel.
+2E86            CALL <a href="flags.htm#1621 TEST_1">#1621,TEST_1</a>        Jump if doing a 'CLEAR #', i.e. just
+2E89            JR   NZ,<a href="#2E8E CLOSE_1">#2E8E,CLOSE_1</a>    remove the channel.
+2E8B            CALL <a href="patches.htm#3117 CL_PATCH">#3117,CL_PATCH</a>      Empty the buffer.
+<a NAME="2E8E CLOSE_1"></a>2E8E CLOSE_1    CALL <a href="#2B9E RECL_CHAN">#2B9E,RECL_CHAN</a>     Reclaim the channel.
+
+Now all data refering to the stream attached to the channels moved down are updated.
+
+2E91            XOR  A                   Start with stream 0.
+2E92            LD   HL,23574            Address of data for stream 0.
+<a NAME="2E95 CLOSE_2"></a>2E95 CLOSE_2    LD   (#3AC8),HL          Use 'FILE_ADDR' as a temporary storage.
+2E98            LD   E,(HL)              Fetch stream data.
+2E99            INC  HL
+2E9A            LD   D,(HL)
+2E9B            LD   HL,(#3DED)          Fetch stream data for CLOSEd stream.
+2E9E            AND  A                   Jump if the stream data found is lower
+2E9F            SBC  HL,DE               than that of the CLOSEd stream (i.e.
+2EA1            JR   NC,<a href="#2EAE CLOSE_3">#2EAE,CLOSE_3</a>    channel has not been moved).
+2EA3            EX   DE,HL               Fetched stream data to HL.
+2EA4            AND  A
+2EA5            SBC  HL,BC               Calculate the new stream data.
+2EA7            EX   DE,HL               New stream data to DE.
+2EA8            LD   HL,(#3AC8)          Restore stream data address.
+2EAB            LD   (HL),E              Store new stream data.
+2EAC            INC  HL
+2EAD            LD   (HL),D
+<a NAME="2EAE CLOSE_3"></a>2EAE CLOSE_3    LD   HL,(#3AC8)          Make HL point to next stream data.
+2EB1            INC  HL
+2EB2            INC  HL
+2EB3            INC  A                   Increment stream number.
+2EB4            CP   16
+2EB6            JR   C,<a href="#2E95 CLOSE_2">#2E95,CLOSE_2</a>     Repeat for all streams 0..15.
+2EB8            RET                      Finished.
+
+<font size=+2>THE 'CLS #' COMMAND ROUTINE</font>
+The 'CLS #' command resets during runtime the Spectrum system variables ATTR_P, ATTR_T,
+MASK_P, MASK_T, P_FLAG and BORDCR. I.e. all these variables are filled with their
+'initial' values (paper 7, ink 0, flash 0 and bright 0).
+
+<a NAME="2EB9 CLS"></a>2EB9 CLS        RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+2EBA            CP   35,"#"
+2EBC            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      Give error if it isn't a '#'.
+2EBF            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+2EC0            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax checking.
+2EC3            LD   HL,56               The 'initial' attribute value.
+2EC6            LD   (23693),HL          Store 56 into ATTR_P, clear MASK_P.
+2EC9            LD   (23695),HL          Store 56 into ATTR_T, clear MASK_T.
+2ECC            LD   (IY+14),L           Store 56 also for lower screen
+                                         attribute.
+2ECF            LD   (IY+87),H           Clear P_FLAG.
+2ED2            LD   A,7                 Set white border.
+2ED4            OUT  (254),A
+2ED6            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call 'main' ROM 'CLS' routine.
+2ED7            DEFW #0D6B,CLS
+2ED9            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+<font size=+2>THE '"D" CHANNEL INPUT' ROUTINE</font>
+This is a peculiar routine, although the +D supports only one type of channel (the "D"
+channel), this routine can handle all kinds of channels by loading HL with the address of
+the 'service' input routine and entering at address #2EE3. From that address on it's
+largely the same as the Interface 1 'CALL_INP' routine, which routine handles all the
+IF1's channels.
+
+<a NAME="2EDC D_INPUT"></a>2EDC D_INPUT    LD   IX,(23633)          IX points to the start of the current
+                                         channel (CURCHL).
+2EE0            LD   HL,<a href="#2F2E DCHAN_IN">#2F2E,DCHAN_IN</a>   Address of "D" input service routine.
+2EE3            RES  3,(IY+2)            Signal 'the mode is to be considered as
+                                         being unchanged'.
+2EE7            PUSH HL                  Store address of service routine.
+2EE8            LD   HL,(23613)          HL points to error address (ERR_SP).
+2EEB            LD   E,(HL)              Fetch the error address.
+2EEC            INC  HL
+2EED            LD   D,(HL)
+2EEE            AND  A
+2EEF            LD   HL,#107F,ED_ERROR   If the error address is 'ED_ERROR'
+2EF2            SBC  HL,DE               ('main' ROM) then an INPUT command was
+2EF4            JR   NZ,<a href="#2F1D D_INKEY$">#2F1D,D_INKEY$</a>   used. Jump if unequal to 'ED_ERROR'.
+
+Now deal with an 'INPUT #' command referred to a "D" channel.
+
+2EF6            POP  HL                  Restore address of service routine.
+2EF7            LD   SP,(23613)          Clear the machine stack (ERR_SP).
+2EFB            POP  DE                  Remove 'ED_ERROR'.
+2EFC            POP  DE
+2EFD            LD   (23613),DE          Restore the old value of ERR_SP.
+<a NAME="2F01 D_INPUT1"></a>2F01 D_INPUT1   PUSH HL                  Store address of service routine.
+2F02            LD   DE,<a href="#2F07 D_INP_END">#2F07,D_INP_END</a>  Return address is 'D_INP_END' below.
+2F05            PUSH DE
+2F06            JP   (HL)                Jump to the service routine.
+
+When the byte has been read from the required channel, a return is made here to add the
+byte to the INPUT line, or to return if the byte is equal to CHR$ 13, i.e. ENTER.
+
+<a NAME="2F07 D_INP_END"></a>2F07 D_INP_END  JR   C,<a href="#2F0F D_INP_ACC">#2F0F,D_INP_ACC</a>   Jump with acceptable codes.
+2F09            JP   NZ,<a href="errrst.htm#167A REP_27">#167A,REP_27</a>     Give the 'END of file' error when the
+                                         Zero flag is reset.
+2F0C            POP  HL                  Otherwise restore address of service
+2F0D            JR   <a href="#2F01 D_INPUT1">#2F01,D_INPUT1</a>      routine and try again.
+
+<a NAME="2F0F D_INP_ACC"></a>2F0F D_INP_ACC  CP   13
+2F11            JR   Z,<a href="#2F19 D_INPUT2">#2F19,D_INPUT2</a>    Jump if the code is ENTER.
+2F13            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Otherwise the byte is to be added to
+2F14            DEFW #0F85,ADD_CHAR0     the INPUT line. This is done by calling
+                                         into the 'ADD_CHAR' subroutine.
+2F16            POP  HL                  Restore address of service routine and
+2F17            JR   <a href="#2F01 D_INPUT1">#2F01,D_INPUT1</a>      read the next byte.
+
+<a NAME="2F19 D_INPUT2"></a>2F19 D_INPUT2   POP  HL                  Drop the address of the service routine
+2F1A            JP   <a href="restart.htm#0050 UNPAGE_1">#0050,UNPAGE_1</a>      and page-out the +D system.
+
+Now deal with the reading of a single byte.
+
+<a NAME="2F1D D_INKEY$"></a>2F1D D_INKEY$   POP  HL                  Restore address of the servce routine.
+2F1E            LD   DE,<a href="#2F23 D_INK$_END">#2F23,D_INK$_END</a> Return address is 'D_INK$_END' below.
+2F21            PUSH DE
+2F22            JP   (HL)                Jump to the service routine.
+
+<a NAME="2F23 D_INK$_END"></a>2F23 D_INK$_END RET  C                   Return with acceptable codes or
+2F24            RET  Z                   with no byte read.
+2F25            CALL <a href="flags.htm#1626 TEST_2">#1626,TEST_2</a>        Give the 'END of file' error if not
+2F28            JP   Z,<a href="errrst.htm#167A REP_27">#167A,REP_27</a>      executing a 'MOVE' command.
+2F2B            OR   1                   Otherwise return with Zero and Carry
+2F2D            RET                      flags both reset.
+
+<font size=+2>THE '"D" CHANNEL INPUT' SERVICE ROUTINE</font>
+This is the actual input a byte from disk routine. The byte is read from the data buffer
+in the channel, when it is empty the next sector is read from disk (provided that the
+'current' data block is not the EOF one) before reading the byte.
+
+<a NAME="2F2E DCHAN_IN"></a>2F2E DCHAN_IN   BIT  0,(IX+12)           Give 'Reading a WRITE file' error if
+2F32            JP   NZ,<a href="errrst.htm#1668 REP_18">#1668,REP_18</a>     it's an OUTput channel.
+2F35            LD   A,(IX+31)           Decrease LSB of file length.
+2F38            SUB  1
+2F3A            LD   (IX+31),A
+2F3D            JR   NC,#2F57,DCHAN_IN1  Jump if more bytes left.
+2F3F            LD   A,(IX+32)           Decrease MID byte of file length.
+2F42            SUB  1
+2F44            LD   (IX+32),A
+2F47            JR   NC,#2F57,DCHAN_IN1  Jump if more bytes left.
+2F49            LD   A,(IX+18)           Decrease MSB of file length.
+2F4C            SUB  1
+2F4E            LD   (IX+18),A
+2F51            JR   NC,#2F57,DCHAN_IN1  Jump if more bytes left.
+2F53            XOR  A                   Otherwise EOF has been reached, so
+                                         reset Zero and Carry flag to signal
+                                         'End Of File'.
+2F54            ADD  A,13                The return byte is 13.
+2F56            RET                      Finished.
+
+<b>NOTE:</b> This 'end of file' test works only once, if an attempt is made to read more bytes
+after the 'End of FILE' message has been given a crash will almost certainly follow.
+
+<a NAME="2F57 D_CHANIN1"></a>2F57 D_CHANIN1  CALL <a href="disk.htm#077F LBYT">#077F,LBYT</a>          Load one byte, read a new sector from
+                                         disk when the buffer is empty.
+2F5A            CALL <a href="misc2.htm#168E BORD_REST">#168E,BORD_REST</a>     Restore border colour.
+2F5D            SCF                      Signal 'acceptable code'.
+2F5E            RET
+
+<font size=+2>THE '"D" CHANNEL OUTPUT' ROUTINE</font>
+The routine which handles "D" channel output is quite short. It SAVEs the byte in the A
+register to disk by calling the ROM 'SBYT' routine, which handles the saving of the byte.
+The only thing done here is incrementing the file length bytes.
+
+<a NAME="2F5F DCHAN_OUT"></a>2F5F DCHAN_OUT  LD   IX,(23633)          IX point to current channel (CURCHL).
+2F63            BIT  0,(IX+12)           Give 'Writing a READ file' error if
+2F67            JP   Z,<a href="errrst.htm#166A REP_19">#166A,REP_19</a>      it's an INput channel.
+2F6A            CALL <a href="disk.htm#0761 SBYT">#0761,SBYT</a>          Save the byte in the A register.
+2F6D            CALL <a href="misc2.htm#168E BORD_REST">#168E,BORD_REST</a>     Restore the border colour.
+2F70            NOP
+2F71            NOP
+2F72            NOP
+2F73            NOP
+2F74            PUSH IX
+2F76            LD   BC,229
+2F79            ADD  IX,BC               IX now points to the file header.
+2F7B            INC  (IX+2)              Update file length, skip higher bytes
+2F7E            JR   NZ,<a href="#2F88 DCHAN_OUT1">#2F88,DCHAN_OUT1</a> if it isn't necessary to update them.
+2F80            INC  (IX+3)
+2F83            JR   NZ,<a href="#2F88 DCHAN_OUT1">#2F88,DCHAN_OUT1</a>
+2F85            INC  (IX+0)
+<a NAME="2F88 DCHAN_OUT1"></a>2F88 DCHAN_OUT1 POP  IX
+2F8A            RET                      Finished.
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="basic2.htm">Previous</a></td>
+<td><a href="command.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

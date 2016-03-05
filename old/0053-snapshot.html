@@ -1,0 +1,185 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The Snapshot routines </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="restart.htm">Previous</a></td>
+<td><a href="control.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The Snapshot routines </font></b>
+
+<font size=+2>THE 'NON-MASKABLE INTERRUPT' CONTINUED</font>
+This piece of code determines whether the NMI button was pressed or a return from a
+CALBAS was made.
+
+<a NAME="0053 NMI_1"></a>0053 NMI_1      LD   A,(#3DE5)
+0056            CP   #47                 Check if returning from a CALBAS.
+0058            JR   NZ,<a href="#0060 NMI_2">#0060,NMI_2</a>      Jump if not returning from a CALBAS.
+005A            XOR  A
+005B            LD   (#3DE5),A           Clear CALBAS executing.
+005E            POP  AF                  Restore A register and return to the
+005F            RET                      calling routine.
+<a NAME="0060 NMI_2"></a>0060 NMI_2      LD   A,R
+0062            PUSH AF                  Save R register and interrupt status.
+0063            JR   <a href="#0069 SNAPSHOT">#0069,SNAPSHOT</a>
+0065            DEFB #00
+
+<font size=+2>THE 'NON-MASKABLE INTERRUPT' ROUTINE</font>
+This is the third point, from address #0000, at which the +D system is paged in. It is
+reached  either by pressing the 'snapshot' button or when returning from a CALBAS.
+
+<a NAME="0066 NMI"></a>0066 NMI        PUSH AF                  Save A register.
+0067            JR   <a href="#0053 NMI_1">#0053,NMI_1</a>
+
+<font size=+2>THE 'SNAPSHOT' ROUTINE</font>
+When the 'snapshot' button is pressed this routine is executed. By pressing the keys 1
+or 2 a choice can be made to dump the screen to the printer in small or grey-scale
+format. As soon as the system file is loaded it is possible to make snapshots to disk
+(See #20A1 and further).
+ 
+<a NAME="0069 SNAPSHOT"></a>0069 SNAPSHOT   LD   (#3FFE),SP          Use 'internal' stack.
+006D            LD   SP,#3FFE
+0070            LD   A,I
+0072            PUSH AF                  Save all registers, starting with I.
+0073            PUSH HL
+0074            PUSH BC
+0075            PUSH DE
+0076            EX   AF,AF'              Save alternative registerset.
+0077            EXX
+0078            PUSH AF
+0079            PUSH HL
+007A            PUSH BC
+007B            PUSH DE
+007C            PUSH IX                  Save the index registers.
+007E            PUSH IY
+0080            DI                       Disable interrupts in case #0066 was
+                                         called normally. When a NMI occurs the
+                                         Z80 disables interrupts. 
+0081            LD   HL,<a href="#00B1 SNAP_EXIT">#00B1,SNAP_EXIT</a>
+0084            PUSH HL                  RETurn address from snapshot.
+0085            LD   (#2066),SP          Store current stackpointer at D_ERR_SP
+                                         so an error will activate SNAP_EXIT.
+<a NAME="0089 SNAP_KEYS"></a>0089 SNAP_KEYS  LD   BC,#F7FE            Keyboard port and key 1-5 I/O address.
+008C            IN   E,(C)
+008E            BIT  0,E                 CASE key OF
+0090            JP   Z,<a href="printer.htm#12D2 COPS">#12D2,COPS</a>        1: jump to the smallcopy routine.
+0093            BIT  1,E
+0095            JP   Z,<a href="printer.htm#133E COPS2">#133E,COPS2</a>       2: jump to the greyscale routine.
+0098            CALL <a href="misc1.htm#0527 SYSTEM_Z">#0527,SYSTEM_Z</a>      System loaded?
+009B            CALL Z,<a href="rsysvar.htm#20A1 JSNAP">#20A1,JSNAP</a>       Yes, then call system snap routine.
+009E            INC  A                   END CASE.
+009F            AND  #07
+00A1            OUT  (C),A               Nice stripes in border.
+00A3            LD   B,#FE               CAPS-V I/O address.
+00A5            IN   E,(C)
+00A7            BIT  2,E
+00A9            JR   NZ,<a href="#0089 SNAP_KEYS">#0089,SNAP_KEYS</a>  Test for X, loop if not pressed.
+<a NAME="00AB SNAP_KEY1"></a>00AB SNAP_KEY1  IN   E,(C)
+00AD            BIT  2,E
+00AF            JR   Z,<a href="#00AB SNAP_KEY1">#00AB,SNAP_KEY1</a>   Wait until X is released again.
+
+<font size=+2>THE 'SNAP_EXIT' ROUTINE</font>
+This routine is used to return to the snapshotted program.
+
+<a NAME="00B1 SNAP_EXIT"></a>00B1 SNAP_EXIT  DI
+00B2            LD   HL,#0000            Clear D_ERR_SP.
+00B5            LD   (#2066),HL
+00B8            CALL <a href="misc2.htm#168E BORD_REST">#168E,BORD_REST</a>
+00BB            LD   SP,#3FEA
+00BE            POP  IY                  Restore the index registers.
+00C0            POP  IX
+00C2            POP  DE                  Restore the alternate registerset.
+00C3            POP  BC
+00C4            POP  HL
+00C5            POP  AF
+00C6            EX   AF,AF'
+00C7            EXX
+00C8            CALL <a href="#011D ?_ROMBANK">#011D,?_ROMBANK</a>     Determine current 'main' ROM bank.
+00CB            JR   NZ,<a href="#00F5 SNAP_EX3">#00F5,SNAP_EX3</a>   Jump if 128K ROM bank.
+00CD            CALL <a href="misc1.htm#0511 REST_PBUF">#0511,REST_PBUF</a>
+00D0            POP  DE                  Restore the registerset.
+00D1            POP  BC
+00D2            POP  HL
+00D3            POP  AF
+00D4            LD   I,A
+00D6            CP   #00
+00D8            JR   Z,<a href="#00E0 SNAP_EX1">#00E0,SNAP_EX1</a>
+00DA            CP   #3F                 When the I register doesn't contain #00
+00DC            JR   Z,<a href="#00E0 SNAP_EX1">#00E0,SNAP_EX1</a>    or #3F, it is most likely that the
+00DE            IM   2                   interrupt mode is 2.
+<a NAME="00E0 SNAP_EX1"></a>00E0 SNAP_EX1   LD   SP,(#3FFE)          Restore stack pointer.
+00E4            POP  AF
+00E5            LD   R,A                 Jump if the interupts were disabled
+00E7            JP   PO,<a href="#00F1 SNAP_EX2">#00F1,SNAP_EX2</a>   when 'SNAPSHOT' was entered.
+00EA            PUSH HL
+00EB            LD   HL,#004F            Otherwise return to snapshotted program
+00EE            JP   <a href="restart.htm#004F UNPAGE_HL">#004F,UNPAGE_HL</a>     via 'main' ROM "POP  HL", "POP  AF" and
+                                         "EI".
+<a NAME="00F1 SNAP_EX2"></a>00F1 SNAP_EX2   POP  AF                  Return to the instruction before which
+00F2            JP   <a href="restart.htm#0050 UNPAGE_1">#0050,UNPAGE_1</a>      the snapshot occurred.
+
+This piece of code does almost the same as the above. The only difference is that it
+returns to the 128 'main' ROM at a somewhat different address.
+
+<a NAME="00F5 SNAP_EX3"></a>00F5 SNAP_EX3   CALL <a href="misc1.htm#0511 REST_PBUF">#0511,REST_PBUF</a>
+00F8            POP  DE
+00F9            POP  BC
+00FA            POP  HL
+00FB            POP  AF
+00FC            LD   I,A
+00FE            CP   #00
+0100            JR   Z,<a href="#0108 SNAP_EX4">#0108,SNAP_EX4</a>
+0102            CP   #3F
+0104            JR   Z,<a href="#0108 SNAP_EX4">#0108,SNAP_EX4</a>
+0106            IM   2
+<a NAME="0108 SNAP_EX4"></a>0108 SNAP_EX4   LD   SP,(#3FFE)
+010C            POP  AF
+010D            LD   R,A
+010F            JP   PO,<a href="#0119 SNAP_EX5">#0119,SNAP_EX5</a>
+0112            PUSH BC
+0113            LD   BC,#007B
+0116            JP   <a href="restart.htm#0046 UNPAGE_BC">#0046,UNPAGE_BC</a>
+
+<a NAME="0119 SNAP_EX5"></a>0119 SNAP_EX5   POP  AF
+011A            JP   <a href="restart.htm#0047 UNPAGE_0">#0047,UNPAGE_0</a>
+
+<font size=+2>THE 'DETERMINE 128K ROM BANK' SUBROUTINE</font>
+This routine determines, by examining the byte at address #0001, which bank of the 128K
+ROM is selected. Because the +D system is currently paged in the 'main' ROM can't be
+accessed directly. So a routine, which pages out the +D, is copied to the printer buffer.
+But first the first 10 bytes of the printer buffer are saved.
+
+<a NAME="011D ?_ROMBANK"></a>011D ?_ROMBANK  LD   HL,23296            Save the 10 bytes needed by the
+0120            LD   DE,#3BE6            subroutine in +D RAM.
+0123            LD   BC,10
+0126            LDIR
+0128            LD   HL,<a href="misc1.htm#051D DET_ROM">#051D,DET_ROM</a>    Copy the subroutine to the freed bytes.
+012B            LD   DE,23296,DET_ROM'
+012E            LD   BC,10
+0131            LDIR
+0133            LD   A,#47               Signal 'CALBAS executing' (the NMI
+0135            LD   (#3DE5),A           routine returns immediately).
+0138            JP   23296,DET_ROM'      Exit via DET_ROM.
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="restart.htm">Previous</a></td>
+<td><a href="control.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

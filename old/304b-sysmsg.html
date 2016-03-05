@@ -1,0 +1,73 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The system message routines </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="misc3.htm">Previous</a></td>
+<td><a href="patches.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The system message routines </font></b>
+
+Finally there follow some messages. A message follows directly after the CALL to the ROM
+print routine.
+
+<a NAME="304B MSG_0"></a>304B MSG_0      CALL <a href="misc2.htm#178A PO_MSG1">#178A,PO_MSG1</a>
+304E            DEFM "* MGT PLUS D DISC"
+3060            DEFB " "+128
+<a NAME="3061 MSG_1"></a>3061 MSG_1      CALL <a href="misc2.htm#178A PO_MSG1">#178A,PO_MSG1</a>
+3064            DEFM " CATALOGUE *"
+3070            DEFB 13,13+128
+<a NAME="3072 MSG_2"></a>3072 MSG_2      CALL <a href="misc2.htm#178A PO_MSG1">#178A,PO_MSG1</a>
+3075            DEFB 13,13
+3077            DEFB "Number of Free K-Bytes ="
+308F            DEFB " "+128
+<a NAME="3090 MSG_3"></a>3090 MSG_3      CALL <a href="misc2.htm#177E PO_MSG">#177E,PO_MSG</a>
+3093            DEFM "©Miles Gordon Technology G+DOS2a"
+30B3            DEFB 13,13+128
+
+This routine makes sure the 'SOURCE' and 'TARGET' messages are printed in turn.
+
+<a NAME="30B5 TO_MSG1"></a>30B5 TO_MSG1    LD   A,(#3107)
+30B8            XOR  #01
+30BA            LD   (#3107),A
+30BD            JR   NZ,<a href="#30E3 MSG_5">#30E3,MSG_5</a>
+<a NAME="30BF MSG_4"></a>30BF MSG_4      CALL <a href="misc2.htm#178A PO_MSG1">#178A,PO_MSG1</a>
+30C2            DEFB 13
+30C3            DEFM "Insert SOURCE disc - press SPAC"
+30E2            DEFB "E"+128
+<a NAME="30E3 MSG_5"></a>30E3 MSG_5      CALL <a href="misc2.htm#178A PO_MSG1">#178A,PO_MSG1</a>
+30E6            DEFB 13
+30E7            DEFM "Insert TARGET disc - press SPAC"
+3106            DEFB "E"+128
+
+3107            DEFB #00
+
+<font size=+2>THE 'CLEAR MESSAGE FLAG' SUBROUTINE</font>
+
+<a NAME="3108 TEST_SAVE"></a>3108 TEST_SAVE  XOR  A                   Clear the flag used in printing
+3109            LD   (#3107),A           'SOURCE' and 'TARGET' message.
+310C            CALL <a href="flags.htm#1635 TEST_5">#1635,TEST_5</a>
+310F            RET
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="misc3.htm">Previous</a></td>
+<td><a href="patches.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

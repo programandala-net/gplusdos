@@ -1,0 +1,114 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The Hook and Command code routine & </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="rsysvar.htm">Previous</a></td>
+<td><a href="basic1.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The Hook and Command code routine & </font></b>
+   The Command code table 
+
+This routine is entered with the A register holding an 'IF1 hook code', a '+D command
+code' or an invalid error code. The routine calls a set of subroutines in the +D system,
+and is intended to help machine-code access to the drives. There are two tables
+containing addresses of the routines, the first is located in ROM (at #0DD7) and consists
+of the addresses of the routines for the IF1 hookcodes. The second table is located at
+address #22DE and consists of the addresses of the +D command code routines.
+
+<a NAME="228E HOOK_CODE"></a>228E HOOK_CODE  LD   (#3AC5),DE
+2292            CP   24
+2294            JR   NC,<a href="#22BC COMM_CODE">#22BC,COMM_CODE</a>  Jump if code isn't a hook code.
+2296            LD   DE,<a href="hookcode.htm#0DD7 IF1_HOOK">#0DD7,IF1_HOOK</a>   Address of hook (IF1) code table.
+<a NAME="2299 CODE_CONT"></a>2299 CODE_CONT  LD   (IY+0),#FF          Clear error.
+229D            SET  2,(IY+1)            What's the purpose of this?
+22A1            INC  HL                  Advance return address past the code.
+22A2            PUSH HL
+22A3            ADD  A,A                 Table is made of two byte addresses, so
+22A4            LD   L,A                 double code.
+22A5            LD   H,0
+22A7            ADD  HL,DE               Point codes entry in table.
+22A8            LD   E,(HL)              Fetch the address of the routine.
+22A9            INC  HL
+22AA            LD   D,(HL)
+22AB            LD   HL,<a href="#22C8 HOOK_RET">#22C8,HOOK_RET</a>   Return address after completion of
+22AE            PUSH HL                  code.
+22AF            LD   (#2066),SP          Set D_ERR_SP.
+22B3            EX   DE,HL
+22B4            LD   DE,(#3AC5)          Restore DE and A.
+22B8            LD   A,( #3E4F)
+22BB            JP   (HL)                Jump to the routine.
+
+<a NAME="22BC COMM_CODE"></a>22BC COMM_CODE  SUB  24                  Adjust range for command codes (0..20).
+22BE            CP   21
+22C0            JP   NC,<a href="errrst.htm#1666 REP_17">#1666,REP_17</a>     Give error if not a command code.
+22C3            LD   DE,<a href="#22DE MGT_HOOK">#22DE,MGT_HOOK</a>   Address of command code table.
+22C6            JR   <a href="#2299 CODE_CONT">#2299,CODE_CONT</a>     Continue with command codes.
+
+<font size=+2>THE 'HOOK_RET' ROUTINE</font>
+This routine is entered whenever a hook or command code is finished.
+
+<a NAME="22C8 HOOK_RET"></a>22C8 HOOK_RET   PUSH HL
+22C9            LD   HL,#0000
+22CC            LD   (#2066),HL          Clear D_ERR_SP.
+22CF            POP  HL
+22D0            CALL <a href="misc2.htm#168E BORD_REST">#168E,BORD_REST</a>     Return to the calling routine with the
+22D3            JP   <a href="restart.htm#0050 UNPAGE_1">#0050,UNPAGE_1</a>      'main' ROM paged in.
+
+<font size=+2>THE 'PAGE-IN +D' SUBROUTINE</font>
+This is called by using 'command code' 71. On return the +D is paged-in and the HL
+register contains 0, to indicate that this is a +D (with a DISCiPLE HL holds 1).
+
+<a NAME="22D6 PATCH"></a>22D6 PATCH      POP  HL                  Drop 'HOOK_RET' return address.
+22D7            LD   HL,#0000            Clear 'D_ERR_SP'.
+22DA            LD   (#2066),HL
+22DD            RET                      HL=0, meaning 'this is a +D'.
+
+<font size=+2>THE 'COMMAND CODE ADRESSES' TABLE</font>
+This jump table consists of the 21 addresses of the routines called by using the various
+'command codes'.
+ 
+<a NAME="22DE MGT_HOOK"></a>22DE MGT_HOOK   DEFW <a href="command.htm#2F8B HXFER">#2F8B,HXFER</a>         Command code #33, 51.
+22E0            DEFW <a href="command.htm#2F9E OFSM">#2F9E,OFSM</a>          Command code #34, 52.
+22E2            DEFW <a href="command.htm#2FA4 HOFLE">#2FA4,HOFLE</a>         Command code #35, 53.
+22E4            DEFW <a href="disk.htm#0761 SBYT">#0761,SBYT</a>          Command code #36, 54.
+22E6            DEFW <a href="command.htm#2FAB HSVBK">#2FAB,HSVBK</a>         Command code #37, 55.
+22E8            DEFW <a href="disk.htm#0B89 CFSM">#0B89,CFSM</a>          Command code #38, 56.
+22EA            DEFW <a href="printer.htm#15C9 PNTP">#15C9,PNTP</a>          Command code #39, 57.
+22EC            DEFW <a href="printer.htm#12D2 COPS">#12D2,COPS</a>          Command code #3A, 58.
+22EE            DEFW <a href="command.htm#2FB1 HGFLE">#2FB1,HGFLE</a>         Command code #3B, 59.
+22F0            DEFW <a href="disk.htm#077F LBYT">#077F,LBYT</a>          Command code #3C, 60.
+22F2            DEFW <a href="command.htm#2FB7 HLDBK">#2FB7,HLDBK</a>         Command code #3D, 61.
+22F4            DEFW <a href="command.htm#3016 JWSAD">#3016,JWSAD</a>         Command code #3E, 62.
+22F6            DEFW <a href="command.htm#300F JRSAD">#300F,JRSAD</a>         Command code #3F, 63.
+22F8            DEFW <a href="disk.htm#06B6 REST">#06B6,REST</a>          Command code #40, 64.
+22FA            DEFW <a href="command.htm#2FBD HERAZ">#2FBD,HERAZ</a>         Command code #41, 65.
+22FC            DEFW <a href="printer.htm#133E COPS2">#133E,COPS2</a>         Command code #42, 66.
+22FE            DEFW <a href="patches.htm#3154 PCAT">#3154,PCAT</a>          Command code #43, 67.
+2300            DEFW <a href="command.htm#2FD4 HRSAD">#2FD4,HRSAD</a>         Command code #44, 68.
+2302            DEFW <a href="command.htm#2FF2 HWSAD">#2FF2,HWSAD</a>         Command code #45, 69.
+2304            DEFW <a href="patches.htm#3110 OTFOC">#3110,OTFOC</a>         Command code #46, 70.
+2305            DEFW <a href="#22D6 PATCH">#22D6,PATCH</a>         Command code #47, 71.
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="rsysvar.htm">Previous</a></td>
+<td><a href="basic1.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

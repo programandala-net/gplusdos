@@ -1,0 +1,976 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The 'Hook code' routines </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="disk.htm">Previous</a></td>
+<td><a href="printer.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The 'Hook code' routines </font></b>
+
+The following routines are called by the 'hook and command code' routine at #228E (in
+RAM) whenever a hook code was used.
+
+<font size=+2>THE 'HOOK CODE ADDRESSES' TABLE</font>
+This jump table consists of the 24 addresses of the routines called by using the various
+'hook codes' in the range #1B..#32 (27..50).
+
+<a NAME="0DD7 IF1_HOOK"></a>0DD7 IF1_HOOK   DEFW <a href="#0E08 CONS_IN">#0E08,CONS_IN</a>       Hook code #1B, 27.
+0DD9            DEFW <a href="#0E1B CONS_OUT">#0E1B,CONS_OUT</a>      Hook code #1C, 28.
+0DDB            DEFW #0E07,BCHAN_IN      Hook code #1D, 29.
+0DDD            DEFW #0E07,BCHAN_OUT     Hook code #1E, 30.
+0DDF            DEFW <a href="#0E2B PRT_OUT">#0E2B,PRT_OUT</a>       Hook code #1F, 31.
+0DE1            DEFW <a href="#0E30 KBD_TEST">#0E30,KBD_TEST</a>      Hook code #20, 32.
+0DE3            DEFW <a href="#0E38 SEL_DRIVE">#0E38,SEL_DRIVE</a>     Hook code #21, 33.
+0DE5            DEFW <a href="#0E52 OP_TEMP_M">#0E52,OP_TEMP_M</a>     Hook code #22, 34.
+0DE7            DEFW <a href="#1102 CLOSE_M2">#1102,CLOSE_M2</a>      Hook code #23, 35.
+0DE9            DEFW <a href="#111E ERASE">#111E,ERASE</a>         Hook code #24, 36.
+0DEB            DEFW <a href="#11A1 READ_SEQ">#11A1,READ_SEQ</a>      Hook code #25, 37.
+0DED            DEFW <a href="#11E1 WR_RECD">#11E1,WR_RECD</a>       Hook code #26, 38.
+0DEF            DEFW <a href="#11AD RD_RANDOM">#11AD,RD_RANDOM</a>     Hook code #27, 39.
+0DF1            DEFW <a href="#1269 RD_SECTOR">#1269,RD_SECTOR</a>     Hook code #28, 40.
+0DF3            DEFW <a href="#126A RD_NEXT">#126A,RD_NEXT</a>       Hook code #29, 41.
+0DF5            DEFW <a href="#126B WR_SECTOR">#126B,WR_SECTOR</a>     Hook code #2A, 42.
+0DF7            DEFW <a href="#0EF4 SET_T_MCH">#0EF4,SET_T_MCH</a>     Hook code #2B, 43.
+0DF9            DEFW <a href="#126C DEL_M_BUF">#126C,DEL_M_BUF</a>     Hook code #2C, 44.
+0DFB            DEFW <a href="#1276 OP_TEMP_N">#1276,OP_TEMP_N</a>     Hook code #2D, 45.
+0DFD            DEFW <a href="#1277 CLOSE_NET">#1277,CLOSE_NET</a>     Hook code #2E, 46.
+0DFF            DEFW <a href="#1278 GET_PACK">#1278,GET_PACK</a>      Hook code #2F, 47.
+0E01            DEFW <a href="#1279 SEND_PACK">#1279,SEND_PACK</a>     Hook code #30, 48.
+0E03            DEFW <a href="#127A HOOK_31">#127A,HOOK_31</a>       Hook code #31, 49.
+0E05            DEFW <a href="#12C1 HOOK_32">#12C1,HOOK_32</a>       Hook code #32, 50.
+
+<font size=+2>THE 'RS232 NOT SUPPORTED' SUBROUTINE</font>
+The 'BCHAN_IN' and 'BCHAN_OUT' 'hook codes' are not supported (the +D has no RS232 link).
+
+<a NAME="0E07 UNDEFINED1"></a>0E07 UNDEFINED1 RET
+
+<font size=+2>THE 'CONSOLE INPUT' SUBROUTINE</font>
+Called by using 'hook code' 27 (#1B), it simply waits until a key is pressed. A return
+is made with the A register holding the character code.
+
+<a NAME="0E08 CONS_IN"></a>0E08 CONS_IN    RES  5,(IY+1)            Signal 'ready for a new key'.
+<a NAME="0E0C WTKEY"></a>0E0C WTKEY      EI                       Enable interrupts.
+0E0D            HALT                     Wait for an interrupt.
+0E0E            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call the keyboard scan routine in the
+0E0F            DEFW #02BF,KEYBOARD      'main' ROM.
+0E11            BIT  5,(IY+1)            Repeat the scan until a key has been
+0E15            JR   Z,<a href="#0E0C WTKEY">#0E0C,WTKEY</a>       pressed.
+0E17            LD   A,(23560)           Fetch the character code from (LAST_K)
+0E1A            RET
+
+<font size=+2>THE 'CONSOLE OUTPUT' SUBROUTINE</font>
+By using 'hook code' 28 (#1C) the character held in the A register is printed on the
+screen, with scroll suppressed.
+
+<a NAME="0E1B CONS_OUT"></a>0E1B CONS_OUT   PUSH AF
+0E1C            LD   A,254               Use stream '-2' (attached to "S" the
+                                         channel).
+<a NAME="0E1E OUT_CODE"></a>0E1E OUT_CODE   LD   HL,23692            This is SCR_CT.
+0E21            LD   (HL),#FF            Set scroll counter.
+0E23            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call 'CHAN_OPEN' in the 'main' ROM to
+0E24            DEFW #1601,CHAN_OPEN     make stream -2 the current.
+0E26            POP  AF
+0E27            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Print the character to the current
+0E28            DEFW #0010,PRINT_A_1     stream.
+0E2A            RET
+
+<font size=+2>THE 'PRINTER OUTPUT' SUBROUTINE</font>
+This subroutine is called by using 'hook code' 31 (#1F). It is identical to the
+preceding one, but the output is directed to stream 3 (normally the printer).
+
+<a NAME="0E2B PRT_OUT"></a>0E2B PRT_OUT    PUSH AF
+0E2C            LD   A,3                 Select stream 3.
+0E2E            JR   <a href="#0E1E OUT_CODE">#0E1E,OUT_CODE</a>
+
+<font size=+2>THE 'KEYBOARD TEST' SUBROUTINE</font>
+This is called using 'hook code' 32 (#20). A return is made with the Zero flag reset if
+a key is pressed.
+
+<a NAME="0E30 KBD_TEST"></a>0E30 KBD_TEST   XOR  A                   Clear A, allowing for the whole
+                                         keyboard to be examined.
+0E31            IN   A,(254)             Read the keyboard.
+0E33            AND  #1F                 Keep only the keyboard bits.
+0E35            SUB  #1F                 Return with sign negative and Zero
+0E37            RET                      flag reset if a key is pressed.
+
+<font size=+2>THE 'SELECT DRIVE' SUBROUTINE</font>
+This subroutine is called by using 'hook code' 33 (#21). On entry, A holds the drive
+number; if A isn't equal to 1 or 2 nothing is done.
+
+<a NAME="0E38 SEL_DRIVE"></a>0E38 SEL_DRIVE  CP   1
+0E3A            JR   Z,<a href="#0E42 SEL_DRIVE1">#0E42,SEL_DRIVE1</a>  Jump if drive 1 is to be selected.
+0E3C            CP   2
+0E3E            JR   Z,<a href="#0E42 SEL_DRIVE1">#0E42,SEL_DRIVE1</a>  Jump if drive 2 is to be selected.
+0E40            XOR  A
+0E41            RET                      Otherwise exit.
+<a NAME="0E42 SEL_DRIVE1"></a>0E42 SEL_DRIVE1 LD   B,A
+0E43            LD   (#3ACE),A
+0E46            LD   A,(#3DDA)           Fetch current control port state.
+0E49            AND  #FC                 Drop the drive select bits.
+0E4B            OR   B                   Use the new drive.
+0E4C            LD   (#3DDA),A           Exit setting both current control port
+0E4F            OUT  (239),A             state and the control port itself.
+0E51            RET
+
+<font size=+2>THE 'OPEN TEMP. "M" CHANNEL' SUBROUTINE</font>
+This subroutine is used to open a temporary "M" channel in the CHANS area. It is called
+by using 'hook code' 34 (#22). First a temporary "M" channel is created, then the drive
+whose number is held into 'D_STR1' is searched for a file whose name is held into
+'N_STR1'. A sector map is created with each reset bit indicating a free sector. Various
+flags are returned as follows:
+    - bit 0 of CHFLAG                    set with 'write' files.
+    - bit 1 of RECFLG                    set with 'EOF' block.
+    - bit 2 of RECFLG                    set with PRINT-type files.
+On exit, HL holds a 'stream data' displacement that may be used to attach the channel to
+a stream.
+
+<a NAME="0E52 OP_TEMP_M"></a>0E52 OP_TEMP_M  CALL <a href="#0EF4 SET_T_MCH">#0EF4,SET_T_MCH</a>     Create a temporary "M" channel.
+0E55            PUSH HL                  Save 'stream displacement'.
+0E56            LD   A,(IX+25)           Fetch the drive number (CHDRIV).
+0E59            CALL <a href="#0E38 SEL_DRIVE">#0E38,SEL_DRIVE</a>     Select the drive.
+0E5C            PUSH IX
+0E5E            LD   DE,14               Make IX point to CHNAME, the name of
+0E61            ADD  IX,DE               the wanted file.
+0E63            CALL <a href="#1146 FIND_FILE">#1146,FIND_FILE</a>     Search for the filename.
+0E66            JR   NZ,<a href="#0E98 OP_T_2">#0E98,OP_T_2</a>     Jump if not found.
+0E68            INC  HL                  Skip number of sectors used.
+0E69            INC  HL
+0E6A            LD   D,(HL)              Fetch first track and sector.
+0E6B            INC  HL
+0E6C            LD   E,(HL)
+0E6D            LD   IX,#3AC3            Point to the DRAM channel.
+0E71            CALL <a href="disk.htm#05CC RSAD">#05CC,RSAD</a>          Read the first sector.
+0E74            POP  IX                  Restore channel pointer (in 'main'
+0E76            PUSH IX                  RAM).
+0E78            LD   DE,540              Microdrive type files consist of
+                                         records with a length of 540 bytes
+                                         each.
+<a NAME="0E7B OP_T_1"></a>0E7B OP_T_1     PUSH IX                  Store data buffer pointer (in 'main'
+                                         RAM).
+0E7D            LD   IX,#3AC3            Point to the DRAM channel again.
+0E81            CALL <a href="disk.htm#077F LBYT">#077F,LBYT</a>          Fetch a byte.
+0E84            POP  IX                  Restore data buffer pointer.
+0E86            LD   (IX+55),A           Loading starts with the data block
+                                         preamble (offset 55).
+0E89            INC  IX
+0E8B            CALL <a href="#1265 DEC_DE">#1265,DEC_DE</a>        Decrement DE.
+0E8E            JR   NZ,<a href="#0E7B OP_T_1">#0E7B,OP_T_1</a>     Repeat until DE=0.
+0E90            POP  IX
+0E92            RES  0,(IX+24)           Signal 'read file'.
+0E96            POP  HL                  Restore stream 'stream data'.
+0E97            RET                      Finished.
+
+<a NAME="0E98 OP_T_2"></a>0E98 OP_T_2     LD   HL,#3A00            Clear the disk bitmap.
+0E9B            LD   B,195
+<a NAME="0E9D OP_T_3"></a>0E9D OP_T_3     LD   (HL),0
+0E9F            INC  HL
+0EA0            DJNZ <a href="#0E9D OP_T_3">#0E9D,OP_T_3</a>
+0EA2            LD   A,%00100000         Make new disk bitmap.
+0EA4            CALL <a href="disk.htm#09A5 SCAN_CAT">#09A5,SCAN_CAT</a>
+0EA7            POP  IX
+0EA9            PUSH IX
+0EAB            LD   HL,#3AD6            Points to dir. descr. of DFCA.
+0EAE            LD   (HL),6              File is a 'Microdrive file'.
+0EB0            INC  HL
+0EB1            LD   B,10                Copy the 10 characters of the name.
+<a NAME="0EB3 OP_T_4"></a>0EB3 OP_T_4     LD   A,(IX+14)
+0EB6            LD   (HL),A
+0EB7            INC  IX
+0EB9            INC  HL
+0EBA            DJNZ <a href="#0EB3 OP_T_4">#0EB3,OP_T_4</a>
+0EBC            LD   B,245               Clear the rest of the CATalogue entry
+<a NAME="0EBE OP_T_5"></a>0EBE OP_T_5     LD   (HL),0              of this file.
+0EC0            INC  HL
+0EC1            DJNZ <a href="#0EBE OP_T_5">#0EBE,OP_T_5</a>
+0EC3            LD   HL,#0000            Reset RPT.
+0EC6            LD   (#3AD0),HL
+0EC9            LD   HL,#3BD6            Clear the first 256 bytes of the data
+0ECC            LD   B,0                 buffer.
+<a NAME="0ECE OP_T_6"></a>0ECE OP_T_6     LD   (HL),0
+0ED0            INC  HL
+0ED1            DJNZ <a href="#0ECE OP_T_6">#0ECE,OP_T_6</a>
+0ED3            LD   IX,#3AC3
+0ED7            CALL <a href="disk.htm#0925 MK_ALLOC">#0925,MK_ALLOC</a>      Allocate the first free sector.
+0EDA            LD   (#3AD4),DE          Store the track and sector number.
+0EDE            LD   IX,#3AD6            Store them also into the CATalogue
+0EE2            LD   (IX+13),D           entry.
+0EE5            LD   (IX+14),E
+0EE8            POP  IX
+0EEA            RES  1,(IX+67)           Signal 'Not the EOF block' (RECFLG).
+0EEE            RES  2,(IX+67)           Signal 'PRINT-type file' (opened for
+0EF2            POP  HL                  writing). Restore stream 'stream data'
+0EF3            RET                      Finished.
+
+<font size=+2>THE 'SET A TEMP. "M" CHANNEL' SUBROUTINE</font>
+This subroutine is also called by using 'hook code' 43 (#2B). It sets a temporary "M"
+channel in the CHANS area. The subroutine returns with IX pointing to the start of the
+channel and HL holding a suitable displacement to be eventually inserted in the STRMS
+area to attach the channel to a stream.
+
+<a NAME="0EF4 SET_T_MCH"></a>0EF4 SET_T_MCH  LD   IX,(23631)          Fetch (CHANS), the start of the
+                                         channel area.
+0EF8            LD   DE,20               Make IX point to the start of the
+0EFB            ADD  IX,DE               'new' channels.
+<a NAME="0EFD SET_T_1"></a>0EFD SET_T_1    LD   A,(IX+0)
+0F00            CP   128
+0F02            JR   Z,<a href="#0F34 SET_T_3">#0F34,SET_T_3</a>     Jump if the CHANS area is finished.
+0F04            LD   A,(IX+4)            Fetch the channel specifier.
+0F07            AND  #7F                 Clear bit 7 (drop temporary/permanent
+                                         flag).
+0F09            CP   "M"
+0F0B            JR   NZ,<a href="#0F2A SET_T_2">#0F2A,SET_T_2</a>    Jump if not a "M" channel.
+0F0D            LD   A,(23766)           Fetch drive number (D_STR1).
+0F10            CP   (IX+25)             Compare it with (CHDRIV).
+0F13            JR   NZ,<a href="#0F2A SET_T_2">#0F2A,SET_T_2</a>    Jump if this channel uses a different
+                                         drive.
+0F15            LD   BC,(23770)          Fetch length of filename (NSTR_1).
+0F19            LD   HL,(23772)          And its startaddress (NSTR_1+2).
+0F1C            CALL <a href="#0FCC CHK_NAME">#0FCC,CHK_NAME</a>      Check name against 'CHNAME' of this
+                                         channel.
+0F1F            JR   NZ,<a href="#0F2A SET_T_2">#0F2A,SET_T_2</a>    Jump if not the same file.
+0F21            BIT  0,(IX+24)
+0F25            JR   Z,<a href="#0F2A SET_T_2">#0F2A,SET_T_2</a>     Jump if it's a 'read file'.
+0F27            JP   <a href="#12C3 MD_ERROR">#12C3,MD_ERROR</a>      Exit if the file is already opened for
+                                         writing.
+<a NAME="0F2A SET_T_2"></a>0F2A SET_T_2    LD   E,(IX+9)            Fetch the length of the channel.
+0F2D            LD   D,(IX+10)
+0F30            ADD  IX,DE               Point to the next channel.
+0F32            JR   <a href="#0EFD SET_T_1">#0EFD,SET_T_1</a>       Check next channel.
+
+Now the space for the new channel is created at the end of the CHANS area.
+
+<a NAME="0F34 SET_T_3"></a>0F34 SET_T_3    LD   HL,(23635)          Calculate end of CHANS area ((PROG)-1)
+0F37            DEC  HL                  i.e. the start of the channel.
+0F38            PUSH HL
+0F39            LD   BC,595              Length is '595' bytes.
+0F3C            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Create the required space by calling
+0F3D            DEFW #1655,MAKE_ROOM     'MAKE_ROOM'.
+0F3F            POP  DE                  Restore start address of the channel.
+0F40            PUSH DE
+0F41            LD   HL,<a href="#10E9 MCHAN_DATA">#10E9,MCHAN_DATA</a> Start of "M" channel data.
+0F44            LD   BC,25
+0F47            LDIR                     Store channel data into the channel.
+0F49            LD   A,(23766)           Fetch drive number (D_STR1).
+0F4C            LD   (IX+25),A           Store it into the channel (CHDRIV).
+0F4F            LD   BC,595              Length of the channel.
+0F52            PUSH IX                  Make HL point to the start of the
+0F54            POP  HL                  channel.
+0F55            CALL <a href="#0FA3 REST_F_AD">#0FA3,REST_F_AD</a>     Restore 'start of filename' possibly
+                                         moved during the 'insertion' of the
+                                         channel.
+0F58            EX   DE,HL               The start address of the filename goes
+                                         to HL.
+0F59            LD   BC,(23770)          Fetch length of filename (N_STR1).
+0F5D            BIT  7,B                 Jump if the name doesn't exist
+0F5F            JR   NZ,<a href="#0F6F SET_T_5">#0F6F,SET_T_5</a>    (N_STR1 = #FFFF).
+
+The channel name is transferred into CHNAME.
+
+<a NAME="0F61 SET_T_4"></a>0F61 SET_T_4    LD   A,B
+0F62            OR   C
+0F63            JR   Z,<a href="#0F6F SET_T_5">#0F6F,SET_T_5</a>     Jump if no more bytes left.
+0F65            LD   A,(HL)              Transfer a character of the name into
+0F66            LD   (IX+14),A           (CHNAME).
+0F69            INC  HL                  Point to next locations.
+0F6A            INC  IX
+0F6C            DEC  BC                  One byte less.
+0F6D            JR   <a href="#0F61 SET_T_4">#0F61,SET_T_4</a>       Continue with next character.
+
+Now the 'preambles' are stored into the channel.
+
+<a NAME="0F6F SET_T_5"></a>0F6F SET_T_5    POP  IX                  Restore start address of channel.
+0F71            LD   DE,28               Offset for header block preamble.
+0F74            CALL <a href="#0F89 SETUP_PRE">#0F89,SETUP_PRE</a>     Set-up header preamble.
+0F77            LD   DE,55               Offset for data block preamble.
+0F7A            CALL <a href="#0F89 SETUP_PRE">#0F89,SETUP_PRE</a>     Set-up data block preamble.
+0F7D            PUSH IX                  Make HL point to the start of the
+0F7F            POP  HL                  channel.
+0F80            LD   DE,(23631)          Calculate the required 'stream offset'
+0F84            OR   A                   into HL (i.e. channel start-(CHANS)+1)
+0F85            SBC  HL,DE
+0F87            INC  HL
+0F88            RET                      Finished.
+
+<font size=+2>THE 'SET-UP A PREAMBLE' SUBROUTINE</font>
+The following subroutine passes a preamble to the specified channel position. On entry
+IX points to the start of the channel and DE holds the required offset.
+
+<a NAME="0F89 SETUP_PRE"></a>0F89 SETUP_PRE  PUSH IX                  Pass start of channel to HL.
+0F8B            POP  HL
+0F8C            ADD  HL,DE               Add the offset.
+0F8D            EX   DE,HL               DE now points to the preamble area.
+0F8E            LD   HL,#0F97            Start of 'preamble' data.
+0F91            LD   BC,12               Preamble is 12 bytes long.
+0F94            LDIR
+0F96            RET
+
+<font size=+2>THE 'PREAMBLE DATA' TABLE</font>
+The header and data block preambles consist of the following bytes:
+
+<a NAME="0F97 PREAMBLE"></a>0F97 PREAMBLE   DEFB #00,#00,#00,#00,#00
+0F9C            DEFB #00,#00,#00,#00,#00
+0FA1            DEFB #FF,#FF
+
+The Microdrive needs these bytes to fetch the start of a block of bytes when reading a
+cartridge.
+
+<font size=+2>THE 'RESTORE FILENAME ADDRESS' ROUTINE</font>
+After the 'insertion' of some space, the 'filename' whose start addresses are held into
+(N_STR1+2) and (N_STR2+2) have been moved up in the workspace area. This routine is
+entered with HL holding the channel start address, and with BC holding the number of
+'inserted' bytes. The addresses held into (N_STR1+2) and (N_STR2+2) are then updated,
+unless the filenames are stored into 'no-dynamic' areas (i.e. before the channel or after
+STKEND).
+
+<a NAME="0FA3 REST_F_AD"></a>0FA3 REST_F_AD  PUSH HL                  Save 'start of channel' twice.
+0FA4            PUSH HL
+0FA5            LD   DE,(23780)          Restore start address of the second
+0FA9            CALL <a href="#0FBE TST_PLACE">#0FBE,TST_PLACE</a>     filename.
+0FAC            LD   (23780),DE
+0FB0            POP  HL                  Restore channel start address.
+0FB1            LD   DE,(23772)          Restore start address of the first
+0FB5            CALL <a href="#0FBE TST_PLACE">#0FBE,TST_PLACE</a>     filename.
+0FB8            LD   (23772),DE
+0FBC            POP  HL                  Restore channel start address.
+0FBD            RET                      Finished.
+
+The following subroutine calculates the new filename address.
+
+<a NAME="0FBE TST_PLACE"></a>0FBE TST_PLACE  SCF                      Allow for a further byte.
+0FBF            SBC  HL,DE               No action is made if the filename is
+0FC1            RET  NC                  before the channel.
+0FC2            LD   HL,(23653)          Or if it is after (STKEND).
+0FC5            SBC  HL,DE
+0FC7            RET  C
+0FC8            EX   DE,HL               Add to DE the number of 'inserted'
+0FC9            ADD  HL,BC               bytes, so returning the new filename
+0FCA            EX   DE,HL               address.
+0FCB            RET                      Finished.
+
+<font size=+2>THE 'CHECK NAME' SUBROUTINE</font>
+Whenever a 'filename' is to be compared against the channel name CHNAME, this subroutine
+is called. On entry, HL must point to the filename to be compared, while C must contain
+its length. If the comparision is succesful, the Zero flag is returned set.
+
+<a NAME="0FCC CHK_NAME"></a>0FCC CHK_NAME   PUSH IX                  Save start of channel.
+0FCE            LD   B,10                Length of a filename.
+<a NAME="0FD0 CHK_NAME1"></a>0FD0 CHK_NAME1  LD   A,(HL)              Fetch a byte from the name.
+0FD1            CP   (IX+14)
+0FD4            JR   NZ,<a href="#0FEC CHK_NAME3">#0FEC,CHK_NAME3</a>  Jump if it doesn't match.
+0FD6            INC  HL                  Point to the next character.
+0FD7            INC  IX
+0FD9            DEC  B                   One byte less.
+0FDA            DEC  C                   Repeat until all bytes of the name have
+0FDB            JR   NZ,<a href="#0FD0 CHK_NAME1">#0FD0,CHK_NAME1</a>  been matched.
+0FDD            LD   A,B                 CHNAME remaining length.
+0FDE            OR   A
+0FDF            JR   Z,<a href="#0FEC CHK_NAME3">#0FEC,CHK_NAME3</a>   Exit if all bytes of CHNAME matched.
+<a NAME="0FE1 CHK_NAME2"></a>0FE1 CHK_NAME2  LD   A,(IX+14)           Otherwise the remaining characters of
+0FE4            CP   32                  CHNAME have to be spaces.
+0FE6            JR   NZ,<a href="#0FEC CHK_NAME3">#0FEC,CHK_NAME3</a>  Exit if not a space.
+0FE8            INC  IX                  Repeat until all bytes of CHNAME have
+0FEA            DJNZ <a href="#0FE1 CHK_NAME2">#0FE1,CHK_NAME2</a>     been examined.
+<a NAME="0FEC CHK_NAME3"></a>0FEC CHK_NAME3  POP  IX                  Restore channel start address.
+0FEE            RET                      Finished.
+
+<font size=+2>THE 'CALL INP' ROUTINE</font>
+This routine is the same as the Interface 1 'CALL_INP' routine which handles all IF1's
+channels. The +D uses this routine only for "M" channels, for "D" channels a similar
+routine located in RAM is used. (The only difference is the test of FLAGS3, i.e. IY+124
+while emulating the IF1, #1ACF otherwise.) On entry HL holds the address of the service
+'input' routine. The routine handles both INPUT and INKEY$ commands.
+
+<a NAME="0FEF CALL_INP"></a>0FEF CALL_INP   RES  3,(IY+2)            Signal 'the mode is to be considered
+                                         as being unchanged'.
+0FF3            PUSH HL                  Store address of service routine.
+0FF4            LD   HL,(23613)          HL points to error address (ERR_SP).
+0FF7            LD   E,(HL)              Fetch the error address.
+0FF8            INC  HL
+0FF9            LD   D,(HL)
+0FFA            AND  A
+0FFB            LD   HL,#107F,ED_ERROR   If the error address is 'ED_ERROR'
+0FFE            SBC  HL,DE               ('main' ROM) then an INPUT command was
+1000            JR   NZ,INKEY$           used. Jump if unequal to 'ED_ERROR'.
+
+Now deal with an 'INPUT #' command referring to a "M" channel.
+
+1002            POP  HL                  Restore address of service routine.
+1003            LD   SP,(23613)          Clear the machine stack (ERR_SP).
+1007            POP  DE                  Remove 'ED_ERROR'.
+1008            POP  DE
+1009            LD   (23613),DE          Restore the old value of ERR_SP.
+<a NAME="100D IN_AGAIN"></a>100D IN_AGAIN   PUSH HL                  Store address of service routine.
+100E            LD   DE,<a href="#1013 INPUT_END">#1013,INPUT_END</a>  Return address is 'INPUT_END' below.
+1011            PUSH DE
+1012            JP   (HL)                Jump to the service routine.
+
+When the byte has been read from the required channel, a return is made here to add the
+byte to the INPUT line, or to return if the byte is equal to CHR$ 13, i.e. ENTER.
+
+<a NAME="1013 INPUT_END"></a>1013 INPUT_END  JR   C,<a href="#101D ACC_CODE">#101D,ACC_CODE</a>    Jump with acceptable codes.
+1015            JR   Z,<a href="#101A NO_READ">#101A,NO_READ</a>     Jump with no data read.
+<a NAME="1017 INPUT_ERR"></a>1017 INPUT_ERR  JP   <a href="#12C3 MD_ERROR">#12C3,MD_ERROR</a>      Otherwise jump to the 'hook code'
+                                         error routine.
+<a NAME="101A NO_READ"></a>101A NO_READ    POP  HL                  Restore address of service routine and
+101B            JR   <a href="#100D IN_AGAIN">#100D,IN_AGAIN</a>      try again.
+
+An acceptable code was received, it is added to the INPUT line.
+
+<a NAME="101D ACC_CODE"></a>101D ACC_CODE   CP   13
+101F            JR   Z,<a href="#1027 END_INPUT">#1027,END_INPUT</a>   Jump if the code is ENTER.
+1021            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Otherwise the byte is to be added to
+1022            DEFW #0F85,ADD_CHAR0     the INPUT line. This is done by call-
+                                         ing into the 'ADD_CHAR' subroutine.
+1024            POP  HL                  Restore address of the service routine
+1025            JR   <a href="#100D IN_AGAIN">#100D,IN_AGAIN</a>      and read the next byte.
+
+<a NAME="1027 END_INPUT"></a>1027 END_INPUT  POP  HL                  Drop the address of the service
+1028            JP   <a href="restart.htm#0050 UNPAGE_1">#0050,UNPAGE_1</a>      routine and page-out the +D.
+
+Enter here to deal with the INKEY$ function (a single character is returned).
+
+<a NAME="102B INKEY$"></a>102B INKEY$     POP  HL                  Restore address of the service routine
+102C            LD   DE,<a href="#1031 INK$_END">#1031,INK$_END</a>   Return address is 'INK$_END' below.
+102F            PUSH DE
+1030            JP   (HL)                Jump to the service routine.
+
+<a NAME="1031 INK$_END"></a>1031 INK$_END   RET  C                   Return with acceptable codes or
+1032            RET  Z                   with no byte read.
+1033            BIT  4,(IY+124)          Otherwise EOF was reached, so jump to
+1037            JR   Z,<a href="#1017 INPUT_ERR">#1017,INPUT_ERR</a>   the error routine except when
+                                         executing a 'MOVE' command.
+1039            OR   1                   Then return with Zero and Carry flags
+103B            RET                      both reset.
+
+<font size=+2>THE '"M" CHANNEL INPUT' ROUTINE</font>
+The actual 'input' is handled via 'CALL_INP' above. The service routine is 'MCHAN_IN'
+below.
+
+<a NAME="103C M_INPUT"></a>103C M_INPUT    LD   IX,(23633)          Make IX point to start of channel.
+1040            LD   HL,<a href="#1046 MCHAN_IN">#1046,MCHAN_IN</a>   Address of the service routine.
+1043            JP   <a href="#0FEF CALL_INP">#0FEF,CALL_INP</a>      Jump to the control routine.
+
+<font size=+2>THE '"M" CHANNEL INPUT' SERVICE ROUTINE</font>
+This is the actual read a byte from the "M" channel routine. The byte is read from the
+data buffer in the channel, if it is empty the next sector is loaded from disk (provided
+that the 'current' data block is not the EOF one) before reading the byte.
+
+<a NAME="1046 MCHAN_IN"></a>1046 MCHAN_IN   BIT  0,(IX+24)           Jump to the 'hook code' error routine
+104A            JP   NZ,<a href="#12C3 MD_ERROR">#12C3,MD_ERROR</a>   if (CHFLAG) indicates 'read' file.
+<a NAME="104D TEST_M_BUF"></a>104D TEST_M_BUF LD   E,(IX+11)           Fetch current byte counter from
+1050            LD   D,(IX+12)           (CHBYTE).
+1053            LD   L,(IX+69)           Fetch record length from (RECLEN).
+1056            LD   H,(IX+70)
+1059            SCF                      Include byte to be read.
+105A            SBC  HL,DE
+105C            JR   C,<a href="#1071 CHK_M_EOF">#1071,CHK_M_EOF</a>   Jump if all bytes have been read.
+105E            INC  DE                  Include byte to be read in the byte
+                                         counter.
+105F            LD   (IX+11),E           And store it.
+1062            LD   (IX+12),D
+1065            DEC  DE                  Position of character to be read.
+1066            PUSH IX                  Save start address of channel.
+1068            ADD  IX,DE               IX now points to 'byte to be
+                                         read - 82'.
+106A            LD   A,(IX+82)           Fetch the byte.
+106D            POP  IX                  Restore start of channel.
+106F            SCF                      Signal 'acceptable code'.
+1070            RET                      Finished.
+
+If all bytes in the data block have been read, a check is made to see if it is the 'end
+of file' block, i.e. the last one.
+
+<a NAME="1071 CHK_M_EOF"></a>1071 CHK_M_EOF  BIT  1,(IX+67)           Jump if (RECFLG) indicates 'not the
+1075            JR   Z,<a href="#107B NEW_BUFF">#107B,NEW_BUFF</a>    End Of File' block.
+1077            XOR  A                   Otherwise Zero and Carry flag are
+                                         reset to signal 'EOF'.
+1078            ADD  A,13                Returned byte is CHR$ 13, i.e. ENTER.
+107A            RET                      Finished.
+
+A new data block is now read from the disk drive.
+
+<a NAME="107B NEW_BUFF"></a>107B NEW_BUFF   LD   DE,0                Clear the byte counter.
+107E            LD   (IX+11),E
+1081            LD   (IX+12),D
+1084            INC  (IX+13)             Increment (CHREC), i.e. record number.
+1087            CALL <a href="#108C GET_RECD">#108C,GET_RECD</a>      Fetch a new data block.
+108A            JR   <a href="#104D TEST_M_BUF">#104D,TEST_M_BUF</a>    Read the byte.
+
+<font size=+2>THE 'GET A RECORD' SUBROUTINE</font>
+This subroutine is used to load a record of a 'MICRODRIVE'-type file.
+
+<a NAME="108C GET_RECD"></a>108C GET_RECD   LD   C,3                 Three retries will be made before the
+                                         routine is exitted when an error
+                                         occurs.
+108E            BIT  1,(IX+67)
+1092            JR   NZ,<a href="#10BD GET_R3">#10BD,GET_R3</a>     Jump if (RECFLG) indicates 'EOF' block
+<a NAME="1094 GET_R1"></a>1094 GET_R1     PUSH IX                  Store channel pointer (in 'main' RAM).
+1096            LD   DE,540              Microdrive file records have 540 bytes
+                                         each.
+<a NAME="1099 GET_R2"></a>1099 GET_R2     PUSH IX                  Store data buffer pointer.
+109B            LD   IX,#3AC3            Point to the DRAM channel.
+109F            CALL <a href="disk.htm#077F LBYT">#077F,LBYT</a>          Fetch a byte.
+10A2            POP  IX                  Restore data buffer pointer.
+10A4            LD   (IX+55),A           Loading starts with the data block
+                                         preamble (offset 55).
+10A7            INC  IX
+10A9            CALL <a href="#1265 DEC_DE">#1265,DEC_DE</a>        Decrement DE.
+10AC            JR   NZ,<a href="#1099 GET_R2">#1099,GET_R2</a>     Repeat until DE=0.
+10AE            POP  IX                  Restore channel pointer.
+10B0            LD   A,(IX+68)           Fetch number of this record (RECNUM).
+10B3            CP   (IX+13)             Test it against wanted record number
+10B6            RET  Z                   (CHREC), exit if they are equal.
+10B7            BIT  1,(IX+67)           Jump to load the next record if
+10BB            JR   Z,<a href="#1094 GET_R1">#1094,GET_R1</a>      (RECFLG) indicates that this isn't the
+                                         EOF one.
+<a NAME="10BD GET_R3"></a>10BD GET_R3     DEC  C                   Decrement retry counter.
+10BE            JR   Z,<a href="#10E6 MD_ERROR1">#10E6,MD_ERROR1</a>   Exit via the 'hook code' error routine
+                                         when three retries have been made.
+
+Now the routine reloads the first sector of the file. With 'MICRODRIVE'-type files it is
+possible to have a 'read' channel attached to a file to which is also a 'write' channel
+attached. So the last record could have been read into the 'read' channels data buffer
+after which a new record was added by the 'write' channel. The reason why three retries
+are made is probably because of the ignoring of errors, signalled by a set Carry flag
+(remember this is a 'hook code' executing), reported by 'LBYT' and 'RSAD'. The routine
+does some retrying before quitting.
+
+10C0            PUSH HL                  Store the registers needed by the
+10C1            PUSH IX                  routine above.
+10C3            PUSH BC
+10C4            LD   A,(IX+25)           Fetch the drive number from CHDRIV.
+10C7            CALL <a href="#0E38 SEL_DRIVE">#0E38,SEL_DRIVE</a>     Select the drive.
+10CA            LD   DE,14               Make IX point to CHNAME, the name of
+10CD            ADD  IX,DE               the requested file.
+10CF            CALL <a href="#1146 FIND_FILE">#1146,FIND_FILE</a>     Search for the filename.
+10D2            JR   NZ,<a href="#10E6 MD_ERROR1">#10E6,MD_ERROR1</a>  Jump if not found.
+10D4            INC  HL                  Skip 'number of sectors used'.
+10D5            INC  HL
+10D6            LD   D,(HL)              Fetch first track and sector.
+10D7            INC  HL
+10D8            LD   E,(HL)
+10D9            LD   IX,#3AC3            Point to the DRAM channel.
+10DD            CALL <a href="disk.htm#05CC RSAD">#05CC,RSAD</a>          Read the first sector.
+10E0            POP  BC                  Restore registers.
+10E1            POP  IX
+10E3            POP  HL
+10E4            JR   <a href="#1094 GET_R1">#1094,GET_R1</a>        Try to find the right record again.
+
+<font size=+2>THE 'JUMP TO ERROR ROUTINE'</font>
+Because this jump is only two times 'jump relatived to', it wastes one byte.
+
+<a NAME="10E6 MD_ERROR1"></a>10E6 MD_ERROR1  JP   <a href="#12C3 MD_ERROR">#12C3,MD_ERROR</a>      Jump to the 'hook code' error routine.
+
+<font size=+2>THE '"M" CHANNEL DATA' TABLE</font>
+The '25' bytes that compose the initial part of an "M" channel are as follows:
+
+<a NAME="10E9 MCHAN_DATA"></a>10E9 MCHAN_DATA DEFW #0008               Main ROM 'output' routine.
+10EB            DEFW #0008               Main ROM 'input' routine.
+10ED            DEFB "M"+128             Channel specifier.
+10EE            DEFW <a href="#11BB MCHAN_OUT">#11BB,MCHAN_OUT</a>     +D ROM 'output' routine.
+10F0            DEFW <a href="#103C M_INPUT">#103C,M_INPUT</a>       +D ROM 'input' routine.
+10F2            DEFW 595                 Channel length.
+10F4            DEFW #0000               Default for CHBYTE.
+10F6            DEFB #00                 Default for CHREC.
+10F7            DEFM "          "        Default for CHNAME (10 spaces).
+1101            DEFB #FF                 Default for CHFLAG ('write' channel).
+
+<font size=+2>THE 'CLOSE FILE' SUBROUTINE</font>
+By using 'hook code' 35 (#23) the following subroutine is called. It CLOSEs an "M"
+channel which start adddress is held in the IX register. If the channel is used for
+reading, then it is reclaimed; but if it is used for writing, any unsent data in the
+buffer is written to disk before reclaiming the channel.
+
+<a NAME="1102 CLOSE_M2"></a>1102 CLOSE_M2   BIT  0,(IX+24)           Jump if (CHFLAG) indicates that this
+1106            JR   Z,<a href="#111A CLOSE_M1">#111A,CLOSE_M1</a>    is a 'read' channel.
+1108            SET  1,(IX+67)           Otherwise signal 'EOF record',
+110C            CALL <a href="#11E1 WR_RECD">#11E1,WR_RECD</a>       and save it on disk.
+110F            PUSH IX                  Save channel pointer.
+1111            LD   IX,#3AC3            Point to the DRAM channel.
+1115            CALL <a href="disk.htm#0B89 CFSM">#0B89,CFSM</a>          Close the File Sector Map.
+1118            POP  IX                  Restore channel pointer.
+<a NAME="111A CLOSE_M1"></a>111A CLOSE_M1   CALL <a href="#126C DEL_M_BUF">#126C,DEL_M_BUF</a>     Reclaim the channel.
+111D            RET
+
+<font size=+2>THE 'ERASE' SUBROUTINE</font>
+This subroutine is called using 'hook code' 36 (#24). It deals with the ERASEing of all
+file types. It differs from the +D's ERASE 'command code': this routine uses a temporary
+channel and the IF1's extra system variables to ERASE a file. On entry 'D_STR1' must hold
+the drive number and 'N_STR1' the length and the start of the filename.
+
+<a NAME="111E ERASE"></a>111E ERASE      CALL <a href="#0EF4 SET_T_MCH">#0EF4,SET_T_MCH</a>     Create a temporary "M" channel.
+1121            PUSH IX                  Store channel pointer.
+1123            LD   DE,14               Make IX point to CHNAME, the name of
+1126            ADD  IX,DE               the file to be ERASEd.
+1128            CALL <a href="#1146 FIND_FILE">#1146,FIND_FILE</a>     Search for the file.
+112B            POP  IX                  Restore channel pointer.
+112D            PUSH AF                  Save flags.
+112E            JR   NZ,<a href="#1141 ERASE_1">#1141,ERASE_1</a>    Jump if the file wasn't found.
+1130            LD   HL,#3BD6            Point to the start of the disk buffer.
+1133            ADD  HL,BC               BC holds the directory entries offset
+                                         (i.e. 0 for first, 256 for second).
+1134            LD   (HL),0              Signal 'ERASEd file'.
+1136            PUSH IX                  Store channel pointer.
+1138            LD   IX,#3AC3            Point to the DRAM channel.
+113C            CALL <a href="disk.htm#0584 WSAD">#0584,WSAD</a>          Write sector DE.
+113F            POP  IX                  Restore channel pointer.
+<a NAME="1141 ERASE_1"></a>1141 ERASE_1    CALL <a href="#126C DEL_M_BUF">#126C,DEL_M_BUF</a>     Reclaim the channel.
+1144            POP  AF                  Exit with Zero reset indicating 'file
+1145            RET                      not found'.
+
+<font size=+2>THE 'FIND A FILE' SUBROUTINE</font>
+This routine searches the disk CATalogue for the filename pointed to by the IX register.
+On exit, Zero reset signals 'file not found'.
+
+<a NAME="1146 FIND_FILE"></a>1146 FIND_FILE  CALL <a href="disk.htm#06B6 REST">#06B6,REST</a>          Reset drive to track 0.
+1149            LD   (#3ACA),IX          Store the pointer to filename
+                                         requested.
+<a NAME="114D FIND_F1"></a>114D FIND_F1    LD   IX,#3AC3            Point to the DRAM channel.
+1151            CALL <a href="disk.htm#05CC RSAD">#05CC,RSAD</a>          Load a sector to the disk buffer.
+1154            LD   BC,0                First entry's offset.
+<a NAME="1157 FIND_F2"></a>1157 FIND_F2    LD   HL,#3BD6            Point to the start of the disk buffer.
+115A            ADD  HL,BC               Point to directory entry.
+115B            LD   A,(HL)
+115C            CP   0
+115E            JR   Z,#1117F,FIND_F4    Jump if the file is ERASEd.
+1160            INC  HL                  Point to the filename.
+1161            LD   IX,(#3ACA)          Fetch pointer to filename requested.
+1165            LD   A,10                Length of filename.
+1167            LD   (#3DF3),A
+<a NAME="116A FIND_F3"></a>116A FIND_F3    LD   A,(IX+0)            Fetch a byte from requested name.
+116D            XOR  (HL)                Compare against found name.
+116E            AND  #DF                 Capitalize.
+1170            JR   NZ,<a href="#117F FIND_F4">#117F,FIND_F4</a>    Jump if they don't match.
+1172            INC  IX                  Next characters.
+1174            INC  HL
+1175            LD   A,(#3DF3)
+1178            DEC  A
+1179            LD   (#3DF3),A
+117C            JR   NZ,<a href="#116A FIND_F3">#116A,FIND_F3</a>    Repeat for all characters in the name.
+117E            RET                      Return with Zero set to indicate 'file
+                                         found'.
+
+The requested filename wasn't found yet, so examine the next file.
+
+<a NAME="117F FIND_F4"></a>117F FIND_F4    LD   A,B
+1180            CP   1
+1182            JR   Z,<a href="#1190 FIND_F5">#1190,FIND_F5</a>     Jump if second entry handled.
+1184            LD   A,(#3DDA)
+1187            AND  #04                 Jump if using single density, i.e.
+1189            JR   NZ,<a href="#1190 FIND_F5">#1190,FIND_F5</a>    each sector holds one entry.
+118B            LD   BC,256              Otherwise examine second entry.
+118E            JR   <a href="#1157 FIND_F2">#1157,FIND_F2</a>
+
+The next CATalogue sector has to be loaded, if present.
+
+<a NAME="1190 FIND_F5"></a>1190 FIND_F5    INC  E                   Next sector.
+1191            LD   A,E
+1192            CP   11                  Jump if last sector on current track
+1194            JR   NZ,<a href="#114D FIND_F1">#114D,FIND_F1</a>    hasn't been loaded yet.
+1196            LD   E,1                 Otherwise start with sector 1
+1198            INC  D                   on the next track.
+1199            LD   A,D
+119A            CP   4                   Jump if last track in CATalogue hasn't
+119C            JR   NZ,<a href="#114D FIND_F1">#114D,FIND_F1</a>    been handled yet.
+119E            CP   0                   Otherwise reset Zero flag to signal
+11A0            RET                      'file not found' and exit.
+
+<font size=+2>THE 'READ SEQUENTIAL' SUBROUTINE</font>
+This is called by using 'hook code' 37 (#25). The subroutine reads into the data block
+of the current "M" channel, the next record of a named PRINT-type file. On entry IX must
+hold the "M" channel start address, and CHREC the number of the current record. CHREC
+will be automatically incremented. CHDRIV must hold the drive number and CHNAME must hold
+the filename.
+
+<a NAME="11A1 READ_SEQ"></a>11A1 READ_SEQ   BIT  1,(IX+67)           Jump if (RECFLG) indicates that the
+11A5            JR   Z,<a href="#11AA INCREC">#11AA,INCREC</a>      current record isn't the EOF one.
+11A7            JP   <a href="#12C3 MD_ERROR">#12C3,MD_ERROR</a>      Otherwise exit via the 'hook code'
+                                         error routine.
+<a NAME="11AA INCREC"></a>11AA INCREC     INC  (IX+13)             Increment the record number (CHREC)
+                                         and continue into 'RD_RANDOM'.
+
+<font size=+2>THE 'READ RANDOM' SUBROUTINE</font>
+This subroutine is called by using 'hook code' 39 (#27). The record number CHREC of a
+PRINT-type file is loaded into the data block. The other variables are to be set as for
+'READ_SEQ' above.
+
+<a NAME="11AD RD_RANDOM"></a>11AD RD_RANDOM  CALL <a href="#108C GET_RECD">#108C,GET_RECD</a>      Load CHREC record.
+11B0            BIT  2,(IX+67)           Return only if (RECFLG) indicates that
+11B4            RET  Z                   it is a PRINT-type file.
+11B5            CALL <a href="#126C DEL_M_BUF">#126C,DEL_M_BUF</a>     Otherwise reclaim the channel and exit
+11B8            JP   <a href="#12C3 MD_ERROR">#12C3,MD_ERROR</a>      via the 'hook code' error routine.
+
+<font size=+2>THE '"M" CHANNEL OUTPUT' ROUTINE</font>
+This routine handles the "M" channel output. The byte stored in the A register is stored
+into the 512-byte buffer. When it is filled, the record is written onto disk.
+
+<a NAME="11BB MCHAN_OUT"></a>11BB MCHAN_OUT  LD   IX,#FFFA            This is -6.
+11BF            ADD  IX,DE               Point to the start of the channel.
+11C1            BIT  0,(IX+24)           Continue only if (CHFLAG) indicates
+11C5            JP   Z,<a href="#12C3 MD_ERROR">#12C3,MD_ERROR</a>    that this is a 'write' file.
+11C8            LD   E,(IX+11)           Fetch the byte pointer (CHBYTE).
+11CB            LD   D,(IX+12)
+11CE            PUSH IX                  Save start address of channel.
+11D0            ADD  IX,DE               Point to 'first free byte in
+                                         buffer'-82.
+11D2            LD   (IX+82),A           Store the byte into the buffer.
+11D5            POP  IX                  Restore start of channel.
+11D7            INC  DE                  Update (CHBYTE).
+11D8            LD   (IX+11),E
+11DB            LD   (IX+12),D
+11DE            BIT  1,D                 Return if the buffer is not filled
+11E0            RET  Z                   (position 512 has not been reached).
+
+If the buffer is filled, the routine continues into 'WR_RECD' below.
+
+<font size=+2>THE 'WRITE RECORD' SUBROUTINE</font>
+This subroutine is called by using 'hook code' 38 (#26). The record held in the "M"
+channel pointed by the IX register (with name CHNAME and number CHREC), is written onto
+the disk inserted into drive CHDRIV.
+
+<a NAME="11E1 WR_RECD"></a>11E1 WR_RECD    LD   A,(IX+25)           Fetch the drive number (CHDRIV).
+11E4            CALL <a href="#0E38 SEL_DRIVE">#0E38,SEL_DRIVE</a>     Select the drive.
+11E7            PUSH IX                  Save start address of channel.
+11E9            LD   B,10                Counts ten characters.
+<a NAME="11EB CP_NAME"></a>11EB CP_NAME    LD   A,(IX+14)           Copy CHNAME into RECNAM.
+11EE            LD   (IX+71),A
+11F1            INC  IX
+11F3            DJNZ <a href="#11EB CP_NAME">#11EB,CP_NAME</a>
+11F5            POP  IX                  Restore start of channel.
+11F7            LD   C,(IX+11)           Copy CHBYTE into RECLEN.
+11FA            LD   (IX+69),C
+11FD            LD   A,(IX+12)
+1200            LD   (IX+70),A
+1203            LD   A,(IX+13)           Copy CHREC into RECNUM.
+1206            LD   (IX+68),A
+1209            PUSH IX                  Make HL point to the start of the data
+120B            POP  HL                  workspace,
+120C            LD   DE,67               i.e. RECFLG.
+120F            ADD  HL,DE
+1210            CALL <a href="#122A CHKS_HD_R">#122A,CHKS_HD_R</a>     Calculate DESCHK checksum.
+1213            LD   DE,15               Make HL point to the start of the
+1216            ADD  HL,DE               512-byte buffer.
+1217            CALL <a href="#122F CHKS_BUF">#122F,CHKS_BUF</a>      Calculate DCHK checksum.
+121A            CALL <a href="#1248 SAVE_RECD">#1248,SAVE_RECD</a>     Save the record to disk.
+121D            LD   DE,0                Clear CHBYTE.
+1220            LD   (IX+11),E
+1223            LD   (IX+12),D
+1226            INC  (IX+13)             Increment the record number (CHREC).
+1229            RET                      Finished.
+
+<font size=+2>THE 'CALCULATE/COMPARE CHECKSUM' ROUTINE</font>
+This routine is used to calculate DESCHK and DCHK checksums, or to compare the previous
+checksum against the current one; the Zero flag is returned set if the checksums match.
+The entry point is CHK_HD_R for DESCHK, or CHKS_BUFF for DCHK checksum. On entry in both
+cases HL must contain the start address of the block for which the checksum is to be
+obtained.
+
+<a NAME="122A CHKS_HD_R"></a>122A CHKS_HD_R  LD   BC,14               The block length.
+122D            JR   <a href="#1232 CHKS_ALL">#1232,CHKS_ALL</a>      Calculate checksum for the block.
+
+<a NAME="122F CHKS_BUF"></a>122F CHKS_BUF   LD   BC,512              The block length.
+<a NAME="1232 CHKS_ALL"></a>1232 CHKS_ALL   PUSH HL                  The start address is preserved.
+1233            LD   E,0                 Clear checksum.
+<a NAME="1235 CHKS_1"></a>1235 CHKS_1     LD   A,E                 Add the current byte to the previous
+1236            ADD  A,(HL)              sum.
+1237            INC  HL                  Point to next location.
+1238            ADC  A,1                 Include also the carry + 1.
+123A            JR   Z,<a href="#123D CHKS_2">#123D,CHKS_2</a>      Jump if A reaches zero.
+123C            DEC  A                   Otherwise balance the 'ADC' above.
+<a NAME="123D CHKS_2"></a>123D CHKS_2     LD   E,A                 Update sum.
+123E            DEC  BC                  One byte less to add.
+123F            LD   A,B
+1240            OR   C
+1241            JR   NZ,<a href="#1235 CHKS_1">#1235,CHKS_1</a>     Repeat until all bytes have been added
+1243            LD   A,E
+1244            CP   (HL)                Compare with previous checksum.
+1245            LD   (HL),A              Store the new one.
+1246            POP  HL                  Restore start address.
+1247            RET                      Finished.
+
+<font size=+2>THE 'SAVE A RECORD' SUBROUTINE</font>
+This subroutine saves the 540 byte Microdrive-file record to disk.
+
+<a NAME="1248 SAVE_RECD"></a>1248 SAVE_RECD  PUSH IX                  Save the channel pointer.
+124A            PUSH IX
+124C            POP  HL                  Calculate the address of the first
+124D            LD   DE,55               byte to SAVE, i.e. the data block
+1250            ADD  HL,DE               preamble (offset 55).
+1251            LD   DE,540              Length of the record to be written.
+1254            LD   IX,#3AC3            Point to the DRAM channel.
+<a NAME="1258 SAVE_REC1"></a>1258 SAVE_REC1  LD   A,(HL)              Fetch a byte.
+1259            CALL <a href="disk.htm#0761 SBYT">#0761,SBYT</a>          Save it to disk.
+125C            INC  HL
+125D            CALL <a href="#1265 DEC_DE">#1265,DEC_DE</a>        Decrement DE.
+1260            JR   NZ,<a href="#1258 SAVE_REC1">#1258,SAVE_REC1</a>  Repeat until DE=0.
+1262            POP  IX                  Restore the channel pointer.
+1264            RET                      Finished.
+
+<font size=+2>THE 'DECREMENT DE' SUBROUTINE</font>
+This very small subroutine decrements DE and returns with the Zero flag indicating if DE
+holds zero on exit. The purpose of this three-byte subroutine is unclear, it doesn't save
+a single byte (a CALL instruction takes also three bytes so this subroutine makes the
+code only longer), and the readability of the code (or the source) doesn't improve
+really.
+
+<a NAME="1265 DEC_DE"></a>1265 DEC_DE     DEC  DE                  DE=DE-1.
+1266            LD   A,D
+1267            OR   E                   Set Zero flag if DE=0.
+1268            RET                      Finished.
+
+<font size=+2>THE 'READ SECTOR' SUBROUTINE</font>
+This subroutine is not implemented, it is called by using 'hook code' 40 (#28). When
+used with an IF1 the sector, which number is held in CHREC, is read into the channel
+area. If the sector doesn't belong to a PRINT-type file the data buffer is cleared before
+returning. On entry the required drive motor has to be turned on.
+
+<a NAME="1269 RD_SECTOR"></a>1269 RD_SECTOR  RET
+
+<font size=+2>THE 'READ NEXT SECTOR' SUBROUTINE</font>
+This subroutine called by using 'hook code' 41 (#29) isn't implemented either. It should
+load into the channel area the first header and data block that pass through the
+Microdrive head. The required drive motor has to be started before calling this routine.
+
+<a NAME="126A RD_NEXT"></a>126A RD_NEXT    RET
+
+<font size=+2>THE 'WRITE SECTOR' SUBROUTINE</font>
+Another unimplemented subroutine, called by using 'hook code' 42 (#2A) it writes the
+data block in the current channel (pointed to by IX) to the sector specified by CHREC.
+The required Microdrive has to be started and all channel variables, such as CHNAME, are
+to be set as required before calling the routine.
+
+<a NAME="126B WR_SECTOR"></a>126B WR_SECTOR  RET
+
+<font size=+2>THE 'RECLAIM "M" CHANNEL' SUBROUTINE</font>
+This subroutine (also called by using 'hook code' 44 (#2C)) is used to reclaim the "M"
+channel pointed by the IX register. Unlike the IF1 routine this routine neither closes
+the stream(s) attached to this channel, nor updates the stream data for channels moved
+down after the reclaiming.
+
+<a NAME="126C DEL_M_BUF"></a>126C DEL_M_BUF  PUSH IX                  Make HL point to the start of the
+126E            POP  HL                  channel.
+126F            LD   BC,595              Length of the channel.
+1272            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Delete the channel area by calling
+1273            DEFW #19E8,RECLAIM_2     'RECLAIM_2' in the 'main' ROM.
+1275            RET                      Finished.
+
+<font size=+2>THE 'OPEN TEMP. "N" CHANNEL' SUBROUTINE</font>
+The +D doesn't support the use of "N" channels, temporary or permanent, by the user.
+This routine is called by using 'hook code' 45 (#2D).
+
+<a NAME="1276 OP_TEMP_N"></a>1276 OP_TEMP_N  RET
+
+<font size=+2>THE 'CLOSE NETWORK CHANNEL' SUBROUTINE</font>
+Because the +D doesn't support "N" channels, the CLOSEing of them isn't supported either
+('hook code' 46 (#2E)).
+
+<a NAME="1277 CLOSE_NET"></a>1277 CLOSE_NET  RET
+
+<font size=+2>THE 'GET PACKET FROM NETWORK' SUBROUTINE</font>
+Called by using 'hook code' 47 (#2F), this subroutine to fetch a header and data block
+from the network isn't implemented.
+
+<a NAME="1278 GET_PACK"></a>1278 GET_PACK   RET
+
+<font size=+2>THE 'SEND PACKET' SUBROUTINE</font>
+The +D doesn't support the sending of a header and data block over the network ('hook
+code' 48 (#30)).
+
+<a NAME="1279 SEND_PACK"></a>1279 SEND_PACK  RET
+
+<font size=+2>THE 'CREATE IF1 VARIABLES' SUBROUTINE</font>
+This subroutine (called by using 'hook code' 49 (#31)) has the task of creating the
+IF1's new system variables if nonexistent. Many variables are initialised to their
+default values.
+
+<a NAME="127A HOOK_31"></a>127A HOOK_31    LD   HL,(23631)          Fetch start of channel area (CHANS).
+127D            LD   DE,#A349            This is -23735.
+1280            ADD  HL,DE               The Carry flag is now set if the CHANS
+                                         area starts after address 23734, i.e.
+                                         the 'new' variables exist already.
+1281            JR   C,<a href="#12A9 VAR_EXIST">#12A9,VAR_EXIST</a>   Jump if they exist already.
+1283            LD   HL,(23651)          Clear the calculator stack by copying
+1286            LD   (23653),HL          (STKBOT) into (STKEND).
+1289            LD   HL,23698            Set (MEM) with the address of the
+128C            LD   (23656),HL          MEMBOT area.
+128F            LD   HL,23733            One location before the new space is
+                                         needed.
+1292            LD   BC,58               There are 58 new variables.
+1295            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Use 'main' ROM 'MAKE_ROOM' to create
+1296            DEFW #1655,MAKEROOM      the space.
+1297            LD   HL,<a href="#12AE IF1_VARS">#12AE,IF1_VARS</a>   Address of 'default values' table.
+129B            LD   BC,19               There are 19 default values.
+129E            LD   DE,23734            Start of 'new' variables area.
+12A1            LDIR                     Store default values.
+12A3            LD   A,1                 Set (COPIES) to 1.
+12A5            LD   (23791),A
+12A8            RET                      Finished.
+
+<a NAME="12A9 VAR_EXIST"></a>12A9 VAR_EXIST  RES  1,(IY+124)          Signal 'new variables already exist'.
+12AD            RET
+
+<font size=+2>THE 'SYSTEM VARS DEFAULT VALUES' TABLE</font>
+This table contains the default values of all the 'new' IF1 system variables from FLAGS3
+to SER_FL.
+
+<a NAME="12AE IF1_VARS"></a>12AE IF1_VARS   DEFB #02                 Default for FLAGS3 (bit 1 is set to
+                                         signal that the shadow ROM has been
+                                         paged in for the first time).
+12AF            DEFW #01F0               Default for VECTOR is the IF1's
+                                         'ERR_6' address (nonsense for +D).
+12B1            LD   HL,#0000            This short subroutine is used to call
+12B4            CALL #0000               'main' ROM routines from the IF1 ROM,
+12B7            LD   (23738),HL          it isn't used with the +D.
+12BA            RET
+12BB            DEFW #000C               Default for BAUD, i.e. 9600 baud.
+12BD            DEFB #01                 Default for NSTAT.
+12BE            DEFB #00                 Default for IOBORD, the colour during
+                                         IF1 I/O (black).
+12BF            DEFW #0000               Default for SER_FL.
+
+<font size=+2>THE 'CALL IF1 SUBROUTINE' SUBROUTINE</font>
+This subroutine, called by using 'hook code' 50 (#32), is designed to call IF1
+ROM-routines when the 'main' ROM is paged in. The difference with IF1 is that the +D uses
+DE to pass the address to be called.
+
+<a NAME="12C1 HOOK_32"></a>12C1 HOOK_32    EX   DE,HL
+12C2            JP   (HL)
+
+<font size=+2>THE 'HOOK CODE ERROR' ROUTINE</font>
+Whenever an error is encountered in the 'hook code' routines a jump is made here to
+signal the error and clear the machine stack when necessary.
+
+<a NAME="12C3 MD_ERROR"></a>12C3 MD_ERROR   CALL <a href="misc2.htm#168E BORD_REST">#168E,BORD_REST</a>     Restore the border colour.
+12C6            LD   HL,(#2066)
+12C9            LD   A,H
+12CA            OR   L
+12CB            JR   Z,<a href="#12CE MD_ERR1">#12CE,MD_ERR1</a>     Jump if the stack isn't to be cleared.
+12CD            LD   SP,HL               Otherwise clear the stack.
+<a NAME="12CE MD_ERR1"></a>12CE MD_ERR1    XOR  A
+12CF            DEC  A
+12D0            SCF                      Exit with A holding 255 and Carry flag
+12D1            RET                      set.
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="disk.htm">Previous</a></td>
+<td><a href="printer.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

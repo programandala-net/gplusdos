@@ -1,0 +1,176 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The Command code routines </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="stream.htm">Previous</a></td>
+<td><a href="misc3.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The Command code routines </font></b>
+
+<font size=+2>THE 'TRANSFER UFIA TO DFCA' SUBROUTINE</font>
+This subroutine is called by using command code 51 (#33), it transfers the file
+description and header (UFIA) to the Disk File Channel Area (DFCA). On entry IX must
+point to the start of the User's File Information Area (UFIA).
+
+<a NAME="2F8B HXFER"></a>2F8B HXFER      PUSH IX
+2F8D            POP  HL
+2F8E            LD   DE,#3E01            Start of 'UFIA1'.
+2F91            LD   BC,24
+2F94            LDIR                     Transfer the UFIA to 'UFIA1'.
+2F96            LD   IX,#3AC3            IX points to the DFCA.
+2F9A            CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      Check if the specified drive is
+2F9D            RET                      defined.
+
+<font size=+2>THE 'OPEN FILE SECTOR MAP' SUBROUTINE</font>
+This subroutine is called by using command code 52 (#34), it Opens a File Sector Map
+with the information contained in the DFCA. On entry IX must point to the UFIA, a call to
+'HXFER' above transfers the UFIA to the DFCA. A return is made with the disk buffer
+pointer (RPT) set to the start of the disk buffer in the +D RAM. 'OFSM' should be used
+for files which don't contain a 9 byte header at the start of the file.
+
+<a NAME="2F9E OFSM"></a>2F9E OFSM       CALL <a href="#2F8B HXFER">#2F8B,HXFER</a>         Transfer UFIA to DFCA.
+2FA1            JP   <a href="disk.htm#0AD9 OFSM_2">#0AD9,OFSM_2</a>        Open the file sector map.
+
+<font size=+2>THE 'OPEN A FILE' SUBROUTINE</font>
+This subroutine is called by using command code 53 (#35), it opens a file for SAVEing.
+As with the preceeding subroutines IX must point to the UFIA. By calling 'OFSM' above the
+UFIA is transferred to the DFCA and the file sector map is opened. Finally 'SAVE_HEAD1'
+is called to transfer the 9 bytes file header to the file. 'HOFLE' can be used for files
+which contain the 9 byte header.
+
+<a NAME="2FA4 HOFLE"></a>2FA4 HOFLE      CALL <a href="#2F9E OFSM">#2F9E,OFSM</a>          Transfer UFIA to DFCA and open the file
+                                         sector map.
+2FA7            CALL <a href="basic2.htm#2879 SAVE_HEAD1">#2879,SAVE_HEAD1</a>    Transfer the 9 byte file header to the
+2FAA            RET                      file and exit.
+
+<font size=+2>THE 'SAVE BLOCK TO DISK' SUBROUTINE</font>
+This is called by using command code 55 (#37). The data block starting at address DE
+with length BC is SAVEd to disk.
+<b>NOTE:</b> A file has to be opened for SAVEing before writing bytes. Use 'HOFLE' or 'OFSM' to
+do this.
+
+<a NAME="2FAB HSVBK"></a>2FAB HSVBK      CALL <a href="#2FCB BCDE_DEHL">#2FCB,BCDE_DEHL</a>     Transfer BC to DE and DE to HL.
+2FAE            JP   <a href="disk.htm#0850 HSVBK_2">#0850,HSVBK_2</a>       Save the block.
+
+<font size=+2>THE 'GET A FILE FROM DISK' SUBROUTINE</font>
+This is called by using command code 59 (#3B), it opens a file for LOADing. The IX
+register must point to the start of the UFIA. The return is made with the first sector of
+the file loaded into the disk buffer and RPT pointing to the first byte (usually the
+start of the 9 byte file header).
+
+<a NAME="2FB1 HGFLE"></a>2FB1 HGFLE      CALL <a href="#2F8B HXFER">#2F8B,HXFER</a>         Transfer the UFIA to the DFCA.
+2FB4            JP   <a href="disk.htm#0BCF HGFLE_2">#0BCF,HGFLE_2</a>       Open the file and load the first sector
+                                         in the disk buffer.
+
+<font size=+2>THE 'LOAD BLOCK FROM DISK' SUBROUTINE</font>
+This subroutine is called by using command code 61 (#3D), it does the opposite of
+'HSVBK' above. The data block starting at address DE with length BC is LOADed from disk.
+<b>NOTE:</b> The file has to be opened by using 'HGFLE' before an attempt can be made to LOAD
+bytes. Don't try to LOAD more bytes than available.
+
+<a NAME="2FB7 HLDBK"></a>2FB7 HLDBK      CALL <a href="#2FCB BCDE_DEHL">#2FCB,BCDE_DEHL</a>     Transfer BC to DE and DE to HL.
+2FBA            JP   <a href="disk.htm#079E LOAD_FILE">#079E,LOAD_FILE</a>     Load the block.
+
+<font size=+2>THE 'ERASE A FILE' SUBROUTINE</font>
+This is called by using command code 65 (#41). It ERASEs one file on the disk (even when
+wildcards were used), using the information contained in the UFIA, so make sure that IX
+points to the start of it.
+
+<a NAME="2FBD HERAZ"></a>2FBD HERAZ      CALL <a href="#2F8B HXFER">#2F8B,HXFER</a>         Transfer the UFIA to the DFCA.
+2FC0            CALL <a href="basic1.htm#2559 FIND_FILE">#2559,FIND_FILE</a>     Find the file, HL points to the
+                                         directory entry of the file (contained
+                                         in the disk buffer).
+2FC3            JP   NZ,<a href="errrst.htm#1678 REP_26">#1678,REP_26</a>     Give error if file not found.
+2FC6            LD   (HL),0              Directory description 0 means ERASEd.
+2FC8            JP   <a href="disk.htm#0584 WSAD">#0584,WSAD</a>          Write sector DE.
+
+<font size=+2>THE 'BC TO DE AND DE TO HL' SUBROUTINE</font>
+This routine transfers the contents of BC to DE and that of DE to HL, it also sets IX to
+the start of the DFCA.
+
+<a NAME="2FCB BCDE_DEHL"></a>2FCB BCDE_DEHL  PUSH DE
+2FCC            PUSH BC
+2FCD            POP  DE
+2FCE            POP  HL
+2FCF            LD   IX,#3AC3
+2FD3            RET
+
+<font size=+2>THE 'READ SECTOR TO ADDRESS' SUBROUTINE</font>
+This routine is called by using command code 68 (#44). It reads sector DE from drive A
+to the address held in the IX register.
+
+<a NAME="2FD4 HRSAD"></a>2FD4 HRSAD      PUSH BC
+2FD5            PUSH IX
+2FD7            LD   IX,#3AC3
+2FDB            CALL #0705,TEST_DRV      See if the drive held in the A register
+                                         is defined.
+2FDE            CALL <a href="disk.htm#05CC RSAD">#05CC,RSAD</a>          Load the sector into the disk buffer.
+2FE1            POP  HL
+2FE2            PUSH DE
+2FE3            LD   DE,#3BD6            Start of disk buffer.
+2FE6            EX   DE,HL
+2FE7            LD   BC,512              Sector length.
+2FEA            LDIR                     Move sector to specified address.
+2FEC            PUSH DE
+2FED            POP  IX                  Update IX.
+2FEF            POP  DE                  Restore DE and BC.
+2FF0            POP  BC
+2FF1            RET
+
+<font size=+2>THE 'WRITE SECTOR FROM ADDR.' SUBROUTINE</font>
+This is called using command code 69 (#45), it writes sector DE to drive A starting from
+address IX.
+
+<a NAME="2FF2 HWSAD"></a>2FF2 HWSAD      PUSH BC
+2FF3            PUSH IX
+2FF5            POP  HL
+2FF6            LD   IX,#3AC3
+2FFA            CALL #0705,TEST_DRV      See if the drive held in the A register
+2FFD            PUSH DE                  is defined.
+2FFE            LD   DE,#3BD6
+3001            LD   BC,512              Sector length.
+3004            LDIR                     Move BC bytes to the disk buffer.
+3006            POP  DE
+3007            PUSH HL
+3008            CALL <a href="disk.htm#0584 WSAD">#0584,WSAD</a>          Write sector DE to disk.
+300B            POP  IX
+300D            POP  BC
+300E            RET                      Finished.
+
+<font size=+2>THE 'READ SECTOR DE' SUBROUTINE</font>
+This routine is called using command code 63 (#3F), it loads sector DE from the current
+drive into the disk buffer.
+
+<a NAME="300F JRSAD"></a>300F JRSAD      LD   IX,#3AC3
+3013            JP   <a href="disk.htm#05CC RSAD">#05CC,RSAD</a>          Load the sector.
+
+<font size=+2>THE 'WRITE SECTOR DE' SUBROUTINE</font>
+This is called using command code 62 (#3E), it saves the contents of the disk buffer
+into sector DE on the current drive.
+
+<a NAME="3016 JWSAD"></a>3016 JWSAD      LD   IX,#3AC3
+301A            JP   <a href="disk.htm#0584 WSAD">#0584,WSAD</a>          Save the sector.
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="stream.htm">Previous</a></td>
+<td><a href="misc3.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

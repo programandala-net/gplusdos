@@ -1,0 +1,196 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The error routines</title>
+</head>
+
+<body>
+
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="misc2.htm">Previous</a></td>
+<td><a href="rsysvar.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+
+<pre><b><font size=+3>The error routines</font></b>
+
+<font size=+2>THE '+D ERROR' ROUTINE</font>
+Whenever a +D error is encountered this routine is executed to handle it. During syntax
+checking the error is handled by the 'main' ROM error handler. Whenever an error is found
+while executing a command code, a return is made with the Carry flag set and the A
+register holding the error number. Only during runtime the error message is printed.
+
+<a NAME="182D D_ERROR"></a>182D D_ERROR    CALL <a href="misc2.htm#168E BORD_REST">#168E,BORD_REST</a>     Restore normal border colour.
+1830            LD   (#3DED),DE          Track & sector with sector error.
+1834            XOR  A
+1835            LD   (#3ACF),A           Clear FLAGS3.
+1838            POP  HL                  Fetch return address.
+1839            LD   DE,(#2066)          Fetch (D_ERR_SP).
+183D            LD   A,D
+183E            OR   E
+183F            LD   A,(HL)              Fetch error code.
+1840            JR   Z,<a href="#1848 D_ERROR1">#1848,D_ERROR1</a>    Jump if (D_ERR_SP) isn't used.
+
+Whenever hook or command codes are being executed, errors are reported to the calling
+routine by setting the carry flag. The A register holds the error code.
+
+1842            LD   SP,(#2066)          Clear the machine stack.
+1846            SCF                      Carry set to signal 'error'.
+1847            RET
+
+The routine continues here when an error message is to be printed.
+
+<a NAME="1848 D_ERROR1"></a>1848 D_ERROR1   LD   (23610),A           Store error code into (ERR_NR).
+184B            RES  5,(IY+1)            Signal 'ready for a new key'.
+184F            LD   SP,(23613)          Clear machine stack by using (ERR_SP).
+1853            RST  #30,<a href="restart.htm#0030 SYNTAX_Z">SYNTAX_Z</a>        Return via 'main' ROM 'SET_STK'
+1854            LD   HL,#16C5,SET_STK    routine to the error handler during
+1857            JP   Z,<a href="restart.htm#004F UNPAGE_HL">#004F,UNPAGE_HL</a>   syntax checking.
+185A            LD   HL,0
+185D            LD   (IY+55),H           Clear FLAGX.
+1860            LD   (IY+38),H           And X_PTR-hi.
+1863            LD   (23563),HL          Clear DEFADD.
+1866            INC  L                   Ensure that stream 0 points to channel
+1867            LD   (23574),HL          'K'.
+186A            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Clear all the work areas and the
+186B            DEFW #16B0,SET_MIN       calculator stack.
+186D            LD   A,(23728)
+1870            AND  A                   Exit via 'END' if error messages are
+1871            JP   NZ,<a href="misc1.htm#047C END">#047C,END</a>        to be supressed.
+1874            RES  5,(IY+55)           Signal 'EDIT mode' FLAGX.
+1878            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Clear the lower screen.
+1879            DEFW #0D6E,CLS_LOWER
+187B            SET  5,(IY+2)            Signal 'lower screen will require
+                                         clearing'. (TV_FLAG)
+187F            RES  3,(IY+2)            Signal 'mode is to be considered
+                                         unchanged'.
+1883            LD   A,(23610)
+1886            CP   4
+1888            JR   NZ,<a href="#18A5 D_ERROR2">#18A5,D_ERROR2</a>   Jump if error isn't 'SECTOR error'.
+188A            PUSH AF
+188B            LD   DE,(#3DED)          Fetch track and sector where error
+188F            LD   H,0                 was signalled.
+1891            LD   L,D
+1892            PUSH DE
+1893            XOR  A                   Print the track number, no leading
+1894            CALL #1752,NUM_100       characters.
+1897            LD   A,58,":"            Print a colon.
+1899            CALL <a href="misc2.htm#1799 PRT_A">#1799,PRT_A</a>
+189C            POP  DE
+189D            LD   H,0
+189F            LD   L,E
+18A0            XOR  A                   Print the sector number, no leading
+18A1            CALL #1758,NUM_10        characters.
+18A4            POP  AF
+
+The routine now continues with the printing of the error message.
+
+<a NAME="18A5 D_ERROR2"></a>18A5 D_ERROR2   LD   HL,<a href="#18C2 ERR_MSGS">#18C2,ERR_MSGS</a>   HL points to the error message table.
+18A8            LD   BC,503              Length of error message table.
+18AB            CPIR                     Search for the message.
+18AD            CALL <a href="#18B8 PRT_MSG_HL">#18B8,PRT_MSG_HL</a>    Print it.
+18B0            INC  SP                  Drop address of 'main' ROM error
+18B1            INC  SP                  handler.
+18B2            LD   HL,#1349,MAIN_5A    Print the line and statement number by
+18B5            JP   <a href="restart.htm#004F UNPAGE_HL">#004F,UNPAGE_HL</a>     jumping into the Spectrum error
+                                         handler.
+
+<font size=+2>THE 'PRINT MESSAGE HL' SUBROUTINE</font>
+This subroutine prints the message pointed to by the HL register.
+
+<a NAME="18B8 PRT_MSG_HL"></a>18B8 PRT_MSG_HL LD   A,(HL)              Fetch a character.
+18B9            CP   32
+18BB            RET  C                   Exit if it isn't printable, message is
+                                         finished.
+18BC            CALL <a href="misc2.htm#1799 PRT_A">#1799,PRT_A</a>         Print the character.
+18BF            INC  HL
+18C0            JR   PRT_MSG_HL          Continue until message end is reached.
+
+<font size=+2>THE 'ERROR MESSAGES' TABLE</font>
+The following table contains the +D's error messages. Each message starts with it's
+error number.
+
+<a NAME="18C2 ERR_MSGS"></a>18C2 ERR_MSGS   DEFB #00
+18C3            DEFM "Nonsense in G+DOS"
+18D4            DEFB #01
+18D5            DEFM "Nonsense in GNOS"
+18E5            DEFB #02
+18E6            DEFM "Statement END error"
+18F9            DEFB #03
+18FA            DEFM "BREAK requested"
+1909            DEFB #04
+190A            DEFM ",SECTOR error"
+1917            DEFB #05
+1918            DEFM "FORMAT data lost"
+1928            DEFB #06
+1929            DEFM "CHECK DISC in drive"
+193C            DEFB #07
+193D            DEFM "No "+ SYS  " file"
+194D            DEFB #08
+194E            DEFM "Invalid FILE NAME"
+195F            DEFB #09
+1960            DEFM "Invalid STATION"
+196F            DEFB #0A
+1970            DEFM "Invalid DEVICE"
+197E            DEFB #0B
+197F            DEFM "VARIABLE not found"
+1991            DEFB #0C
+1992            DEFM "VERIFY failed"
+199F            DEFB #0D
+19A0            DEFM "Wrong FILE type"
+19AF            DEFB #0E
+19B0            DEFM "MERGE error"
+19BB            DEFB #0F
+19BC            DEFM "CODE error"
+19C6            DEFB #10
+19C7            DEFM "PUPIL set"
+19D0            DEFB #11
+19D1            DEFM "Invalid CODE"
+19DD            DEFB #12
+19DE            DEFM "Reading a WRITE file"
+19F2            DEFB #13
+19F3            DEFM "Writing a READ file"
+1A06            DEFB #14
+1A07            DEFM "O.K. G+DOS"
+1A11            DEFB #15
+1A12            DEFM "Network OFF"
+1A1D            DEFB #16
+1A1E            DEFM "Wrong DRIVE"
+1A29            DEFB #17
+1A2A            DEFM "Disc write PROTECTED"
+1A3E            DEFB #18
+1A3F            DEFM "Not enough SPACE on disc"
+1A57            DEFB #19
+1A58            DEFM "Directory FULL"
+1A66            DEFB #1A
+1A67            DEFM "File NOT FOUND"
+1A75            DEFB #1B
+1A76            DEFM "END of file"
+1A81            DEFB #1C
+1A82            DEFB "File NAME used"
+1A90            DEFB #1D
+1A91            DEFM "NO G+DOS loaded"
+1AA0            DEFB #1E
+1AA1            DEFM "STREAM used"
+1AAC            DEFB #1F
+1AAD            DEFM "CHANNEL used"
+1AB9            DEFB #00
+
+1ABA - 1FFF Unused locations (All filled with #FF)
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="misc2.htm">Previous</a></td>
+<td><a href="rsysvar.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

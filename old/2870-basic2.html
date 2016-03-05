@@ -1,0 +1,425 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The BASIC command execution routines II </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="syntax.htm">Previous</a></td>
+<td><a href="stream.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The BASIC command execution routines II </font></b>
+
+<font size=+2>THE 'GET TRACK AND SECTOR' SUBROUTINE</font>
+This routine loads DE with track and sector number from the file header, where they were
+stored by the 'EXPT_PARMS' subroutine. Used with LOAD/SAVE @.
+
+<a NAME="2870 GET_TR&SE"></a>2870 GET_TR&SE  LD   A,(#3E11)           Get track from LSB of LENGTH1_1.
+2873            LD   D,A
+2874            LD   A,(#3E13)           Get sector from LSB of FILE_ADDR1.
+2877            LD   E,A
+2878            RET
+
+<font size=+2>THE 'SAVE HEADER 1' SUBROUTINE</font>
+This subroutine SAVEs the 9 bytes header from UFIA 1 to the file and to the catalogue
+entry which is build up in the DFCA.
+
+<a NAME="2879 SAVE_HEAD1"></a>2879 SAVE_HEAD1 LD   HL,#3E10            Start of header 1.
+287C            LD   DE,#3BA9            Address of header area of a catalogue
+                                         entry
+287F            LD   B,9                 The headers length.
+<a NAME="2881 SAVE_H11"></a>2881 SAVE_H11   LD   A,(HL)
+2882            LD   (DE),A
+2883            CALL <a href="disk.htm#0761 SBYT">#0761,SBYT</a>          Save the byte to the file.
+2886            INC  HL
+2887            INC  DE
+2888            DJNZ <a href="#2881 SAVE_H11">#2881,SAVE_H11</a>      Repeat for all nine bytes.
+288A            RET                      Finished.
+
+<font size=+2>THE 'SAVE' COMMAND SYNTAX ROUTINE</font>
+This routine checks that the SAVE command has the appropriate syntax.
+
+<a NAME="288B SAVE"></a>288B SAVE       LD   IX,#3AC3            Pointer to the DFCA.
+288F            CALL <a href="flags.htm#160D SIGN_5">#160D,SIGN_5</a>        Signal 'SAVEing'.
+2892            CALL <a href="syntax.htm#2665 EXPT_PARMS">#2665,EXPT_PARMS</a>    Evaluate & store all parameters.
+2895            CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      See if the drive is defined.
+2898            LD   A,(#3E04)
+289B            CP   64,"@"
+289D            JR   NZ,<a href="#28AF SAVE_RUN">#28AF,SAVE_RUN</a>   Jump if the command wasn't 'SAVE @'.
+289F            LD   IX,(#3E15)          Get address where sector is to be saved
+28A3            CALL <a href="#2870 GET_TR&SE">#2870,GET_TR&SE</a>     from. Get track and sector number.
+28A6            LD   A,(#3E01)           Get drive number.
+28A9            CALL <a href="command.htm#2FF2 HWSAD">#2FF2,HWSAD</a>         Write the sector.
+28AC            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+<font size=+2>THE 'SAVE A FILE' ROUTINE</font>
+This routine SAVEs the specified file on the specified drive.
+
+<a NAME="28AF SAVE_RUN"></a>28AF SAVE_RUN   CALL <a href="disk.htm#0AD9 OFSM_2">#0AD9,OFSM_2</a>        Open the file for 'SAVE'.
+28B2            JP   NZ,<a href="basic1.htm#254E ERASE_EXIT">#254E,ERASE_EXIT</a> Exit if the file isn't to be
+                                         overwritten.
+28B5            LD   A,(#3E05)
+28B8            CP   11                  Pass the header to the file unless it's
+28BA            CALL NZ,<a href="#2879 SAVE_HEAD1">#2879,SAVE_HEAD1</a> an 'execute' file.
+28BD            LD   HL,(#3E13)          Fetch the start address.
+28C0            LD   DE,(#3E11)          Fetch the length.
+28C4            CALL <a href="disk.htm#0850 HSVBK_2">#0850,HSVBK_2</a>       Save the block.
+28C7            CALL <a href="disk.htm#0B89 CFSM">#0B89,CFSM</a>          Close the file.
+28CA            JP   <a href="basic1.htm#254E ERASE_EXIT">#254E,ERASE_EXIT</a>    Exit via 'ERASE_EXIT'.
+
+<font size=+2>THE 'LOAD HEADER INTO UFIA 2' SUBROUTINE</font>
+This subroutine LOADs a 9 bytes header into UFIA 2.
+
+<a NAME="28CD LOAD_HEAD2"></a>28CD LOAD_HEAD2 LD   HL,#3E29            Start of HEADER 2.
+28D0            LD   B,9                 Length of a header.
+<a NAME="28D2 LOAD_H21"></a>28D2 LOAD_H21   CALL <a href="disk.htm#077F LBYT">#077F,LBYT</a>          Load a byte.
+28D5            LD   (HL),A              Store it into UFIA 2.
+28D6            INC  HL
+28D7            DJNZ <a href="#28D2 LOAD_H21">#28D2,LOAD_H21</a>      Repeat for all header bytes.
+28D9            RET
+
+<font size=+2>THE 'LOAD' COMMAND SYNTAX ROUTINE</font>
+The 'LOAD' flag is set and the routine continues into the 'LOAD_VERIFY_MERGE' routine
+below.
+
+<a NAME="28DA LOAD"></a>28DA LOAD       CALL <a href="flags.htm#1608 SIGN_4">#1608,SIGN_4</a>        Signal 'LOADing'.
+28DD            JR   <a href="#28E7 LD_VF_MR">#28E7,LD_VF_MR</a>
+
+<font size=+2>THE 'VERIFY' COMMAND SYNTAX ROUTINE</font>
+The 'VERIFY' flag is set and again the 'LOAD_VERIFY_MERGE' routine handles the rest.
+
+<a NAME="28DF VERIFY"></a>28DF VERIFY     CALL <a href="flags.htm#1617 SIGN_7">#1617,SIGN_7</a>        Signal 'VERIFYing'.
+28E2            JR   <a href="#28E7 LD_VF_MR">#28E7,LD_VF_MR</a>
+
+<font size=+2>THE 'MERGE' COMMAND SYNTAX ROUTINE</font>
+The 'MERGE' flag is set and 'LOAD_VERIFY_MERGE' continues the syntax checking.
+
+<a NAME="28E4 MERGE"></a>28E4 MERGE      CALL <a href="flags.htm#1612 SIGN_6">#1612,SIGN_6</a>        Signal 'MERGEing'.
+
+<font size=+2>THE 'LOAD_VERIFY_MERGE' COMMAND ROUTINE</font>
+This routine checks the syntax of the LOAD, VERIFY and MERGE commands and executes it.
+
+<a NAME="28E7 LD_VF_MR"></a>28E7 LD_VF_MR   LD   IX,#3AC3            Pointer to DFCA.
+28EB            CALL <a href="syntax.htm#2665 EXPT_PARMS">#2665,EXPT_PARMS</a>    Evaluate & store all parameters.
+<a NAME="28EE LD_VF_MR1"></a>28EE LD_VF_MR1  CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      See if the drive is defined.
+28F1            LD   A,(#3E04)
+28F4            CP   64,"@"
+28F6            JR   NZ,<a href="#2908 LD_ETC_RUN">#2908,LD_ETC_RUN</a> Jump if it wasn't a '@' command.
+28F8            LD   IX,(#3E15)          Get address where sector is to be
+28FC            CALL <a href="#2870 GET_TR&SE">#2870,GET_TR&SE</a>     loaded. Get track and sector number.
+28FF            LD   A,(#3E01)           Get drive number.
+2902            CALL <a href="command.htm#2FD4 HRSAD">#2FD4,HRSAD</a>         Load the sector.
+2905            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+The routine continues here when a file is to be LOADed from disk.
+
+<a NAME="2908 LD_ETC_RUN"></a>2908 LD_ETC_RUN CALL <a href="disk.htm#0BCF HGFLE_2">#0BCF,HGFLE_2</a>       Open the file for loading.
+290B            LD   A,(#3E05)
+290E            CP   5
+2910            JR   NZ,<a href="#2921 LD_ETC_R1">#2921,LD_ETC_R1</a>  Jump if it isn't a 'Snapshot 48K'.
+2912            LD   SP,#3FEA            Use internal stack.
+2915            LD   HL,16384            Start address and length of a 48K Snap.
+2918            LD   DE,49152
+291B            CALL <a href="disk.htm#079E LOAD_FILE">#079E,LOAD_FILE</a>     Load the file.
+ 291E            JP   <a href="snapshot.htm#00B1 SNAP_EXIT">#00B1,SNAP_EXIT</a>     Exit via 'SNAP_EXIT'.
+
+<a NAME="2921 LD_ETC_R1"></a>2921 LD_ETC_R1  CP   9
+2923            JR   NZ,<a href="#294A LD_ETC_R3">#294A,LD_ETC_R3</a>  Jump if it isn't a 'Snapshot 128K'.
+2925            LD   SP,#3FEA            Use internal stack.
+2928            CALL <a href="disk.htm#077F LBYT">#077F,LBYT</a>          Get the page configuration byte.
+292B            PUSH AF
+292C            AND  #F8                 Keep the RAM page bits only.
+292E            LD   B,#08               LOAD the eight RAM-pages.
+<a NAME="2930 LD_ETC_R2"></a>2930 LD_ETC_R2  PUSH AF
+2931            PUSH BC
+2932            CALL <a href="rsysvar.htm#223F RAMPAGE_A">#223F,RAMPAGE_A</a>     Page in RAM bank.
+2935            LD   HL,49152            Start address and length of each RAM
+2938            LD   DE,16384            bank.
+293B            CALL <a href="disk.htm#079E LOAD_FILE">#079E,LOAD_FILE</a>     'LOAD DE bytes to HL'.
+293E            POP  BC
+293F            POP  AF
+2940            INC  A                   Next RAM bank.
+2941            DJNZ <a href="#2930 LD_ETC_R2">#2930,LD_ETC_R2</a>     Repeat for each RAM bank.
+2943            POP  AF                  Retrieve page configuration.
+2944            CALL <a href="rsysvar.htm#223F RAMPAGE_A">#223F,RAMPAGE_A</a>     Page in the right RAM, ROM and SCR$
+2947            JP   <a href="snapshot.htm#00B1 SNAP_EXIT">#00B1,SNAP_EXIT</a>     bank, exit via 'SNAP_EXIT'.
+
+<a NAME="294A LD_ETC_R3"></a>294A LD_ETC_R3  CP   11
+294C            JR   NZ,<a href="#2954 LD_ETC_R4">#2954,LD_ETC_R4</a>  Jump if it isn't a 'Execute' file.
+294E            CALL #3BD6               Execute (this is the address of the
+2951            JP   <a href="misc1.htm#047C END">#047C,END</a>           disk buffer). Finished.
+
+<a NAME="2954 LD_ETC_R4"></a>2954 LD_ETC_R4  CALL <a href="#28CD LOAD_HEAD2">#28CD,LOAD_HEAD2</a>    Load the header into UFIA2.
+2957            LD   A,(#3E10)           Fetch type of program to be LOADed.
+295A            LD   B,A
+295B            LD   A,(#3E29)           Fetch type of program found.
+295E            CP   B
+295F            JP   NZ,<a href="errrst.htm#1654 REP_8">#1654,REP_8</a>      Give an error if they aren't equal.
+
+<b>NOTE:</b> The error 'Invalid FILE NAME' is given, maybe MGT have made a typing error. 'Wrong
+FILE type' is the right message.
+
+2962            CP   3
+2964            JR   Z,<a href="#2974 LD_ETC_R5">#2974,LD_ETC_R5</a>   Jump if it's a 'CODE' file.
+2966            JP   NC,<a href="errrst.htm#1654 REP_8">#1654,REP_8</a>      Give error if file type >= 4.
+2969            CALL <a href="flags.htm#163A TEST_6">#163A,TEST_6</a>
+296C            JR   NZ,<a href="#29DF MERGE_CTRL">#29DF,MERGE_CTRL</a> Jump if 'MERGEing'.
+296E            CALL <a href="flags.htm#163F TEST_7">#163F,TEST_7</a>        Jump if not 'VERIFYing' (i.e. doing a
+2971            JP   Z,<a href="#29FB LOAD_CTRL">#29FB,LOAD_CTRL</a>   LOAD).
+
+Now deal with loading of all files with type 3, like 'CODE' and 'SCREEN$', or verifying
+of all file types.
+
+<a NAME="2974 LD_ETC_R5"></a>2974 LD_ETC_R5  CALL <a href="flags.htm#163A TEST_6">#163A,TEST_6</a>
+2977            JP   NZ,<a href="errrst.htm#1660 REP_14">#1660,REP_14</a>     Give error if 'MERGE .. CODE' was used.
+297A            LD   HL,(#3E11)          Fetch length of requested file.
+297D            LD   DE,(#3E2A)          Fetch length of file found.
+2981            LD   A,H
+2982            OR   L
+2983            JR   Z,<a href="#2992 LD_ETC_R6">#2992,LD_ETC_R6</a>   Jump if length unspecified.
+2985            SBC  HL,DE               Jump if file to be LOADed is shorter
+2987            JR   NC,<a href="#2992 LD_ETC_R6">#2992,LD_ETC_R6</a>  than or of equal length as the
+                                         requested file.
+2989            CALL <a href="flags.htm#1630 TEST_4">#1630,TEST_4</a>
+298C            JP   Z,<a href="errrst.htm#165C REP_12">#165C,REP_12</a>      'VERIFY failed' if not LOADing.
+298F            JP   <a href="errrst.htm#1662 REP_15">#1662,REP_15</a>        'CODE error' otherwise.
+
+<a NAME="2992 LD_ETC_R6"></a>2992 LD_ETC_R6  LD   HL,(#3E13)          Fetch start address from FILE_ADDR1
+2995            LD   A,H
+2996            OR   L
+2997            JR   NZ,<a href="#299C LD_ETC_R7">#299C,LD_ETC_R7</a>  Jump if a start address was specified.
+2999            LD   HL,(#3E2C)          Otherwise use the start address of the
+                                         found file.
+<a NAME="299C LD_ETC_R7"></a>299C LD_ETC_R7  LD   A,(#3E29)           But if the file is a BASIC program the
+299F            AND  A                   start address is held in (PROG).
+29A0            JR   NZ,<a href="#29A5 LD_ETC_R8">#29A5,LD_ETC_R8</a>
+29A2            LD   HL,(23635)          Fetch 'start' from (PROG).
+<a NAME="29A5 LD_ETC_R8"></a>29A5 LD_ETC_R8  CALL <a href="#2A9A LV_ANY">#2A9A,LV_ANY</a>        Load the file.
+29A8            CALL <a href="flags.htm#163F TEST_7">#163F,TEST_7</a>
+29AB            JP   NZ,<a href="misc1.htm#047C END">#047C,END</a>        Exit when 'VERIFYing'.
+29AE            LD   HL,(#3E17)          Fetch execute address.
+29B1            CALL <a href="#29BD EXEC_CODE">#29BD,EXEC_CODE</a>     Use it if it was specified.
+29B4            LD   HL,(#3E30)          Otherwise use the files execute
+29B7            CALL <a href="#29BD EXEC_CODE">#29BD,EXEC_CODE</a>     address.
+29BA            JP   <a href="misc1.htm#047C END">#047C,END</a>           But if it hasn't one either, exit here.
+
+<font size=+2>THE 'EXECUTE CODE FILE' SUBROUTINE</font>
+This routine jumps to the address in the HL register pair (if it is valid) after pushing
+the addresses of 'STMT_R_1' and 'STACK_BC'.
+
+<a NAME="29BD EXEC_CODE"></a>29BD EXEC_CODE  LD   A,H
+29BE            OR   L
+29BF            RET  Z                   Return if the execute address is zero.
+29C0            LD   A,H
+29C1            CP   #FF
+29C3            JR   NZ,<a href="#29C9 EXEC_C1">#29C9,EXEC_C1</a>
+29C5            LD   A,L                 Also return when the execute address is
+29C6            CP   #FF                 #FFFF.
+29C8            RET  Z
+<a NAME="29C9 EXEC_C1"></a>29C9 EXEC_C1    LD   SP,(23613)          Clear the stack. (ERR_SP)
+29CD            LD   (IY+0),#FF          Clear the error.
+29D1            CALL <a href="misc2.htm#168E BORD_REST">#168E,BORD_REST</a>     Restore the border colour.
+29D4            LD   BC,#1B7D,STMT_R_1   Return to 'STMT_R_1' in the 'main' ROM
+29D7            PUSH BC                  when finished.
+29D8            LD   BC,#2D2B,STACK_BC   Return to 'STMT_R_1' via 'STACK_BC'
+29DB            PUSH BC                  also in the 'main' ROM.
+29DC            JP   <a href="restart.htm#004F UNPAGE_HL">#004F,UNPAGE_HL</a>     Jump to the execute address while
+                                         unpaging the +D.
+
+<font size=+2>THE 'MERGE CONTROL' ROUTINE This routine handles the MERGEing of a (BASIC) file. No test is made if the file is an array when using the MERGE 'p'n syntax (see NOTE at 'LOAD CONTROL').</font>
+
+<a NAME="29DF MERGE_CTRL"></a>29DF MERGE_CTRL LD   BC,(#3E2A)          Fetch the length of the program to be
+29E3            PUSH BC                  MERGEd.
+29E4            INC  BC                  Extra location for the 'end marker'.
+29E5            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call 'BC_SPACES' in the 'main' ROM to
+29E6            DEFW #0030,BC_SPACES     make the required room in workspace.
+29E8            LD   (HL),128            Mark the end.
+29EA            EX   DE,HL               Move start pointer to HL.
+29EB            POP  DE                  Length to DE.
+29EC            PUSH HL
+29ED            CALL <a href="#2A9A LV_ANY">#2A9A,LV_ANY</a>        Load the file.
+29F0            POP  HL                  Fetch 'start' of new program.
+29F1            LD   DE,(23635)          Fetch 'start' of old program (PROG).
+29F5            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Do the MERGEing by calling the 'main'
+29F6            DEFW #08D2,ME_NEW_LP     ROM 'MERGE' routine.
+29F8            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+<font size=+2>THE 'LOAD CONTROL' ROUTINE</font>
+This routine handles the LOADing of a BASIC program or an array.
+<b>NOTE:</b> The Spectrum will crash when trying to LOAD or MERGE 'p' an array. The problem
+starts in the 'HGFLE_2' ('OPEN A FILE FOR LOAD') subroutine in ROM (#0BCF) which is called from
+the 'LD_ETC_RUN' routine at #2908. Normally UFIA1 holds the parameters of the existing array (if
+present), and UFIA2 holds the parameters of the array to be loaded. But when the 'p' syntax is
+used, the 'HGFLE_2' routine makes the contents of UFIA1 equal to UFIA2. The reclaiming at
+address #2A32 then fails, trying to reclaim something which isn't there.
+
+<a NAME="29FB LOAD_CTRL"></a>29FB LOAD_CTRL  LD   DE,(#3E2A)          Fetch 'new' length.
+29FF            LD   HL,(#3E13)          Fetch 'old' start (=0 when loading a
+2A02            PUSH HL                  'new' array').
+2A03            LD   A,H
+2A04            OR   L
+2A05            JR   NZ,<a href="#2A0D LOAD_C1">#2A0D,LOAD_C1</a>    Jump if not a 'new' array.
+2A07            INC  DE                  Increment 'length' by 3, i.e. allows
+2A08            INC  DE                  for the insertion of array name and
+2A09            INC  DE                  two-byte length.
+2A0A            EX   DE,HL               Move 'length' to HL.
+2A0B            JR   <a href="#2A16 LOAD_C2">#2A16,LOAD_C2</a>       Jump forward.
+
+The array to be loaded replaces an existing array.
+
+<a NAME="2A0D LOAD_C1"></a>2A0D LOAD_C1    LD   HL,(#3E11)          Fetch 'old' length (i.e. length of
+                                         existing program or array) from UFIA1.
+2A10            EX   DE,HL               Move 'new' length to HL.
+2A11            SCF                      Jump if the program or array to be
+2A12            SBC  HL,DE               loaded isn't longer than the existing
+2A14            JR   C,<a href="#2A1F LOAD_C3">#2A1F,LOAD_C3</a>     one.
+<a NAME="2A16 LOAD_C2"></a>2A16 LOAD_C2    LD   DE,5                Otherwise a check must be made to
+2A19            ADD  HL,DE               ensure that there is sufficient space
+2A1A            LD   B,H                 in memory for the program (or array) to
+2A1B            LD   C,L                 be loaded.
+2A1C            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Make the check by calling the 'main'
+2A1D            DEFW #1F05,TEST_ROOM     ROM 'TEST_ROOM' subroutine.
+<a NAME="2A1F LOAD_C3"></a>2A1F LOAD_C3    POP  HL                  Restore 'old' start (=0 when handling
+2A20            LD   A,(#3E29)           a 'new' array).
+2A23            AND  A
+2A24            JR   Z,<a href="#2A57 LD_PROG">#2A57,LD_PROG</a>     Jump if it's a BASIC program.
+2A26            LD   A,H
+2A27            OR   L                   Jump unless an 'old' array is to be
+2A28            JR   Z,<a href="#2A35 LOAD_C4">#2A35,LOAD_C4</a>     erased before loading the 'new' one.
+2A2A            DEC  HL                  Points to high byte of 'array length'.
+2A2B            LD   B,(HL)              Fetch the 'length'.
+2A2C            DEC  HL
+2A2D            LD   C,(HL)
+2A2E            DEC  HL                  Now points to the 'array name'.
+2A2F            INC  BC                  Include 'length' and 'name' in the
+2A30            INC  BC                  array length.
+2A31            INC  BC
+2A32            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call 'RECLAIM_2' in the 'main' ROM to
+2A33            DEFW #19E8,RECLAIM_2     delete the array.
+<a NAME="2A35 LOAD_C4"></a>2A35 LOAD_C4    LD   HL,(23641)          (E_LINE) points to the end of variables
+2A38            DEC  HL                  area+1.
+2A39            LD   BC,(#3E2A)          Fetch length of array to be loaded.
+2A3D            PUSH BC
+2A3E            INC  BC                  Include in the length one byte for the
+2A3F            INC  BC                  'array name' and two bytes for the
+2A40            INC  BC                  'array length'.
+2A41            LD   A,(#3E15)           Fetch the array name from 'LENGTH1_2'.
+2A44            PUSH AF
+2A45            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call 'MAKE_ROOM' to create the space
+2A46            DEFW #1655,MAKE_ROOM     for the array.
+2A48            INC  HL                  Point to first 'new' location inserted.
+2A49            POP  AF
+2A4A            LD   (HL),A              Store array name into first location.
+2A4B            POP  DE
+2A4C            INC  HL                  Store array length into the following
+2A4D            LD   (HL),E              two locations.
+2A4E            INC  HL
+2A4F            LD   (HL),D
+2A50            INC  HL
+2A51            CALL <a href="#2A9A LV_ANY">#2A9A,LV_ANY</a>        Load the file.
+2A54            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+Now deal with the LOADing of a BASIC program and its variables.
+
+<a NAME="2A57 LD_PROG"></a>2A57 LD_PROG    LD   DE,(23635)          Fetch start of existing program. (PROG)
+2A5B            LD   HL,(23641)          Fetch end of existing program. I.e.
+2A5E            DEC  HL                  (E_LINE)-1.
+2A5F            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Delete the program by calling
+2A60            DEFW #19E5,RECLAIM_1     'RECLAIM_1' in the 'main' ROM.
+2A62            LD   BC,(#3E2A)          Fetch length of program and variables.
+2A66            LD   HL,(23635)          Fetch (PROG), start of a BASIC program.
+2A69            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Create the required space by calling
+2A6A            DEFW #1655,MAKE_ROOM     'MAKE_ROOM'.
+2A6C            INC  HL                  Point to the first location.
+2A6D            LD   BC,(#3E2E)          Fetch length without variables.
+2A71            ADD  HL,BC               Calculate and store the start of the
+2A72            LD   (23627),HL          variables area.
+2A75            LD   A,(#3E31)           When no autostart is known this
+2A78            LD   H,A                 ('AUTOSTART2-hi') holds #FF.
+2A79            AND  #C0
+2A7B            JR   NZ,<a href="#2A88 LD_PROG1">#2A88,LD_PROG1</a>   Jump with no autostart.
+2A7D            LD   A,(#3E30)           Otherwise store the autostart line
+2A80            LD   L,A                 number into 'NEWPPC' and clear 'NSPPC'.
+2A81            LD   (23618),HL          These hold the line and the statement
+2A84            LD   (IY+10),#00         to be executed respectively.
+<a NAME="2A88 LD_PROG1"></a>2A88 LD_PROG1   LD   HL,(23635)          Fetch the start of the BASIC program.
+2A8B            LD   DE,(#3E2A)          Fetch the length + variables.
+2A8F            DEC  HL                  Reset the DATA pointer 'DATADD' to the
+2A90            LD   (23639),HL          beginning of the program.
+2A93            INC  HL                  Balance the 'DEC HL'.
+2A94            CALL <a href="#2A9A LV_ANY">#2A9A,LV_ANY</a>        Load the file.
+2A97            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+<font size=+2>THE 'LOAD OR VERIFY' SUBROUTINE</font>
+This subroutine is used to LOAD or VERIFY (signalled by FLAGS3) a block of bytes. It
+must be entered with HL and DE holding 'start' and 'length'.
+
+<a NAME="2A9A LV_ANY"></a>2A9A LV_ANY     LD   A,D
+2A9B            OR   E
+2A9C            RET  Z                   Return if 'length' is zero.
+2A9D            CALL <a href="flags.htm#163F TEST_7">#163F,TEST_7</a>
+2AA0            JR   NZ,<a href="#2AAE LV_ANY3">#2AAE,LV_ANY3</a>    Jump if 'VERIFYing'.
+2AA2            JP   <a href="disk.htm#079E LOAD_FILE">#079E,LOAD_FILE</a>     Otherwise load the file.
+
+<a NAME="2AA5 LV_ANY1"></a>2AA5 LV_ANY1    CP   (HL)                The actual VERIFY, i.e. compare the
+                                         fetched byte with that held in memory.
+2AA6            JP   NZ,<a href="errrst.htm#165C REP_12">#165C,REP_12</a>     Give an error if they don't match.
+<a NAME="2AA9 LV_ANY2"></a>2AA9 LV_ANY2    INC  HL                  Next memory address.
+2AAA            DEC  DE                  One byte less to go.
+2AAB            LD   A,D
+2AAC            OR   E
+2AAD            RET  Z                   Exit if no more bytes left.
+<a NAME="2AAE LV_ANY3"></a>2AAE LV_ANY3    CALL <a href="disk.htm#077F LBYT">#077F,LBYT</a>          Load one byte.
+2AB1            CALL <a href="flags.htm#163F TEST_7">#163F,TEST_7</a>
+2AB4            JR   NZ,<a href="#2AA5 LV_ANY1">#2AA5,LV_ANY1</a>    Jump if VERIFYing.
+2AB6            LD   (HL),A              Otherwise store the byte.
+2AB7            JR   <a href="#2AA9 LV_ANY2">#2AA9,LV_ANY2</a>       Repeat for all bytes.
+
+<font size=+2>THE 'FORMAT' COMMAND SYNTAX ROUTINE</font>
+This routine tests if the command has the appropriate syntax.
+
+<a NAME="2AB9 FORMAT"></a>2AB9 FORMAT     RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Advance CH_ADD to next character.
+2ABA            AND  #DF                 Only capitals.
+2ABC            CP   68,"D"
+2ABE            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      Give an error if not a "D".
+2AC1            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+2AC2            CALL <a href="syntax.htm#25FA EXPT_DEVN2">#25FA,EXPT_DEVN2</a>    Evaluate the drive number.
+2AC5            CP   204,"TO"            Jump if the current character isn't
+2AC7            JR   NZ,<a href="#2AD3 FORMAT_1">#2AD3,FORMAT_1</a>   'TO'.
+2AC9            CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Exchange UFIA1 and UFIA2.
+2ACC            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Update CH_ADD.
+2ACD            CALL <a href="syntax.htm#25FA EXPT_DEVN2">#25FA,EXPT_DEVN2</a>    Evaluate 2nd drive number.
+2AD0            CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Exchange UFIA's again.
+<a NAME="2AD3 FORMAT_1"></a>2AD3 FORMAT_1   CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit when
+                                         syntax checking.
+2AD6            CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      Check if the drive is defined.
+2AD9            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>
+2ADA            DEFW #0D6E,CLS_LOWER     Clear lower screen area.
+2ADC            SET  5,(IY+2)            Signal 'lower screen has to be
+                                         cleared'.
+2AE0            CALL <a href="misc2.htm#180C MESG_2">#180C,MESG_2</a>        Print 'Are you SURE ? (y/n)' message.
+2AE3            CALL <a href="disk.htm#0B60 TEST_Y">#0B60,TEST_Y</a>        Wait for a key, Zero set means 'Y'
+2AE6            JP   NZ,<a href="misc1.htm#047C END">#047C,END</a>        pressed. Finished when not sure.
+2AE9            CALL <a href="disk.htm#0C2B FORMAT_RUN">#0C2B,FORMAT_RUN</a>    Otherwise FORMAT the disk.
+2AEC            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="syntax.htm">Previous</a></td>
+<td><a href="stream.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

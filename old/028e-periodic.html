@@ -1,0 +1,205 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The periodic routines & </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="control.htm">Previous</a></td>
+<td><a href="init.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The periodic routines & </font></b>
+   The +D default variables and tables 
+
+<font size=+2>THE 'KEY-SCAN' ROUTINE</font>
+This is another entry point to the +D system; it is paged in when the Z80 reaches
+address #028E, that is, the Spectrum 'KEY-SCAN' routine. So whenever the Spectrum tries
+to scan the keyboard by calling this routine the +D is paged in first.
+
+<a NAME="028E KEYSCAN"></a>028E KEYSCAN    LD   L,#2F               Same instruction as in 'main' ROM.
+0290            CALL <a href="#0296 KEYSC_1">#0296,KEYSC_1</a>
+0293            NOP                      Page-out into the 'main' ROM
+0294            OUT  (231),A             'KEY_SCAN'.
+
+<a NAME="0296 KEYSC_1"></a>0296 KEYSC_1    CALL <a href="#02A2 KEYSC_2">#02A2,KEYSC_2</a>
+0299            LD   L,#2F               Restore registers for 'main' ROM
+029B            LD   DE,#FFFF            'KEY-SCAN'
+029E            LD   BC,#FEFE
+02A1            RET
+
+<a NAME="02A2 KEYSC_2"></a>02A2 KEYSC_2    LD   A,(#3DE5)
+02A5            CP   #47                 If a CALBAS was under execution return
+02A7            RET  Z                   immediately to 'main' ROM 'KEY-SCAN'.
+02A8            LD   A,(#3DE4)
+02AB            CP   #58
+02AD            JP   Z,<a href="misc1.htm#040C TAKE_PRTR">#040C,TAKE_PRTR</a>   Jump if this is a minimal system.
+02B0            CP   #44                 Initialize the minimal system if there
+02B2            JR   NZ,NOSYS            is no system file loaded.
+02B4            CALL <a href="rsysvar.htm#2098 JKSCAN">#2098,JKSCAN</a>        Otherwise call the appropriate system
+02B7            JP   <a href="misc1.htm#040C TAKE_PRTR">#040C,TAKE_PRTR</a>     routine and exit refreshing the 'P'
+                                         channel.
+
+<a NAME="02BA NOSYS"></a>02BA NOSYS      LD   HL,#2000
+02BD            LD   BC,8192             Clear the 8K RAM.
+<a NAME="02C0 CLR_RAM"></a>02C0 CLR_RAM    LD   (HL),0
+02C2            INC  HL
+02C3            DEC  BC
+02C4            LD   A,B
+02C5            OR   C
+02C6            JR   NZ,<a href="#02C0 CLR_RAM">#02C0,CLR_RAM</a>
+02C8            OUT  (239),A             Clear control port.
+02CA            OUT  (247),A             Clear printer port.
+02CC            LD   HL,#02F2            Copy the default system variables and
+02CF            LD   DE,#2000            settings to RAM.
+02D2            LD   BC,104
+02D5            LDIR
+02D7            LD   A,#58               Signal 'minimal' system
+02D9            LD   (#3DE4),A
+02DC            LD   HL,275              Disk buffer offset.
+02DF            LD   (#3AD2),HL
+02E2            RET
+
+02E3            PUSH BC                  Leftover routine?
+02E4            PUSH DE
+02E5            PUSH HL
+02E6            CALL <a href="#02A2 KEYSC_2">#02A2,KEYSC_2</a>
+02E9            POP  HL
+02EA            INC  HL
+02EB            LD   (23672),HL
+02EE            POP  DE
+02EF            POP  BC
+02F0            LD   A,H
+02F1            RET
+
+<font size=+2>THE 'SYSTEM VARIABLES'</font>
+These variables hold various default settings for drives etc. They can be accessed from
+BASIC with POKE @p,n. Where p is 0 for RBCC at #2000. The default variables and system
+tables, addresses #02F2-#0359, are copied to #2000 if there is no system file loaded. 
+
+<a NAME="02F2 RBCC"></a>02F2 RBCC       DEFB #00       @0        No flashing borders.
+<a NAME="02F3 TRAKS1"></a>02F3 TRAKS1     DEFB 80+128    @1        Drive 1 80 tracks double sided.
+<a NAME="02F4 TRAKS2"></a>02F4 TRAKS2     DEFB 80+128    @2        Drive 2 80 tracks double sided.
+<a NAME="02F5 STPRAT"></a>02F5 STPRAT     DEFB 12        @3        "Steprate" 0 msec.
+<a NAME="02F6 NSTAT"></a>02F6 NSTAT      DEFB 1         @4        Network off.
+<a NAME="02F7 WIDTH"></a>02F7 WIDTH      DEFB 80        @5        Printer right margin.
+<a NAME="02F8 PCODE"></a>02F8 PCODE      DEFB 0         @6        Expand tokens, etc. before printing.
+<a NAME="02F9 LSPCE"></a>02F9 LSPCE      DEFB 12        @7        Line spacing 12/72 inch.
+<a NAME="02FA LFEED"></a>02FA LFEED      DEFB 0         @8        Number of line feeds after CR 1.
+<a NAME="02FB LMARG"></a>02FB LMARG      DEFB 0         @9        Left margin at 0.
+<a NAME="02FC GRAPH"></a>02FC GRAPH      DEFB 1         @10       Print graphic images of some chars.
+<a NAME="02FD ZXPNT"></a>02FD ZXPNT      DEFB 1         @11       +D printer port not used.
+<a NAME="02FE RESERVED"></a>02FE RESERVED   DEFW #0000     @12
+<a NAME="0301 ONERR"></a>0301 ONERR      DEFW #0000     @14       Address of routine called after an
+                                         error has occurred.
+<a NAME="0303 EVERY_INT"></a>0303 EVERY_INT  DEFW #0000     @16       Address of routine called at every
+                                         interrupt.
+
+<font size=+2>THE 'PRINTER CODES' TABLE</font>
+Here the default printer control codes are stored.
+ 
+<a NAME="0304 INIT_PRT"></a>0304 INIT_PRT   DEFB 13,#80,#80,#80
+0308            DEFB #80,#80,#80,#80
+<a NAME="030C CHAR_PITCH"></a>030C CHAR_PITCH DEFB 27,"M",#80,#80
+0310            DEFB #80,#80,#80,#80
+<a NAME="0314 N/72_LSPC"></a>0314 N/72_LSPC  DEFB 27,"A",#80,#80
+0318            DEFB #80,#80,#80,#80
+<a NAME="031C GRAPH_DPI"></a>031C GRAPH_DPI  DEFB 27,"*",5,#80
+0320            DEFB #80,#80,#80,#80
+<a NAME="0324 INIT_PRT2"></a>0324 INIT_PRT2  DEFB #80,#80,#80,#80
+0328            DEFB #80,#80,#80,#80
+
+<font size=+2>THE 'GRAPHIC REPRESENTATION' TABLE</font>
+This table consists of the graphic representations of the £, # and (c) signs. The
+'GRAPH' system variable (@10) determines whether the normal code or the graphic
+representation is outputted to the printer. 
+
+<a NAME="032C £-SIGN"></a>032C £-SIGN     DEFB %00011000
+032D            DEFB %00100000
+032E            DEFB %00100000
+032F            DEFB %01111000
+0330            DEFB %00100000
+0331            DEFB %00100000
+0332            DEFB %01111100
+0333            DEFB %00000000
+
+<a NAME="0334 #-SIGN"></a>0334 #-SIGN     DEFB %00000000
+0335            DEFB %00100100
+0336            DEFB %01111110
+0337            DEFB %00100100
+0338            DEFB %00100100
+0339            DEFB %01111110
+033A            DEFB %00100100
+033B            DEFB %00000000
+
+<a NAME="033C (c)-SIGN"></a>033C (c)-SIGN     DEFB %01111110
+033D            DEFB %10000001
+033E            DEFB %10111101
+033F            DEFB %10100001
+0340            DEFB %10100001
+0341            DEFB %10111101
+0342            DEFB %10000001
+0343            DEFB %01111110
+
+<font size=+2>THE 'GREYSCALE' PRINTER CONTROL CODE</font>
+This code is outputted to the printer if a 'SCREEN$ 2' screendump is wanted.
+
+0344            DEFB 27,"*",5,64
+0348            DEFB 2,#80,#80,#80
+
+<font size=+2>THE 'GREYSCALE' TABLE</font>
+This table consists of three times three bytes of greyscale info. Each screen pixel is
+converted into 3x3 printer dots during greyscale printing. The printer dots are ordered
+as follows: The first dot row is produced from the first three bytes by taking the bit,
+which number is corresponding with the colour number, from each of the three bytes. E.g.
+for colour 2 (=red) bit 2 is used. In the same way the second and third dot rows are
+produced from the second and third three bytes respectively.
+The following eight 3x3 matrices are produced:
+
+ White  Yellow  Cyan  Green Magenta  Red    Blue  Black
+  000    000    100    000    100    010    110    111
+  000    010    010    101    111    111    111    111
+  000    000    001    000    001    010    011    111
+
+Note that some greytones aren't right. E.g. cyan is darker than green, which isn't so on
+the screen.
+ 
+                       colour
+                      76543210
+
+
+034C            DEFB %00101011
+034D            DEFB %00011111           first row
+034E            DEFB %00000001
+
+034F            DEFB %00000111
+0350            DEFB %01101111           second row
+0351            DEFB %00000111
+
+0352            DEFB %00000001
+0353            DEFB %00011111           third
+0354            DEFB %00101011
+
+<a NAME="0355 RAM2063"></a>0355 RAM2063    DEFW <a href="printer.htm#1429 P_ALL">#1429,P_ALL</a>         Address of 'output' routine for "P".
+<a NAME="0357 RAM2065"></a>0357 RAM2065    DEFB #00                 The 'ENTER' flag.
+<a NAME="0358 RAM2066"></a>0358 RAM2066    DEFW #0000               D_ERR_SP
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="control.htm">Previous</a></td>
+<td><a href="init.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,63 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>Miscalleneous routines III</title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="command.htm">Previous</a></td>
+<td><a href="sysmsg.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>Miscalleneous routines III</font></b>
+
+<font size=+2>THE 'COPY SCREEN' ROUTINE</font>
+This routine has two entry points. The first one, #301D, is used with the BASIC commands
+'SAVE/LOAD/VERIFY/MERGE SCREEN$'. The second entry point (#3020) is used for the 'COPY'
+command itself. Depending on the parameter following the 'SCREEN$', the normal or the
+grey scale screen dump is used.
+
+<a NAME="301D DUMP_SCR$"></a>301D DUMP_SCR$  POP  HL                  Drop the return address (within the
+                                         routine which called 'EXPT_PARMS').
+301E            JR   <a href="#3026 COPY_1">#3026,COPY_1</a>        Jump forward.
+
+<a NAME="3020 COPY"></a>3020 COPY       RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Advance CH_ADD.
+3021            CP   170,"SCREEN$"       Give 'Nonsense in G+DOS' error if
+3023            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      command isn't followed by 'SCREEN$'.
+<a NAME="3026 COPY_1"></a>3026 COPY_1     LD   A,49,"1"            Default is '1' for 'normal' dump.
+3028            LD   (#3E00),A
+302B            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Advance CH_ADD
+302C            CP   13
+302E            JR   Z,<a href="#3038 COPY_2">#3038,COPY_2</a>      Jump with ENTER.
+3030            CP   58,":"
+3032            JR   Z,<a href="#3038 COPY_2">#3038,COPY_2</a>      Also jump with ':'.
+3034            LD   (#3E00),A           Otherwise store character.
+3037            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Update CH_ADD again.
+<a NAME="3038 COPY_2"></a>3038 COPY_2     CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax checking.
+303B            LD   A,(#3E00)
+303E            CP   49,"1"              Normal screendump if '1' followed the
+3040            CALL Z,<a href="printer.htm#12D2 COPS">#12D2,COPS</a>        'SCREEN$'.
+3043            CP   50,"2"              Grey scale in case of a '2'.
+3045            CALL Z,<a href="printer.htm#133E COPS2">#133E,COPS2</a>       Ignore other values.
+3048            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="command.htm">Previous</a></td>
+<td><a href="sysmsg.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,120 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The flag set and test routines </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="printer.htm">Previous</a></td>
+<td><a href="errrst.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The flag set and test routines </font></b>
+
+<font size=+2>THE 'SIGNAL ..' SUBROUTINES</font>
+These subroutines are used to signal various states of the +D. The corresponding test
+routines are located from #161C and onwards. Clearing is done by loading 0 into FLASG3,
+resetting all flags at once. 
+
+<a NAME="15F4 SIGN_0"></a>15F4 SIGN_0     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+15F5            SET  0,(HL)
+15F7            POP  HL
+15F8            RET
+
+<a NAME="15F9 SIGN_1"></a>15F9 SIGN_1     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+15FA            SET  1,(HL)
+15FC            POP  HL
+15FD            RET
+
+<a NAME="15FE SIGN_2"></a>15FE SIGN_2     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+15FF            SET  2,(HL)
+1601            POP  HL
+1602            RET
+
+<a NAME="1603 SIGN_3"></a>1603 SIGN_3     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+1604            SET  3,(HL)
+1606            POP  HL
+1607            RET
+
+<a NAME="1608 SIGN_4"></a>1608 SIGN_4     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+1609            SET  4,(HL)
+160B            POP  HL
+160C            RET
+
+<a NAME="160D SIGN_5"></a>160D SIGN_5     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+160E            SET  5,(HL)
+1610            POP  HL
+1611            RET
+
+<a NAME="1612 SIGN_6"></a>1612 SIGN_6     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+1613            SET  6,(HL)
+1615            POP  HL
+1616            RET
+
+<a NAME="1617 SIGN_7"></a>1617 SIGN_7     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+1618            SET  7,(HL)
+161A            POP  HL
+161B            RET
+
+<font size=+2>THE 'TEST ..' SUBROUTINES</font>
+These subroutines are used to test the various states of the +D system.
+
+<a NAME="161C TEST_0"></a>161C TEST_0     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+161D            BIT  0,(HL)
+161F            POP  HL
+1620            RET
+
+<a NAME="1621 TEST_1"></a>1621 TEST_1     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+1622            BIT  1,(HL)
+1624            POP  HL
+1625            RET
+
+<a NAME="1626 TEST_2"></a>1626 TEST_2     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+1627            BIT  2,(HL)
+1629            POP  HL
+162A            RET
+
+<a NAME="162B TEST_3"></a>162B TEST_3     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+162C            BIT  3,(HL)
+162E            POP  HL
+162F            RET
+
+<a NAME="1630 TEST_4"></a>1630 TEST_4     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+1631            BIT  4,(HL)
+1633            POP  HL
+1634            RET
+
+<a NAME="1635 TEST_5"></a>1635 TEST_5     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+1636            BIT  5,(HL)
+1638            POP  HL
+1639            RET
+
+<a NAME="163A TEST_6"></a>163A TEST_6     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+163B            BIT  6,(HL)
+163D            POP  HL
+163E            RET
+
+<a NAME="163F TEST_7"></a>163F TEST_7     RST  #18,<a href="restart.htm#0018 F_ADDR">F_ADDR</a>
+1640            BIT  7,(HL)
+1642            POP  HL
+1643            RET
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="printer.htm">Previous</a></td>
+<td><a href="errrst.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

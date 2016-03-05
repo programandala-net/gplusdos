@@ -1,0 +1,265 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The control routine </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="snapshot.htm">Previous</a></td>
+<td><a href="periodic.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The control routine </font></b>
+
+This routine is called from 'START' at #0008, when the +D system is paged in. 
+It has three main tasks:
+- If a disc channel has been requested, it jumps to the required 'input' or
+  'output' routine.
+- If a hook/command code is used, it jumps to the required routine.
+- If an error occurred in the 'main' ROM, it checks whether a +D command was
+  used. If so the corresponding routine is called, otherwise a return is made to
+  the 'main' ROM, except when the +D variable ONERR holds a non zero address.
+  In that case a CALBAS to that address is made.
+
+<a NAME="013B START_3"></a>013B START_3    LD   (#3DD6),HL          +D's CH_ADD (D_CH_ADD).
+013E            LD   (#3E4F),A
+0141            POP  HL                  Get RETurn address (usually points to
+0142            PUSH HL                  the error code).
+0143            PUSH DE
+
+Now see if a +D channel has been requested.
+
+0144            AND  A
+0145            LD   DE,#15FE            If a channel has been requested, this
+                                         is the RETurn address stored by the
+                                         CALL #162C in the 'CALL-SUB' subroutine
+                                         in the Spectrum ROM.
+0148            SBC  HL,DE
+014A            POP  DE
+014B            JR   NZ,<a href="#0168 START_4">#0168,START_4</a>    Jump if no channels have been requested
+014D            LD   HL,<a href="restart.htm#0050 UNPAGE_1">#0050,UNPAGE_1</a>   Make UNPAGE_1 RETurn address
+0150            PUSH HL
+
+Now see if the channel requested is the "P" channel. The +D "P" channel differs only
+from the Spectrum's in the 'input' and 'output' addresses. For the +D they both are
+#0008. There is no information in the channel on what the +D system's in/output addresses
+are (as with "D" channels). So it has to be handled separately.
+
+0151            PUSH BC
+0152            LD   HL,(23631)          Fetch CHANS.
+0155            LD   BC,16               Point to "P" channel.
+0158            ADD  HL,BC
+0159            SBC  HL,DE               DE holds address of requested channel.
+015B            POP  BC
+015C            JP   Z,<a href="printer.htm#1415 PCHAN_OUT">#1415,PCHAN_OUT</a>   Jump if +D "P" channel was used.
+015F            LD   HL,4                DE holds address of routine pointer-4.
+                                         See #15EF in 'main' ROM.
+0162            ADD  HL,DE               HL now holds address of routine pointer
+0163            LD   E,(HL)
+0164            INC  HL                  Fetch routine address.
+0165            LD   D,(HL)
+0166            EX   DE,HL               HL now points to the routine.
+0167            JP   (HL)                Jump to the appropriate 'input' or
+                                         'output' routine.
+
+At this point, the +D has been paged-in by an error in the 'main' ROM or by a
+hook/command code. When an error occurred during a CALBAS and D_ERR_SP isn't zero, the
+error has to be handled by the 'main' ROM. If D_ERR_SP is zero, the error is reported to
+the routine which executed a CALBAS.
+
+<a NAME="0168 START_4"></a>0168 START_4    LD   A,(#3DE5)           Check if the +D CALLed a Spectrum
+016B            CP   #47                 ROM routine.
+016D            JR   NZ,<a href="#018C START_5">#018C,START_5</a>    Jump if it didn't.
+016F            XOR  A
+0170            LD   (#3ACF),A           Clear CALBAS executing.
+0173            POP  HL                  Fetch RETurn address.
+0174            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          This CALL's a LD A,(HL) in the Spectrum
+0175            DEFW #007B               ROM, so the error code is fetched.
+0177            LD   (23610),A           Store the error code in ERR_NR.
+017A            LD   HL,(#2066)          Fetch D_ERR_SP.
+017D            LD   A,H
+017E            OR   L                   Jump if D_ERR_SP was zero, that is when
+017F            JP   Z,<a href="misc1.htm#04F9 SPEC_ERR1">#04F9,SPEC_ERR1</a>   the 'main' ROM has to handle the error.
+0182            SET  7,(IY+0)            Signal 'Spectrum error'.
+0186            LD   A,(23610)           Copy error code in A register.
+0189            LD   SP,HL               Clear stack.
+018A            SCF                      Signal 'error and exit', someone else
+018B            RET                      has to handle the error.
+
+Now it is most likely that the +D has to handle the problem which the 'main' ROM
+couldn't.
+
+<a NAME="018C START_5"></a>018C START_5    POP  HL                  Fetch address of error or hook/command
+                                         code (the byte after RST #08).
+018D            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Fetch the byte.
+018E            DEFW #007B
+0190            LD   (23610),A           Store it in ERR_NR.
+0193            CP   255
+0195            JR   NZ,<a href="#01B1 START_7">#01B1,START_7</a>    Jump if the error isn't 'OK'.
+0197            CALL <a href="misc1.htm#0527 SYSTEM_Z">#0527,SYSTEM_Z</a>      System loaded?
+019A            CALL Z,<a href="misc1.htm#045A SYSTEM_OK">#045A,SYSTEM_OK</a>   Yes, then check if it's OK.
+019D            JR   Z,<a href="#01AE START_6">#01AE,START_6</a>     Give 'OK G+DOS' message if so.
+019F            BIT  7,(IY+12)           Give the message also if PPC-hi
+01A3            JR   Z,<a href="#01AE START_6">#01AE,START_6</a>     indicates line is not in editing area.
+01A5            LD   HL,(23641)          Fetch the command from the editing area
+01A8            LD   A,(HL)
+01A9            CP   247,"RUN"           Load the system file if the command
+01AB            JP   Z,<a href="init.htm#037B RUN">#037B,RUN</a>         is 'RUN'.
+<a NAME="01AE START_6"></a>01AE START_6    JP   <a href="errrst.htm#166C REP_20">#166C,REP_20</a>
+
+The error code in the A register determines the task to be executed.
+
+<a NAME="01B1 START_7"></a>01B1 START_7    SUB  27                  Adjust range, hookcodes start at 0 now.
+01B3            JR   C,<a href="#01CB START_8">#01CB,START_8</a>     Jump if it isn't a hook or command code
+01B5            CALL <a href="misc1.htm#0527 SYSTEM_Z">#0527,SYSTEM_Z</a>      Jump to the system routine if the
+01B8            JP   Z,<a href="rsysvar.htm#209E JHOOK">#209E,JHOOK</a>       system is loaded.
+01BB            CP   44                  Give the error 'No G+DOS loaded' except
+01BD            JP   NZ,<a href="errrst.htm#167E REP_29">#167E,REP_29</a>     with command code 71.
+01C0            LD   (IY+0),#FF          Clear the error.
+01C4            SET  2,(IY+1)
+01C8            INC  HL                  Advance return address past the code.
+01C9            PUSH HL
+01CA            RET
+
+<a NAME="01CB START_8"></a>01CB START_8    CP   240                 Jump if the error is
+01CD            JR   Z,<a href="#01DC TEST_INPUT">#01DC,TEST_INPUT</a>  'Nonsense in BASIC'.
+01CF            CP   243
+01D1            JR   Z,<a href="#01DC TEST_INPUT">#01DC,TEST_INPUT</a>  Also if it is 'Invalid filename'.
+01D3            CP   252
+01D5            JR   Z,<a href="#01DC TEST_INPUT">#01DC,TEST_INPUT</a>  Or 'Invalid stream'.
+01D7            CP   230                 Jump to the 'main' ROM error handler if
+01D9            JP   NZ,<a href="misc1.htm#04F9 SPEC_ERR1">#04F9,SPEC_ERR1</a>  it isn't 'Variable not found'.
+<a NAME="01DC TEST_INPUT"></a>01DC TEST_INPUT BIT  5,(IY+55)           Use 'main' ROM error handler also if in
+01E0            JP   NZ,<a href="misc1.htm#04F9 SPEC_ERR1">#04F9,SPEC_ERR1</a>  INPUT mode.
+01E3            RST  #30,<a href="restart.htm#0030 SYNTAX_Z">SYNTAX_Z</a>
+01E4            JR   NZ,<a href="#01EA RUNTIME">#01EA,RUNTIME</a>    Jump during RUNtime.
+01E6            LD   (IY+12),#FF         Signal 'syntax time' (PPC-hi).
+
+Now a loop is entered to find the line that has produced the error. The routine used
+here is copied from the IF1 and is way ahead of the DISCiPLE's backstepping routine.
+
+<a NAME="01EA RUNTIME"></a>01EA RUNTIME    LD   B,(IY+13)           Statement counter.
+01ED            LD   C,0                 Counter of ' " ' characters.
+01EF            BIT  7,(IY+12)           Jump forward if the line is in the
+01F3            JR   Z,<a href="#01FF PROG_LINE">#01FF,PROG_LINE</a>   program area.
+01F5            PUSH BC                  Save counters.
+01F6            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call main ROM 'E-LINE-NO' (it fetches
+01F7            DEFW #19FB,E_LINE_NO     the number of the line in the editing
+                                         area, but is actually used to update
+                                         CH-ADD to the 1st char.in the line).
+01F9            POP  BC                  Restore counters.
+01FA            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Update HL to the first character in
+01FB            DEFW #0018,GET_CHAR      the line.
+01FD            JR   <a href="#023F S_STAT">#023F,S_STAT</a>
+
+<a NAME="01FF PROG_LINE"></a>01FF PROG_LINE  LD   HL,(23635)          (PROG), start of the program area.
+<a NAME="0202 SC_L_LOOP"></a>0202 SC_L_LOOP  LD   A,(IY+12)           Give error if the current line number
+0205            CP   (HL)                is greater than that of the line to be
+0206            JP   C,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>       searched for.
+0209            INC  HL                  Point to low byte of line number.
+020A            JR   NZ,<a href="#0213 LINE_LEN">#0213,LINE_LEN</a>   Jump if not at expected line.
+020C            LD   A,(23621)           Compare also the low byte of the line
+020F            CP   (HL)                numbers (PPC-lo).
+0210            JP   C,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>       Give error if the line doesn't exist.
+<a NAME="0213 LINE_LEN"></a>0213 LINE_LEN   INC  HL                  Fetch line length.
+0214            LD   E,(HL)
+0215            INC  HL
+0216            LD   D,(HL)
+0217            INC  HL
+0218            JR   Z,<a href="#023F S_STAT">#023F,S_STAT</a>      Jump forward if the line is found.
+021A            ADD  HL,DE
+021B            JR   <a href="#0202 SC_L_LOOP">#0202,SC_L_LOOP</a>     Next line.
+
+<a NAME="021D SKIP_NUM"></a>021D SKIP_NUM   LD   DE,6                Length of a floating point number
+0220            ADD  HL,DE               and marker.
+
+This loop advances HL until it points to the start of the statement that has produced
+the error.
+
+<a NAME="0221 EACH_ST"></a>0221 EACH_ST    LD   A,(HL)              Get a character from the line.
+0222            CP   #0E
+0224            JR   Z,<a href="#021D SKIP_NUM">#021D,SKIP_NUM</a>    Skip over floating point numbers.
+0226            INC  HL
+0227            CP   34,"""
+0229            JR   NZ,<a href="#022C CHKEND">#022C,CHKEND</a>
+022B            DEC  C                   Decrement counter for each ' " '.
+<a NAME="022C CHKEND"></a>022C CHKEND     CP   58,":"
+022E            JR   Z,<a href="#0234 CHKEVEN">#0234,CHKEVEN</a>     A colon or the 'THEN' keyword mark
+0230            CP   203,"THEN"          the beginning of a new statement, but
+0232            JR   NZ,<a href="#0238 CHKEND_L">#0238,CHKEND_L</a>   only if they occur out of a string.
+<a NAME="0234 CHKEVEN"></a>0234 CHKEVEN    BIT  0,C                 I.e. the number of quotes found must
+0236            JR   Z,<a href="#023F S_STAT">#023F,S_STAT</a>      be even.
+<a NAME="0238 CHKEND_L"></a>0238 CHKEND_L   CP   13
+023A            JR   NZ,<a href="#0221 EACH_ST">#0221,EACH_ST</a>    Repeat until 'end of line'.
+023C            JP   <a href="errrst.htm#1644 REP_0">#1644,REP_0</a>         An uneven number of quotes is
+                                         unacceptable.
+<a NAME="023F S_STAT"></a>023F S_STAT     DJNZ <a href="#0221 EACH_ST">#0221,EACH_ST</a>       Loop for every statement in the line.
+0241            DEC  HL                  Update CH_ADD to the address of
+0242            LD   (23645),HL          the statement found.
+0245            RST  #30,<a href="restart.htm#0030 SYNTAX_Z">SYNTAX_Z</a>
+0246            JR   NZ,<a href="#027A CL_WORK">#027A,CL_WORK</a>    Jump forward during runtime.
+0248            BIT  7,(IY+12)           Give an error if the line is not in the
+024C            JP   Z,<a href="misc1.htm#04F0 SPEC_ERR">#04F0,SPEC_ERR</a>    editing area.
+
+The final loop is made during syntax checking, for removing all 6-byte floating point
+numbers inserted in the line by the 'main' ROM interpreter.
+
+024F            DEC  HL                  Balance the "INC HL" below.
+0250            LD   C,0                 ???? C isn't used anymore.
+<a NAME="0252 RCLM_NUM"></a>0252 RCLM_NUM   INC  HL                  Point to next character.
+0253            LD   A,(HL)
+0254            CP   #0E                 Is it a 'number' marker ?
+0256            JR   NZ,<a href="#0275 NEXT_NUM">#0275,NEXT_NUM</a>   Jump if not.
+0258            PUSH BC                  ???? again.
+0259            LD   BC,6
+025C            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Reclaim the 6 bytes forming a number
+025D            DEFW #19E8,RECLAIM_2     and the 'number marker'.
+025F            PUSH HL
+0260            LD   DE,(#3DD6)          Fetch D_CH_ADD.
+0264            AND  A                   Jump if the number bytes reclaimed were
+0265            SBC  HL,DE               after the character pointed to by
+0267            JR   NC,<a href="#0273 NXT_1">#0273,NXT_1</a>      D_CH_ADD.
+0269            EX   DE,HL               Otherwise D_CH_ADD has to be updated.
+026A            LD   BC,6
+026D            AND  A                   The character pointed by D_CH_ADD has
+026E            SBC  HL,BC               been moved '6' bytes down.
+0270            LD   (#3DD6),HL          Update D_CH_ADD.
+<a NAME="0273 NXT_1"></a>0273 NXT_1      POP  HL
+0274            POP  BC
+<a NAME="0275 NEXT_NUM"></a>0275 NEXT_NUM   LD   A,(HL)
+0276            CP   13
+0278            JR   NZ,<a href="#0252 RCLM_NUM">#0252,RCLM_NUM</a>   Again repeat until 'end of line'.
+
+Now the working area is cleared. The two commands 'RUN' and 'POKE' are handled by the +D
+ROM, the G+DOS system should handle all other commands.
+
+<a NAME="027A CL_WORK"></a>027A CL_WORK    RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Clear Spectrum work areas by calling
+027B            DEFW #16BF,SET_WORK      'SET_WORK' in 'main' ROM.
+027D            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>
+027E            CP   244,"POKE"
+0280            JP   Z,<a href="misc1.htm#04C7 POKE@">#04C7,POKE@</a>       Jump with 'POKE' command.
+0283            CALL <a href="misc1.htm#0527 SYSTEM_Z">#0527,SYSTEM_Z</a>      The system routine is called when 
+0286            CALL Z,<a href="rsysvar.htm#20A4 JCTRL">#20A4,JCTRL</a>       present.
+0289            JP   <a href="misc1.htm#04F0 SPEC_ERR">#04F0,SPEC_ERR</a>      Otherwise give an error.
+
+<a NAME="028C 2843"></a>028C 2843            JR   Z,L82D1
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="snapshot.htm">Previous</a></td>
+<td><a href="periodic.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

@@ -1,0 +1,422 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The BASIC command execution routines I</title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="rhook.htm">Previous</a></td>
+<td><a href="syntax.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The BASIC command execution routines I</font></b>
+
+<font size=+2>THE 'COPY FILE(S)' ROUTINE</font>
+This routine handles the copying of files. It is executed as soon as the 'EXPT_PARMS'
+routine at #2665 finds a 'TO' keyword. The return address to the routine which called
+'EXPT_PARMS' is dropped at #230E.
+
+<a NAME="2308 TO"></a>2308 TO         CALL <a href="sysmsg.htm#3108 TEST_SAVE">#3108,TEST_SAVE</a>
+230B            JP   Z,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>       Give error if not SAVEing.
+230E            POP  HL                  Drop return address to SAVE routine.
+230F            CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Swap the UFIAS.
+2312            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>
+2313            AND  #DF                 Drop lower case bit.
+2315            CP   68,"D"
+2317            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      Jump if 2nd device isn't "D".
+231A            LD   (#3E04),A           Store it in DEV_TYPE1.
+231D            CALL <a href="syntax.htm#25E2 EXPT_DEVN">#25E2,EXPT_DEVN</a>     Evaluate drive num., store it in UFIA1.
+2320            CALL <a href="syntax.htm#25A2 SEPARATOR">#25A2,SEPARATOR</a>     Test for a separator, jump if one
+2323            JR   Z,<a href="#2328 TO_1">#2328,TO_1</a>        found, i.e. a 2nd name is given.
+2325            CALL <a href="flags.htm#1608 SIGN_4">#1608,SIGN_4</a>        Used here to signal 'use source
+                                         filename for destination file'.
+<a NAME="2328 TO_1"></a>2328 TO_1       CALL Z,<a href="syntax.htm#2640 EXPT_FNAME">#2640,EXPT_FNAME</a>  Evaluate filename if there was a
+                                         separator.
+232B            CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Swap the UFIAS again.
+232E            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax checking.
+2331            LD   HL,#3E1E            Copy the second filename and directory
+2334            LD   DE,#3E32            description.
+2337            LD   BC,11
+233A            LDIR
+233C            LD   HL,#0001            Track 0 sector 1.
+233F            LD   (#3DED),HL
+2342            LD   HL,#0000            Disk buffer offset #0000.
+2345            LD   (#3DEB),HL
+<a NAME="2348 TO_2"></a>2348 TO_2       CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      Is the drive defined?
+234B            CALL <a href="#23EC TO_SEARCH">#23EC,TO_SEARCH</a>     Search for a file to be copied.
+234E            JP   NZ,<a href="#23BF TO_EXIT">#23BF,TO_EXIT</a>    Jump if there are no files left.
+2351            CALL <a href="disk.htm#0C04 LOAD_1ST">#0C04,LOAD_1ST</a>      Copy file description (directory
+                                         description and filename) to UFIA2 and
+                                         load the first sector of the file into
+                                         the disk buffer.
+2354            LD   A,(#3E1E)           Get directory description.
+2357            CP   5
+2359            JR   Z,<a href="#2348 TO_2">#2348,TO_2</a>        Jump with 'Snapshot 48K'.
+235B            CP   6
+235D            JR   Z,<a href="#2348 TO_2">#2348,TO_2</a>        Jump with 'Microdrive file'.
+235F            CP   9
+2361            JR   Z,<a href="#2348 TO_2">#2348,TO_2</a>        Jump with 'Snapshot 128K'.
+2363            CP   10
+2365            JR   Z,<a href="#2348 TO_2">#2348,TO_2</a>        Jump with 'Opentype file'.
+2367            CP   11
+2369            JR   Z,<a href="#2348 TO_2">#2348,TO_2</a>        Jump with 'Execute file'.
+                                         These five file types can't be copied
+                                         with the 'SAVE .. TO ..' command.
+
+Now the file is going to be copied. 
+<b>NOTE:</b> The file to be copied will destroy everything above 'start of BASIC'+256 and no
+checks are made if the file fits in memory and if the stack isn't overwritten.
+
+236B            CALL <a href="basic2.htm#28CD LOAD_HEAD2">#28CD,LOAD_HEAD2</a>    Copy the file header (the 9 bytes
+                                         consisting of filetype, length, etc.)
+                                         to UFIA2.
+236E            LD   HL,(23635)          Fetch start of BASIC program (PROG).
+2371            INC  H                   Add 256 to it.
+2372            LD   DE,(#3E2A)          Fetch length of file (LENGTH2_1).
+2376            CALL <a href="disk.htm#079E LOAD_FILE">#079E,LOAD_FILE</a>     Load DE bytes, starting at address HL.
+2379            CALL <a href="#23CB TO_MSG">#23CB,TO_MSG</a>        Print the message "CHANGE disc ...." if
+                                         source drive is destination drive.
+237C            CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Swap the UFIA's again. The header of
+                                         the loaded file is now held in UFIA1.
+237F            CALL <a href="flags.htm#1630 TEST_4">#1630,TEST_4</a>        Used here to test whether a 2nd
+2382            JR   NZ,<a href="#239A TO_5">#239A,TO_5</a>       filename was given. Jump if not.
+2384            LD   HL,#3E33            Here the 2nd filename was stored.
+2387            LD   DE,#3E06            Start of filename of loaded file.
+238A            LD   B,10                Filename length.
+
+Now the characters from the filename of the loaded file are replaced by the characters
+of the 2nd filename. Except when the wildcard characters '*' and '?' were used in the 2nd
+name. With '*' all next characters are left unchanged, with '?' the current character
+isn't changed.
+
+<a NAME="238C TO_3"></a>238C TO_3       LD   A,(HL)
+238D            CP   42,"*"              With a '*' don't replace the remaining
+238F            JR   Z,<a href="#239A TO_5">#239A,TO_5</a>        characters.
+2391            CP   63,"?"              With a '?' in name 2 don't replace this
+2393            JR   Z,<a href="#2396 TO_4">#2396,TO_4</a>        character.
+2395            LD   (DE),A              Store this character.
+<a NAME="2396 TO_4"></a>2396 TO_4       INC  HL
+2397            INC  DE
+2398            DJNZ <a href="#238C TO_3">#238C,TO_3</a>          Repeat for all 'normal' characters.
+<a NAME="239A TO_5"></a>239A TO_5       CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>
+239D            CALL <a href="disk.htm#0AD9 OFSM_2">#0AD9,OFSM_2</a>        Open the file for SAVEing.
+23A0            JR   NZ,<a href="#23B3 TO_6">#23B3,TO_6</a>       Jump if file existed already and the
+                                         user didn't want to overwrite it.
+23A2            CALL <a href="basic2.htm#2879 SAVE_HEAD1">#2879,SAVE_HEAD1</a>    SAVE the 9 header bytes to the file.
+23A5            LD   HL,(23635)          Fetch start of BASIC (PROG), and add
+23A8            INC  H                   256 to it. (here the file was loaded)
+23A9            LD   DE,(#3E11)          Length of file.
+23AD            CALL <a href="disk.htm#0850 HSVBK_2">#0850,HSVBK_2</a>       Save the file.
+23B0            CALL <a href="disk.htm#0B89 CFSM">#0B89,CFSM</a>          Close the file.
+<a NAME="23B3 TO_6"></a>23B3 TO_6       CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Swap the UFIA's again.
+23B6            CALL <a href="flags.htm#15F4 SIGN_0">#15F4,SIGN_0</a>        Signal 'at least one file has been
+                                         copied'
+23B9            CALL <a href="#23CB TO_MSG">#23CB,TO_MSG</a>        Print message "Input ..." if necessary
+23BC            JP   <a href="#2348 TO_2">#2348,TO_2</a>          Repeat until no more files have to be
+                                         copied.
+
+<a NAME="23BF TO_EXIT"></a>23BF TO_EXIT    CALL <a href="flags.htm#161C TEST_0">#161C,TEST_0</a>        Give error if there isn't one file
+23C2            JP   Z,<a href="errrst.htm#1678 REP_26">#1678,REP_26</a>      copied.
+23C5            LD   HL,#11B7,NEW        Otherwise jump to the appropriate 'NEW'
+23C8            JP   <a href="patches.htm#3137 TO_NEW">#3137,TO_NEW</a>        routine (128K or 48K).
+
+<font size=+2>THE 'PRINT "CHANGE DISC"' SUBROUTINE</font>
+This subroutine tests whether source and destination drives are equal. If they are the
+messages "Insert SOURCE disc - press SPACE" and "Insert TARGET disc - press SPACE" are
+printed in turn.
+
+<a NAME="23CB TO_MSG"></a>23CB TO_MSG     LD   A,(#3E01)           Fetch source drive.
+23CE            LD   B,A
+23CF            LD   A,(#3E1A)           Fetch destination drive.
+23D2            CP   B
+23D3            RET  NZ                  Return if they aren't equal.
+23D4            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Otherwise clear lower screen area.
+23D5            DEFW #0D6E,CLS_LOWER
+23D7            SET  5,(IY+2)            Signal 'lower screen has to be cleared'
+23DB            CALL <a href="sysmsg.htm#30B5 TO_MSG1">#30B5,TO_MSG1</a>       Print "Input ... disc" message.
+23DE            CALL <a href="disk.htm#0B75 BEEP">#0B75,BEEP</a>          Give a beep.
+<a NAME="23E1 TO_WSPC"></a>23E1 TO_WSPC    LD   A,#7F               Keyboard row B-SPACE address.
+23E3            IN   A,(254)
+23E5            RRA
+23E6            JR   C,<a href="#23E1 TO_WSPC">#23E1,TO_WSPC</a>     Jump unless the SPACE key is pressed.
+23E8            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Clear lower screen.
+23E9            DEFW #0D6E,CLS_LOWER
+23EB            RET                      Finished.
+
+<font size=+2>THE 'SEARCH FILES' SUBROUTINE</font>
+This subroutine searches for files which have to be copied. It returns with the Zero
+flag set if the current file is to be copied, if the complete directory is searched the
+routine returns with Zero reset.
+
+<a NAME="23EC TO_SEARCH"></a>23EC TO_SEARCH  LD   DE,(#3DED)          Track & sector to DE.
+23F0            LD   A,D
+23F1            CP   4                   Jump if not reached track 4, i.e.
+23F3            JR   NZ,<a href="#23F8 TO_SEARCH1">#23F8,TO_SEARCH1</a> directory hasn't been read completely.
+23F5            CP   0                   Reset Zero flag.
+23F7            RET
+
+The directory isn't finished yet, so read sector and test the file(s).
+
+<a NAME="23F8 TO_SEARCH1"></a>23F8 TO_SEARCH1 CALL <a href="disk.htm#05CC RSAD">#05CC,RSAD</a>          Read sector E from track D.
+<a NAME="23FB TO_SEARCH2"></a>23FB TO_SEARCH2 CALL <a href="#2433 TO_COPY">#2433,TO_COPY</a>       Check if this file is to be copied.
+23FE            PUSH AF                  Store result (Zero flag).
+23FF            LD   HL,(#3DEB)          Disk buffer offset to HL.
+2402            LD   A,H
+2403            CP   1
+2405            JR   Z,<a href="#2418 TO_NXTSEC">#2418,TO_NXTSEC</a>   Jump if second entry.
+2407            LD   A,(#3DDA)           Fetch current control port status.
+240A            AND  #04
+240C            JR   NZ,<a href="#2418 TO_NXTSEC">#2418,TO_NXTSEC</a>  Jump with single density.
+240E            LD   HL,256              Otherwise offset is for second entry.
+2411            LD   (#3DEB),HL
+2414            POP  AF                  Restore Zero flag.
+2415            RET  Z                   Return if this file is to be copied.
+2416            JR   <a href="#23FB TO_SEARCH2">#23FB,TO_SEARCH2</a>    Otherwise next file.
+
+The file entries of the current sector have been tested so point to the next sector.
+
+<a NAME="2418 TO_NXTSEC"></a>2418 TO_NXTSEC  LD   HL,0                Offset is for first entry.
+241B            LD   DE,(#3DED)          Fetch track and sector.
+241F            INC  E                   Next sector.
+2420            LD   A,E
+2421            CP   11
+2423            JR   NZ,<a href="#2428 TO_NXT1">#2428,TO_NXT1</a>    Jump if not last sector on this track.
+2425            LD   E,1                 Start with sector 1.
+2427            INC  D                   Next track.
+<a NAME="2428 TO_NXT1"></a>2428 TO_NXT1    LD   (#3DED),DE          Store track & sector.
+242C            LD   (#3DEB),HL          Store disk buffer offset.
+242F            POP  AF                  Restore Zero flag.
+2430            RET  Z                   Return if previous file is to be
+2431            JR   #23F8,TO_SEARCH     copied. Otherwise jump.
+
+<font size=+2>THE 'COPY THIS FILE ?' SUBROUTINE</font>
+This subroutine checks if the 'current' filename is to be  copied. The routine returns
+with the Zero flag set to signal yes and RPT pointing to the directory description of the
+file to be copied.
+
+<a NAME="2433 TO_COPY"></a>2433 TO_COPY    LD   HL,#3BD6            Point to start of sector.
+2436            LD   DE,(#3DEB)          Offset to DE.
+243A            LD   (IX+14),D           Update RPT (RAM PoinTer (?)).
+243D            ADD  HL,DE               Update HL.
+243E            LD   A,(HL)              Fetch directory description.
+243F            AND  A
+2440            JR   NZ,<a href="#2444 TO_COPY1">#2444,TO_COPY1</a>   Jump if the file isn't ERASEd.
+2442            INC  A                   Reset Zero flag to signal 'do not copy
+2443            RET                      this file' and exit.
+
+<a NAME="2444 TO_COPY1"></a>2444 TO_COPY1   INC  HL                  Step past directory descriptor.
+2445            LD   DE,#3E06            DE now points to FILE_NAME1.
+2448            LD   B,10                A filename is 10 characters long.
+<a NAME="244A TO_COPY2"></a>244A TO_COPY2   LD   A,(DE)              Fetch character.
+244B            CP   42,"*"              If it was a '*' all other characters
+244D            RET  Z                   don't matter. Signal 'copy this one'.
+244E            CP   63,"?"              If it was a '?' this character doesn't
+2450            JR   Z,<a href="#2456 TO_COPY3">#2456,TO_COPY3</a>    matter.
+2452            XOR  (HL)
+2453            AND  #DF                 Upper and lower case? don't bother.
+2455            RET  NZ                  Exit if characters are unequal.
+<a NAME="2456 TO_COPY3"></a>2456 TO_COPY3   INC  DE                  Check next character.
+2457            INC  HL
+2458            DJNZ <a href="#244A TO_COPY2">#244A,TO_COPY2</a>
+245A            RET                      Finished.
+
+<font size=+2>THE 'CAT' COMMAND SYNTAX ROUTINE</font>
+This routine checks that the command is in the form CAT <#s;>d<<;>n$><!>.
+
+<a NAME="245B CAT"></a>245B CAT        LD   IX,#3AC3            Point to the +D workspace.
+245F            LD   HL,#3E06            "*" is the default name of the files
+2462            LD   (HL),42,"*"         being CATted.
+2464            LD   HL,#3E03            Just like #2 is the default output
+2467            LD   (HL),2              stream.
+2469            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Get next character.
+246A            CP   13                  Give an error if an 'end of line' (CR)
+246C            JP   Z,<a href="errrst.htm#1648 REP_2">#1648,REP_2</a>       is found right after "CAT".
+246F            CP   58,":"
+2471            JP   Z,<a href="errrst.htm#1648 REP_2">#1648,REP_2</a>       Same error for ":".
+2474            CP   35,"#"              Jump if no stream specified, use
+2476            JR   NZ,<a href="#2481 CAT_DRV">#2481,CAT_DRV</a>    default stream #2.
+2478            CALL <a href="stream.htm#2AEF EXPT_#NR">#2AEF,EXPT_#NR</a>      Evaluate stream number.
+247B            CALL <a href="syntax.htm#25A2 SEPARATOR">#25A2,SEPARATOR</a>     Check if there is a separator.
+247E            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      Give an error if no separator found.
+<a NAME="2481 CAT_DRV"></a>2481 CAT_DRV    CALL <a href="syntax.htm#25FA EXPT_DEVN2">#25FA,EXPT_DEVN2</a>    Evaluate drive number.
+2484            CALL <a href="syntax.htm#25A2 SEPARATOR">#25A2,SEPARATOR</a>     Evaluate filename if there is a
+2487            CALL Z,<a href="syntax.htm#2640 EXPT_FNAME">#2640,EXPT_FNAME</a>  separator.
+248A            CP   33,"!"              If there is no "!" then an extended
+248C            JR   NZ,<a href="#2499 EXT_CAT">#2499,EXT_CAT</a>    catalogue is given.
+248E            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+248F            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit when
+                                         syntax checking.
+2492            CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      See if drive is defined.
+2495            LD   A,%00000010         Signal 'small' CAT.
+2497            JR   <a href="#24A4 DO_CAT1">#24A4,DO_CAT1</a>
+
+<a NAME="2499 EXT_CAT"></a>2499 EXT_CAT    CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax time.
+249C            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Clear the screen by calling 'main' ROM
+249D            DEFW #0DAF,CL_ALL        routine.
+<a NAME="249F DO_CAT"></a>249F DO_CAT     CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      See if drive is defined.
+24A2            LD   A,%00000100         Signal extended CAT.
+<a NAME="24A4 DO_CAT1"></a>24A4 DO_CAT1    CALL <a href="#24B5 CAT_RUN">#24B5,CAT_RUN</a>       Give the CAT.
+24A7            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+<font size=+2>THE 'CAT' COMMAND ROUTINE</font>
+This routine makes a catalogue of the disk inserted in the specified drive, by calling
+the +D ROM routine 'SCAN_CAT'. 
+
+<a NAME="24AA CAT_1"></a>24AA CAT_1      LD   HL,#3E06            Point to name.
+24AD            LD   (HL),42,"*"         All files.
+24AF            LD   HL,#3E03            Point to stream number.
+24B2            LD   A,2                 Make it stream 2.
+24B4            LD   (HL),A
+<a NAME="24B5 CAT_RUN"></a>24B5 CAT_RUN    PUSH AF
+24B6            LD   A,(#3E03)
+24B9            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Open the desired stream by calling
+24BA            DEFW #1601,CHAN_OPEN     'CHAN_OPEN' in the 'main' ROM.
+24BC            LD   A,13
+24BE            CALL <a href="misc2.htm#1799 PRT_A">#1799,PRT_A</a>         Printing starts on the next line.
+24C1            CALL <a href="sysmsg.htm#304B MSG_0">#304B,MSG_0</a>         Print the 1st part of "DIR"-message.
+24C4            LD   A,(#3ACE)           Fetch current drive.
+24C7            AND  #03                 Only bits 0&1.
+24C9            OR   #30                 Make ASCII "1" or "2".
+24CB            CALL <a href="misc2.htm#1799 PRT_A">#1799,PRT_A</a>         Print drive number.
+24CE            CALL <a href="sysmsg.htm#3061 MSG_1">#3061,MSG_1</a>         Print the 2nd part of "DIR"-message.
+24D1            LD   HL,0                Reset 'total number of sectors'
+24D4            LD   (#3DD8),HL          occupied.
+24D7            POP  AF                  Restore 'CAT' type.
+24D8            CALL <a href="disk.htm#09A5 SCAN_CAT">#09A5,SCAN_CAT</a>      Print the CAT entries.
+24DB            CALL <a href="sysmsg.htm#3072 MSG_2">#3072,MSG_2</a>         Print "Free ..." message.
+24DE            CALL <a href="disk.htm#0985 DRV_CAP">#0985,DRV_CAP</a>       Get drive capacity in A register.
+24E1            PUSH BC
+24E2            BIT  7,A
+24E4            JR   Z,<a href="#24E7 CAT_RUN1">#24E7,CAT_RUN1</a>    Jump if drive is single sided.
+24E6            ADD  A,A                 Otherwise double the number of tracks
+                                         and get rid of the side bit.
+<a NAME="24E7 CAT_RUN1"></a>24E7 CAT_RUN1   SUB  4                   Subtract number of catalogue tracks.
+24E9            LD   HL,0
+24EC            LD   B,10                Each track has 10 sectors.
+24EE            LD   D,0                 Number of tracks to DE.
+24F0            LD   E,A
+<a NAME="24F1 CAT_RUN2"></a>24F1 CAT_RUN2   ADD  HL,DE               Calculate total number of sectors.
+24F2            DJNZ <a href="#24F1 CAT_RUN2">#24F1,CAT_RUN2</a>
+24F4            POP  BC
+24F5            NOP                      New code is two bytes shorter.
+24F6            NOP
+24F7            LD   DE,(#3DD8)          Get number of used sectors.
+24FB            XOR  A                   Clear carry.
+24FC            SBC  HL,DE               Calculate number of free sectors.
+24FE            SRL  H                   Divide it by two to get number of free
+2500            RR   L                   K-bytes.
+2502            XOR  A
+2503            CALL <a href="misc2.htm#174C PRT_N1000">#174C,PRT_N1000</a>     Print the number.
+2506            LD   A,13
+2508            CALL <a href="misc2.htm#1799 PRT_A">#1799,PRT_A</a>         Print a newline.
+250B            RET
+
+<font size=+2>THE 'ERASE' COMMAND SYNTAX ROUTINE</font>
+This routine checks that the command is in the form ERASE *n$ to erase a file or ERASE
+*n1$ TO n2$ to rename a file. The '*' stands for +D syntax ('d'd<;>) or Microdrive syntax
+('"m"';d;).
+
+<a NAME="250C ERASE"></a>250C ERASE      RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Get next character.
+250D            LD   (#3E04),A           Store the device descriptor.
+2510            CP   34,"""              Test for Microdrive syntax if it was a
+2512            CALL Z,<a href="syntax.htm#25C2 MD_SYN1">#25C2,MD_SYN1</a>     quote.
+2515            CALL <a href="syntax.htm#25E2 EXPT_DEVN">#25E2,EXPT_DEVN</a>     Evaluate the drive number.
+2518            CALL <a href="syntax.htm#25A2 SEPARATOR">#25A2,SEPARATOR</a>     Test for a separator.
+251B            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      Give error if none found.
+251E            CALL <a href="syntax.htm#2640 EXPT_FNAME">#2640,EXPT_FNAME</a>    Evaluate filename.
+2521            CP   204,"TO"            Is the filename followed by "TO"?
+2523            JR   Z,<a href="#2561 RENAME">#2561,RENAME</a>      Jump if so, rename is wanted.
+2525            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax checking.
+2528            LD   A,(#3E04)           Fetch device descriptor.
+252B            AND  #DF                 Drop lower case bit.
+252D            CP   68,"D"
+252F            JR   Z,<a href="#2536 ERASE_RUN">#2536,ERASE_RUN</a>   Jump if it was "D".
+2531            CP   77,"M"
+2533            JP   NZ,<a href="errrst.htm#1658 REP_10">#1658,REP_10</a>     Give error if it wasn't "M".
+
+<font size=+2>THE 'ERASE A FILE' ROUTINE</font>
+This routine deletes the specified file(s) on the specified drive. First it calls the
+routine 'FIND_FILE' to find a matching name, then it marks the file ERASEd by setting the
+directory description to 0, the dir. entry is then SAVEd back to disc.
+
+<a NAME="2536 ERASE_RUN"></a>2536 ERASE_RUN  CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      See if drive is defined.
+<a NAME="2539 ERASE_LOOP"></a>2539 ERASE_LOOP CALL <a href="#2559 FIND_FILE">#2559,FIND_FILE</a>     Find the file.
+253C            JR   NZ,<a href="#2548 NOT_FOUND">#2548,NOT_FOUND</a>  Jump if not found.
+253E            LD   (HL),0              Directory description 0 means ERASEd.
+2540            CALL <a href="disk.htm#0584 WSAD">#0584,WSAD</a>          Write sector DE.
+2543            CALL <a href="flags.htm#15F4 SIGN_0">#15F4,SIGN_0</a>        Signal 'at least one file ERASEd'.
+2546            JR   <a href="#2539 ERASE_LOOP">#2539,ERASE_LOOP</a>    ERASE all files with this filename.
+
+<a NAME="2548 NOT_FOUND"></a>2548 NOT_FOUND  CALL <a href="flags.htm#161C TEST_0">#161C,TEST_0</a>        Give an error if there wasn't at least
+254B            JP   Z,<a href="errrst.htm#1678 REP_26">#1678,REP_26</a>      one file ERASEd.
+<a NAME="254E ERASE_EXIT"></a>254E ERASE_EXIT LD   A,(#3E04)
+2551            CP   68,"D"              If the device descriptor was a
+2553            CALL Z,<a href="#24AA CAT_1">#24AA,CAT_1</a>       (capital) "D", then give a CATalogue.
+2556            JP   <a href="misc1.htm#047C END">#047C,END</a>           Finished.
+
+<font size=+2>THE 'FIND A FILE' SUBROUTINE</font>
+This routine searches the directory for a matching filename by calling the +D ROM
+routine 'SCAN_CAT', it returns with HL pointing to the directory description of the
+matching file. This routine is also called by command code 65 routine.
+
+<a NAME="2559 FIND_FILE"></a>2559 FIND_FILE  LD   A,%00010000         Scan the CATalogue for a matching
+255B            CALL <a href="disk.htm#09A5 SCAN_CAT">#09A5,SCAN_CAT</a>      filename.
+255E            JP   <a href="disk.htm#0D93 RPT_HL">#0D93,RPT_HL</a>        Make HL point to the start of the dir.
+                                         entry buffer and exit.
+
+<font size=+2>THE 'RENAME A FILE' ROUTINE</font>
+This routine renames a file by replacing its filename, given first, by the filename
+given second. It first tests whether the 'new' name isn't used already. If not, a check
+is made whether the file to be renamed exists.
+
+<a NAME="2561 RENAME"></a>2561 RENAME     RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Get next character.
+2562            CALL <a href="syntax.htm#25A2 SEPARATOR">#25A2,SEPARATOR</a>     Check if there is a separator.
+2565            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      Give an error if none found.
+2568            CALL <a href="syntax.htm#2620 EXPT_2FNAM">#2620,EXPT_2FNAM</a>    Evaluate 2nd filename.
+256B            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit when
+                                         syntax checking.
+256E            LD   A,(#3E04)           Fetch device descriptor.
+2571            AND  #DF                 Drop lower case bit.
+2573            CP   68,"D"
+2575            JR   Z,<a href="#257C RENAME_RUN">#257C,RENAME_RUN</a>  Jump if it was a "D".
+2577            CP   77,"M"
+2579            JP   NZ,<a href="errrst.htm#1658 REP_10">#1658,REP_10</a>     Give error if it wasn't a "M".
+<a NAME="257C RENAME_RUN"></a>257C RENAME_RUN CALL <a href="disk.htm#0702 TEST_DRV">#0702,TEST_DRV</a>      See if the drive is defined.
+257F            CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Swap UFIA 1 & 2 in the DFCA.
+2582            CALL <a href="#2559 FIND_FILE">#2559,FIND_FILE</a>     Give an error if the 2nd filename
+2585            JP   Z,<a href="errrst.htm#167C REP_28">#167C,REP_28</a>      already exists.
+2588            CALL <a href="syntax.htm#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Swap UFIA 1 & 2 in the DFCA.
+258B            CALL <a href="#2559 FIND_FILE">#2559,FIND_FILE</a>     Give an error if the 1st filename
+258E            JP   NZ,<a href="errrst.htm#1678 REP_26">#1678,REP_26</a>     doesn't exist.
+2591            INC  HL
+2592            PUSH DE
+2593            LD   DE,#3E1F            Rename the file by copying the 2nd to
+2596            EX   DE,HL               the 1st name.
+2597            LD   BC,10
+259A            LDIR
+259C            POP  DE
+259D            CALL <a href="disk.htm#0584 WSAD">#0584,WSAD</a>          Write the CATalogue sector.
+25A0            JR   <a href="#254E ERASE_EXIT">#254E,ERASE_EXIT</a>    Exit via 'ERASE_EXIT'.
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="rhook.htm">Previous</a></td>
+<td><a href="syntax.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

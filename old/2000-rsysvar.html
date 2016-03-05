@@ -1,0 +1,467 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The +D system variables and tables </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="errrout.htm">Previous</a></td>
+<td><a href="rhook.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The +D system variables and tables </font></b>
+
+<font size=+2>THE 'SYSTEM VARIABLES'</font>
+These variables hold various settings for drives etc. The variables starting at address
+#2000 can be accessed from BASIC with POKE @p,n. Where p is 0 for RBCC at #2000.
+
+<a NAME="2000 RBCC"></a>2000 RBCC       DEFB #07                 Flashing borders.
+<a NAME="2001 TRAKS1"></a>2001 TRAKS1     DEFB 80+128              Drive 1 80 tracks double sided.
+<a NAME="2002 TRAKS2"></a>2002 TRAKS2     DEFB 80+128              Drive 2 80 tracks double sided.
+<a NAME="2003 STPRAT"></a>2003 STPRAT     DEFB 0                   "Steprate" 0 msec.
+<a NAME="2004 NSTAT"></a>2004 NSTAT      DEFB 1                   Network on?
+<a NAME="2005 WIDTH"></a>2005 WIDTH      DEFB 80                  Printer right margin.
+<a NAME="2006 PCODE"></a>2006 PCODE      DEFB 0                   Expand tokens, etc. before printing.
+<a NAME="2007 LSPCE"></a>2007 LSPCE      DEFB 12                  Line spacing 12/72 inch.
+<a NAME="2008 LFEED"></a>2008 LFEED      DEFB 1                   Number of line feeds after CR 1.
+<a NAME="2009 LMARG"></a>2009 LMARG      DEFB 0                   Left margin at 0.
+<a NAME="200A GRAPH"></a>200A GRAPH      DEFB 0                   Print special graphics off.
+<a NAME="200B ZXPNT"></a>200B ZXPNT      DEFB 0                   +D printer port on.
+<a NAME="200C RESERVED"></a>200C RESERVED   DEFW #0000
+<a NAME="200E ONERR"></a>200E ONERR      DEFW #0000               Address of routine called after an
+                                         error has occurred.
+<a NAME="2010 EVERY_INT"></a>2010 EVERY_INT  DEFW #208F               Address of routine called at every
+                                         interrupt.
+
+<font size=+2>THE 'PRINTER CODES' TABLE</font>
+Here the printer control codes are stored.
+
+<a NAME="2012 INIT_PRT"></a>2012 INIT_PRT   DEFB 27,"@",#80,#80
+2016            DEFB #80,#80,#80,#80
+<a NAME="201A CHAR_PITCH"></a>201A CHAR_PITCH DEFB #80,#80,#80,#80
+201E            DEFB #80,#80,#80,#80
+<a NAME="2022 N/72_LSPC"></a>2022 N/72_LSPC  DEFB 27,"A",#80,#80
+2026            DEFB #80,#80,#80,#80
+<a NAME="202A GRAPH_DPI"></a>202A GRAPH_DPI  DEFB 27,"*",5,#80
+202E            DEFB #80,#80,#80,#80
+<a NAME="2032 INIT_PRT2"></a>2032 INIT_PRT2  DEFB #80,#80,#80,#80
+2036            DEFB #80,#80,#80,#80
+
+<font size=+2>THE 'GRAPHIC REPRESENTATION' TABLE</font>
+This table consists of the graphic representations of the £, # and © signs. The 'GRAPH'
+system variable (@10) determines whether the normal code or the graphic representation is
+outputted to the printer.
+
+<a NAME="203A £_SIGN"></a>203A £_SIGN     DEFB %00011000
+203B            DEFB %00100000
+203C            DEFB %00100000
+203D            DEFB %01111000
+203E            DEFB %00100000
+203F            DEFB %00100000
+2040            DEFB %01111100
+2041            DEFB %00000000
+
+<a NAME="2042 #_SIGN"></a>2042 #_SIGN     DEFB %00000000
+2043            DEFB %00100100
+2044            DEFB %01111110
+2045            DEFB %00100100
+2046            DEFB %00100100
+2047            DEFB %01111110
+2048            DEFB %00100100
+2049            DEFB %00000000
+
+<a NAME="204A ©-SIGN"></a>204A ©-SIGN     DEFB %01111110
+204B            DEFB %10000001
+204C            DEFB %10111101
+204D            DEFB %10100001
+204E            DEFB %10100001
+204F            DEFB %10111101
+2050            DEFB %10000001
+2051            DEFB %01111110
+
+<font size=+2>THE 'GREYSCALE' PRINTER CONTROL CODE</font>
+This code is outputted to the printer if a 'SCREEN$ 2' screendump is wanted.
+
+<a NAME="2052 GREY_BITIM"></a>2052 GREY_BITIM DEFB 27,"*",5,#40
+2056            DEFB #02,#80,#80,#80
+
+<font size=+2>THE 'GREYSCALE' TABLE</font>
+This table consists of three times three bytes of greyscale info. Each screen pixel is
+converted into 3x3 printer dots during greyscale printing. The printer dots are ordered
+as follows: The first dot row is produced from the first three bytes by taking the bit,
+which number is corresponding with the colour number, from each of the three bytes. E.g.
+for colour 2 (=red) bit 2 is used. In the same way the second and third dot rows are
+produced from the second and third three bytes respectively.
+The following eight 3x3 matrices are produced:
+
+ White  Yellow  Cyan  Green Magenta  Red    Blue  Black
+  000    000    100    000    100    010    110    111
+  000    010    010    101    111    111    111    111
+  000    000    001    000    001    010    011    111
+
+Note that some greytones aren't right. E.g. cyan is darker than green, which isn't so on
+the screen.
+
+                       colour
+                      76543210
+
+<a NAME="205A GREYSCALE"></a>205A GREYSCALE  DEFB %00101011
+205B            DEFB %00011111           first row
+205C            DEFB %00000001
+
+205D            DEFB %00000111
+205E            DEFB %01101111           second row
+205F            DEFB %00000111
+
+2060            DEFB %00000001
+2061            DEFB %00011111           third row
+2062            DEFB %00101011
+
+2063            DEFW <a href="printer.htm#1429 P_ALL">#1429,P_ALL</a>         Address of 'output' routine for "P".
+2065            DEFB #00                 The 'ENTER' flag.
+2066            DEFW #0000               D_ERR_SP
+2067            DEFB #00
+
+<font size=+2>THE 'SNAPSHOT-FILE' UFIA</font>
+The following bytes are the last 20 bytes of a snapshot file UFIA.
+
+<a NAME="2068 SNAP_UFIA"></a>2068 SNAP_UFIA  DEFB 0                   Directory description.
+2069            DEFM "Snap      "        File name.
+2073            DEFB 3                   File type.
+2074            DEFW #0000               File length.
+2076            DEFW #0000               File address.
+2078            DEFW #0000               Not used with Snap's.
+207A            DEFW #FFFF               Not used with Snap's.
+
+SOME 'LOST' ASSEMBLER TEXT
+Miles-Gordon seem to have lost some of their assembler text.
+
+207C            DEFM "JP"
+207E            DEFB #07
+207F            DEFB "Z"
+
+<font size=+2>THE 'RAM JUMPS'</font>
+These 13 'jumps' are used from the ROM to call +D System routines present in RAM (after
+the System file has been loaded).
+
+<a NAME="2080 JCOPS"></a>2080 JCOPS      NOP                      The small dump isn't patched.
+2081            NOP
+2082            RET
+<a NAME="2083 JCOPS2"></a>2083 JCOPS2     NOP                      Neither is the greyscale dump.
+2084            NOP
+2085            RET
+<a NAME="2086 JPCHAN"></a>2086 JPCHAN     NOP                      Nor the PCHAN_OUT routine.
+2087            NOP
+2088            RET
+<a NAME="2089 JPOKE"></a>2089 JPOKE      NOP                      Nor the POKE routine.
+208A            NOP
+208B            RET
+<a NAME="208C JPRTR"></a>208C JPRTR      NOP                      Even the TAKE_PRTR routine isn't
+208D            NOP                      patched.
+208E            RET
+<a NAME="208F JJIFFY"></a>208F JJIFFY     NOP                      Called EVERY_INT.
+2090            NOP
+2091            RET
+<a NAME="2092 JLOAD"></a>2092 JLOAD      JP   <a href="basic2.htm#28EE LD_VF_MR1">#28EE,LD_VF_MR1</a>     Load the file.
+<a NAME="2095 JHXFER"></a>2095 JHXFER     JP   <a href="command.htm#2F8B HXFER">#2F8B,HXFER</a>         Transfer UFIA to DFCA.
+<a NAME="2098 JKSCAN"></a>2098 JKSCAN     JP   <a href="#2245 JIFFY">#2245,JIFFY</a>         Called every interrupt.
+<a NAME="209B JMSG3"></a>209B JMSG3      JP   <a href="sysmsg.htm#3090 MSG_3">#3090,MSG_3</a>         Give the copyright message.
+<a NAME="209E JHOOK"></a>209E JHOOK      JP   <a href="rhook.htm#228E HOOK_CODE">#228E,HOOK_CODE</a>     Execute the hook or command code.
+<a NAME="20A1 JSNAP"></a>20A1 JSNAP      JP   <a href="#2115 SNAP">#2115,SNAP</a>          Continue with the Snapshot routine.
+<a NAME="20A4 JCTRL"></a>20A4 JCTRL      JP   <a href="#20A7 CTRL">#20A7,CTRL</a>          Continue with the control routine.
+
+<font size=+2>THE 'CONTROL ROUTINE' CONTINUED</font>
+The final part of the control routine determines which command failed the Spectrum
+syntax. If it is a +D command then the apropriate routine is executed.
+
+<a NAME="20A7 CTRL"></a>20A7 CTRL       PUSH AF
+20A8            LD   HL,#3DF4
+20AB            LD   BC,60
+<a NAME="20AE RESET_VARS"></a>20AE RESET_VARS LD   (HL),255            Reset +D work areas, including UFIA1
+20B0            INC  HL                  and UFIA2.
+20B1            DEC  BC 20B2            LD   A,B
+20B3            OR   C
+20B4            JR   NZ,<a href="#20AE RESET_VARS">#20AE,RESET_VARS</a>
+20B6            LD   (#3ACF),A           Clear FLAGS3.
+20B9            LD   IX,#3AC3            Point to +D system variables.
+20BD            POP  AF                  Fetch the command.
+20BE            LD   (#3DFF),A           Store it.
+20C1            CP   207                 Is the command 'CAT' ?
+20C3            JP   Z,<a href="basic1.htm#245B CAT">#245B,CAT</a>         Jump to the CAT routine if so.
+20C6            CP   208                 Also for 'FORMAT',...
+20C8            JP   Z,<a href="basic2.htm#2AB9 FORMAT">#2AB9,FORMAT</a>
+20CB            CP   209                 ...'MOVE',...
+20CD            JP   Z,<a href="stream.htm#2B03 MOVE">#2B03,MOVE</a>
+20D0            CP   210                 ...'ERASE',...
+20D2            JP   Z,<a href="basic1.htm#250C ERASE">#250C,ERASE</a>
+20D5            CP   211                 ...'OPEN #',...
+20D7            JP   Z,<a href="stream.htm#2C68 OPEN">#2C68,OPEN</a>
+20DA            CP   212                 ...'CLOSE #',...
+20DC            JP   Z,<a href="stream.htm#2E16 CLOSE">#2E16,CLOSE</a>
+20DF            CP   213                 ...'MERGE',...
+20E1            JP   Z,<a href="basic2.htm#28E4 MERGE">#28E4,MERGE</a>
+20E4            CP   214                 ...'VERIFY',...
+20E6            JP   Z,<a href="basic2.htm#28DF VERIFY">#28DF,VERIFY</a>
+20E9            CP   239                 ...'LOAD',...
+20EB            JP   Z,<a href="basic2.htm#28DA LOAD">#28DA,LOAD</a>
+20EE            CP   248                 ...'SAVE',...
+20F0            JP   Z,<a href="basic2.htm#288B SAVE">#288B,SAVE</a>
+20F3            CP   251                 ...'CLS',...
+20F5            JP   Z,<a href="stream.htm#2EB9 CLS">#2EB9,CLS</a>
+20F8            CP   253                 ...'CLEAR',...
+20FA            JP   Z,<a href="stream.htm#2E39 CLEAR">#2E39,CLEAR</a>
+20FD            CP   255                 ...'COPY',...
+20FF            JP   Z,<a href="misc3.htm#3020 COPY">#3020,COPY</a>
+2102            LD   HL,(#200E)          Fetch ONERR address.
+2105            LD   A,H
+2106            OR   L
+2107            RET  Z                   Return if no ON ERROR address.
+2108            LD   (#2110),HL          Store it so it can be CALBASsed.
+210B            POP  HL                  Drop return address.
+210C            LD   A,(#3DFF)           Fetch command which has to be examined
+210F            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          by user-routine (BASIC extensions).
+2110            DEFW #0000               CALL the extend BASIC routine(s).
+2112            JP   <a href="misc1.htm#047C END">#047C,END</a>           Test end of command and exit.
+
+<font size=+2>THE 'SNAPSHOT ROUTINE' CONTINUED</font>
+Here the snapshot routine continues with the disk related functions, keys 3-5.
+
+<a NAME="2115 SNAP"></a>2115 SNAP       LD   HL,16384            start of RAM (also start of SCR$).
+2118            BIT  2,E
+211A            JR   NZ,<a href="#2123 NO_SCR">#2123,NO_SCR</a>     3: Save SCREEN$.
+211C            LD   A,7                 type=SCR$.
+211E            LD   DE,6912             length of SCR$.
+2121            JR   <a href="#2139 SNAP_SAVE">#2139,SNAP_SAVE</a>
+
+<a NAME="2123 NO_SCR"></a>2123 NO_SCR     BIT  3,E
+2125            JR   NZ,<a href="#212E NO_SNP48">#212E,NO_SNP48</a>   4: 48K Snapshot.
+2127            LD   A,5                 type=48K Snap.
+2129            LD   DE,49152            length of 48K RAM.
+212C            JR   <a href="#2139 SNAP_SAVE">#2139,SNAP_SAVE</a>
+
+<a NAME="212E NO_SNP48"></a>212E NO_SNP48   BIT  4,E
+2130            RET  NZ                  Exit if not 5: 128K Snapshot.
+2131            LD   A,9                 Type=128K Snap.
+2133            LD   DE,16384            Length of a RAM-page.
+2136            LD   HL,49152            Start of a RAM-page.
+<a NAME="2139 SNAP_SAVE"></a>2139 SNAP_SAVE  LD   (#2068),A           Store type in snapshot UFIA.
+213C            LD   (#2074),DE          Store length in UFIA.
+2140            LD   (#2076),HL          And the start-address.
+2143            POP  AF                  Drop return addres.
+2144            LD   B,#FE               Key CAPS-V I/O address.
+2146            IN   A,(C)
+2148            BIT  0,A
+214A            JR   NZ,<a href="#2154 SNAP_NAME">#2154,SNAP_NAME</a>  If CAPS is pressed the Snap goes to
+214C            LD   A,(#3ACE)           the other drive.
+214F            XOR  #03
+2151            LD   (#3ACE),A
+<a NAME="2154 SNAP_NAME"></a>2154 SNAP_NAME  LD   A,%01000000
+2156            CALL <a href="disk.htm#09A5 SCAN_CAT">#09A5,SCAN_CAT</a>      Search first free catalogue entry.
+2159            RET  NZ                  Exit if catalogue full.
+215A            LD   A,D                 Track to A.
+215B            AND  #07                 Jump if CAT-entry will be located
+215D            JR   Z,<a href="#2164 SNAP_N1">#2164,SNAP_N1</a>     on track 0.
+
+The name a snapshot-file is given, depends on the position it's going to occupy in the
+directory. When the entry will be located on the first track the names range from 'Snap
+A' to 'Snap T', if however the entry will be located on track 1 to 3 the character after
+'Snap' will be the track number. I.e. 'Snap1A' to 'Snap1T' for track 1, etc. Notice that
+the character after 'Snap' is never set to a ' '.
+
+215F            ADD  A,48                ASCII offset for '0'.
+2161            LD   (#206D),A           Store a 1, 2 or 3 in name-part of UFIA.
+<a NAME="2164 SNAP_N1"></a>2164 SNAP_N1    LD   L,E                 Store sector in L.
+2165            SLA  L                   Two entries per sector.
+2167            DEC  L
+2168            LD   A,(IX+14)           Is it the first or second entry in the
+216B            ADD  A,L                 CAT-sector.
+216C            ADD  A,64                Add ASCII 'A' offset.
+216E            LD   (#206E),A           Store 'A' to 'T' in name-part of UFIA.
+2171            LD   HL,<a href="#2068 SNAP_UFIA">#2068,SNAP_UFIA</a>  Copy UFIA to DFCA.
+2174            LD   DE,#3E05
+2177            LD   BC,20
+217A            LDIR
+217C            CALL <a href="disk.htm#0AD9 OFSM_2">#0AD9,OFSM_2</a>        Open the file.
+217F            LD   HL,#3FEA            Copy snap registers to catalogue entry.
+2182            LD   DE,#3BB2
+2185            LD   BC,22
+2188            LDIR
+218A            LD   A,(#2068)           Get directory description.
+218D            CP   9
+218F            JP   NZ,<a href="#222D NO_SNP128">#222D,NO_SNP128</a>  Jump if not a 128K Snapshot.
+2192            LD   HL,49152            Now the 5 first bytes of the current
+2195            LD   DE,#3BD6            RAM-page are saved in the +D RAM
+2198            LD   BC,5                and replaced by the "BRUCE" message.
+219B            LDIR                     This is done to determine the currently
+219D            LD   HL,<a href="#2228 BRUCE">#2228,BRUCE</a>      paged in RAM-page.
+21A0            LD   DE,49152
+21A3            LD   BC,5
+21A6            LDIR
+21A8            XOR  A                   Signal '128K ROM bank active'.
+21A9            LD   (#3E19),A
+21AC            CALL <a href="snapshot.htm#011D ?_ROMBANK">#011D,?_ROMBANK</a>     Determine current 'main' ROM bank.
+21AF            JR   NZ,<a href="#21B6 SNP128_1">#21B6,SNP128_1</a>   Jump if 128K ROM bank.
+21B1            LD   A,#10               Signal '48K ROM bank active'.
+21B3            LD   (#3E19),A
+<a NAME="21B6 SNP128_1"></a>21B6 SNP128_1   CALL <a href="misc1.htm#0511 REST_PBUF">#0511,REST_PBUF</a>     Restore printer buffer contents.
+21B9            LD   A,(#3E19)
+21BC            CALL <a href="#223F RAMPAGE_A">#223F,RAMPAGE_A</a>     Page in current ROM bank & RAM page 0.
+
+The code now tests which screen is active. Because it isn't possible to detect which is
+the active screen, the user is consulted. By making nice border stripes the user is
+signalled that 'Y' (meaning: yes, screen changed) or 'N' (meaning: no, screen hasn't
+changed) has to be pressed.
+
+<a NAME="21BF SNP128_2"></a>21BF SNP128_2   LD   BC,#DFFE            Keyboard port and I/O address for Y-P.
+21C2            IN   E,(C)
+21C4            BIT  4,E
+21C6            JR   Z,<a href="#21D7 CHANGED_$">#21D7,CHANGED_$</a>   Jump if 'Y' was pressed, screen changed
+21C8            LD   B,#7F               I/O address for B-SPACE.
+21CA            IN   E,(C)
+21CC            BIT  3,E
+21CE            JR   Z,<a href="#21E2 SAME_$">#21E2,SAME_$</a>      Jump if 'N' was pressed, same screen.
+21D0            INC  A
+21D1            AND  #07
+21D3            OUT  (C),A               Make nice stripes in border again.
+21D5            JR   <a href="#21BF SNP128_2">#21BF,SNP128_2</a>      Only 'Y' or 'N' is accepted.
+
+<a NAME="21D7 CHANGED_$"></a>21D7 CHANGED_$  LD   A,(#3E19)
+21DA            OR   #08                 Signal 'screen 1'.
+<a NAME="21DC ?_RAMBANK"></a>21DC ?_RAMBANK  LD   (#3E19),A
+21DF            CALL <a href="#223F RAMPAGE_A">#223F,RAMPAGE_A</a>     Page in active ROM bank and screen.
+
+Now the 'which RAM bank' test is executed. The active RAM bank is determined by
+searching which bank has been given the "BRUCE" message.
+
+<a NAME="21E2 SAME_$"></a>21E2 SAME_$     LD   DE,49152            Here the message has been placed.
+21E5            LD   HL,<a href="#2228 BRUCE">#2228,BRUCE</a>      Message to be found.
+21E8            LD   B,5                 There are five bytes in the message.
+<a NAME="21EA BRUCE_1"></a>21EA BRUCE_1    LD   A,(DE)
+21EB            CP   (HL)
+21EC            JR   Z,<a href="#21F4 BRUCE_2">#21F4,BRUCE_2</a>     Jump if characters match.
+21EE            LD   A,(#3E19)           Otherwise it has to be one of the other
+21F1            INC  A                   banks.
+21F2            JR   ?_RAMBANK
+
+<a NAME="21F4 BRUCE_2"></a>21F4 BRUCE_2    INC  DE
+21F5            INC  HL
+21F6            DJNZ <a href="#21EA BRUCE_1">#21EA,BRUCE_1</a>       All five characters have to match.
+21F8            LD   HL,#3BD6            The active RAM bank has been found,
+21FB            LD   DE,49152            restore the original five bytes.
+21FE            LD   BC,5
+2201            LDIR
+2203            LD   A,(#3E19)
+2206            PUSH AF                  Save the page-configuration byte in the
+2207            CALL <a href="disk.htm#0761 SBYT">#0761,SBYT</a>          snapshot file.
+220A            AND  #F8                 Mask RAM bank, start with 0.
+220C            LD   B,8                 There are eight RAM banks
+<a NAME="220E SAVE_BANK"></a>220E SAVE_BANK  PUSH AF
+220F            PUSH BC
+2210            CALL <a href="#223F RAMPAGE_A">#223F,RAMPAGE_A</a>     Page in RAM bank.
+2213            LD   HL,(#2076)
+2216            LD   DE,(#2074)
+221A            CALL <a href="disk.htm#0850 HSVBK_2">#0850,HSVBK_2</a>       Save DE bytes starting at address HL.
+221D            POP  BC
+221E            POP  AF
+221F            INC  A                   Next RAM bank.
+2220            DJNZ <a href="#220E SAVE_BANK">#220E,SAVE_BANK</a>     Loop for all eight 16K RAM banks.
+2222            POP  AF
+2223            CALL <a href="#223F RAMPAGE_A">#223F,RAMPAGE_A</a>     Page in original RAM bank.
+2226            JR   <a href="#223C SNAP_CLOSE">#223C,SNAP_CLOSE</a>
+
+<a NAME="2228 BRUCE"></a>2228 BRUCE      DEFM "BRUCE"
+
+<a NAME="222D NO_SNP128"></a>222D NO_SNP128  CP   7                   Copy the 9 header bytes to the file if
+222F            CALL Z,<a href="basic2.htm#2879 SAVE_HEAD1">#2879,SAVE_HEAD1</a>  it is a SCREEN$.
+2232            LD   HL,(#2076)
+2235            LD   DE,(#2074)
+2239            CALL <a href="disk.htm#0850 HSVBK_2">#0850,HSVBK_2</a>       Save DE bytes starting at address HL.
+<a NAME="223C SNAP_CLOSE"></a>223C SNAP_CLOSE JP   <a href="disk.htm#0B89 CFSM">#0B89,CFSM</a>          Close the file.
+
+<font size=+2>THE 'PAGE 128K RAM' ROUTINE</font>
+The 128K RAM-bank contained in the A register is paged-in.
+
+<a NAME="223F RAMPAGE_A"></a>223F RAMPAGE_A  LD   BC,#7FFD            128K bank-switch port address.
+2242            OUT  (C),A               Select RAM bank.
+2244            RET
+
+<font size=+2>THE 'JIFFY' CALL</font>
+This routine is executed whenever KEY-SCAN in the Spectrum ROM is reached at #028E. It
+can be used to executed a routine with every interrupt.
+
+<a NAME="2245 JIFFY"></a>2245 JIFFY      LD   HL,(#2010)          Call routine which has to be called
+2248            JP   (HL)                every 'interrupt'. (Normal #208F)
+
+
+<font size=+2>THE 'MOUSE' ROUTINE</font>
+This routine is also present in the DISCiPLE and tests a mouse-like device. Pointers
+which seem to keep track of screen coordinates are updated when necessary.
+
+<a NAME="2249 TEST_MOUSE"></a>2249 TEST_MOUSE LD   BC,#03FF            The MGT mouse port?
+224C            IN   A,(C)
+224E            BIT  7,A
+2250            RET  NZ                  Return if no activity.
+2251            CPL
+2252            AND  #05                 Return if there was no horizontal or
+2254            RET  Z                   vertical movement.
+2255            LD   HL,<a href="#228B SIGN_MOUSE">#228B,SIGN_MOUSE</a>
+2258            PUSH HL
+2259            LD   HL,<a href="#2275 MOVE_VERT">#2275,MOVE_VERT</a>
+225C            PUSH HL
+225D            IN   D,(C)               Read mouse bits again.
+225F            LD   HL,#3DF1            Mouses x-coordinate.
+2262            BIT  0,D
+2264            RET  NZ                  Return to vertical movement test.
+2265            BIT  1,D
+2267            JR   Z,<a href="#226F MOVE_RIGHT">#226F,MOVE_RIGHT</a>  Jump if mouse was moved right.
+2269            LD   A,0                 Left side of screen.
+226B            CP   (HL)
+226C            RET  Z                   Return if left movement isn't possible.
+226D            DEC  (HL)                Otherwise decrement x-coordinate.
+226E            RET
+
+<a NAME="226F MOVE_RIGHT"></a>226F MOVE_RIGHT LD   A,255               Right side of screen.
+2271            CP   (HL)
+2272            RET  Z                   Return if right movement impossible.
+2273            INC  (HL)                Otherwise increment x.
+2274            RET
+
+<a NAME="2275 MOVE_VERT"></a>2275 MOVE_VERT  LD   HL,#3DF2            Y-coordinate of mouse.
+2278            BIT  2,D
+227A            RET  NZ                  Return to signal mouse.
+227B            BIT  3,D
+227D            JR   NZ,<a href="#2285 MOVE_UP">#2285,MOVE_UP</a>    Jump if mouse was moved up.
+227F            LD   A,0                 Bottom side of screen.
+2281            CP   (HL)
+2282            RET  Z                   Return if bottom has been reached.
+2283            DEC  (HL)                Otherwise move towards it.
+2284            RET
+
+<a NAME="2285 MOVE_UP"></a>2285 MOVE_UP    LD   A,175               Top side of screen.
+2287            CP   (HL)
+2288            RET  Z                   Return if top was reached.
+2289            INC  (HL)                Otherwise increment y-coordinate.
+228A            RET
+
+<a NAME="228B SIGN_MOUSE"></a>228B SIGN_MOUSE OUT  (C),D               Give original signal to mouse.
+228D            RET
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="errrout.htm">Previous</a></td>
+<td><a href="rhook.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

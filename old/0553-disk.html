@@ -1,0 +1,1554 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The disk routines </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="misc1.htm">Previous</a></td>
+<td><a href="hookcode.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The disk routines </font></b>
+
+<font size=+2>THE 'STORE INTERRUPT STATE' SUBROUTINE</font>
+This subroutine stores the Interrupt Flip Flop of the Z80 and returns with interrupts
+disabled. Whenever the +D needs the interrupts to be disabled with disk operations the
+status of the IFF (DI or EI) is stored. When the disk operation is finished the IFF is
+restored to the state it was in before the interrupts were disabled.
+<b>NOTE:</b> As a result of a bug in the Z80 itself the stored state of the IFF can be wrong if
+interrupts are enabled. The problem occurs when an interrupt is accepted (implying: interrupts
+enabled) during the execution of the 'LD A,R' or 'LD A,I' instruction. A solution to this
+problem is a second test if the IFF indicates interrupts disabled. With a Spectrum it is
+unlikely that two interrupts follow each other within a very short time, so a second test should
+cure the problem. A better method can be found in the 'Zilog Z80 Family Data Book'. The best
+method is replacing the Z80 with a CMOS version, the bug has been fixed in that Z80 type.
+
+<a NAME="0553 STORE_IFF"></a>0553 STORE_IFF  PUSH AF
+0554            LD   A,I                 Set the P/V flag according to the state
+0556            PUSH AF                  of the IFF2.
+0557            DI
+0558            EX   (SP),HL             Get the Flag register in L while saving
+                                         HL.
+0559            LD   (#3E50),HL          Store it. (IFF)
+055C            POP  HL                  Restore HL and AF.
+055D            POP  AF
+055E            RET                      Finished.
+
+<font size=+2>THE 'RESTORE INTERRUPT STATE' SUBROUTINE</font>
+This subroutine restores the interrupt state to the original state (DI or EI) (see NOTE
+above).
+
+<a NAME="055F REST_IFF"></a>055F REST_IFF   PUSH AF                  Save the contents of the needed
+0560            PUSH HL                  registers.
+0561            LD   HL,(#3E50)          Fetch the previous IFF state.
+0564            EX   (SP),HL             Restore HL and store IFF state.
+0565            POP  AF                  The IFF state is now contained in the
+                                         P/V flag.
+0566            JP   PO,<a href="#056A REST_IFF1">#056A,REST_IFF1</a>  Jump if interrupts were disabled.
+0569            EI                       Otherwise enable interrupts.
+<a NAME="056A REST_IFF1"></a>056A REST_IFF1  POP  AF
+056B            RET                      Finished.
+
+<font size=+2>THE 'WRITE PRECOMPENSATION' SUBROUTINE</font>
+This subroutine is called before a write command is send to the Floppy Disk Controller
+(FDC). Its task is to enable write precompensation on the inner tracks to get a more
+reliable working of the data transfers. On entry C holds the FDC command.
+
+<a NAME="056C PRECOMP"></a>056C PRECOMP    LD   C,%10100010         Write a single sector, enable spin-up
+                                         sequence, no settling delay, disable
+                                         precompensation, normal data mark.
+<a NAME="056E PRECOMP1"></a>056E PRECOMP1   LD   B,64                Start write precomp. at track 64.
+0570            CALL <a href="#0985 DRV_CAP">#0985,DRV_CAP</a>       Get drive capacity in A.
+0573            AND  #7F                 Keep only the number of tracks.
+0575            CP   80
+0577            JR   Z,<a href="#057B PREC_1">#057B,PREC_1</a>      Jump if drive has 80 tracks.
+0579            SRL  B                   Otherwise precomp. starts at track 32.
+<a NAME="057B PREC_1"></a>057B PREC_1     LD   A,D                 Fetch current track.
+057C            AND  B
+057D            JR   Z,<a href="#0581 PREC_2">#0581,PREC_2</a>      Jump if not at tracks above 63 or 31.
+057F            RES  1,C                 Otherwise enable write precompensation
+                                         (reset bit 1 of the command).
+<a NAME="0581 PREC_2"></a>0581 PREC_2     JP   <a href="#06F7 LD_COM_REG">#06F7,LD_COM_REG</a>    Give the command to the FDC.
+
+<font size=+2>THE 'WRITE SECTOR' SUBROUTINE</font>
+This subroutine writes the contents of the data buffer to sector E on track D.
+
+<a NAME="0584 WSAD"></a>0584 WSAD       XOR  A                   Reset retry counter.
+0585            LD   (#3DDB),A
+<a NAME="0588 WSAD_1"></a>0588 WSAD_1     CALL <a href="#0667 SET_TRKSEC">#0667,SET_TRKSEC</a>    Select drive, side, density and sector
+                                         and position the head above the correct
+                                         track.
+058B            CALL <a href="#056C PRECOMP">#056C,PRECOMP</a>       Enable precompensation when neccesary 
+                                         and give the command to the FDC.
+058E            CALL <a href="#0D86 HL_BUFFER">#0D86,HL_BUFFER</a>     Make HL point to the data buffer.
+0591            CALL <a href="#0599 WR_OP">#0599,WR_OP</a>         Write the sector.
+0594            CALL <a href="#060D SECTOR_ERR">#060D,SECTOR_ERR</a>    Check if there was an error, report it
+                                         if retried often enough. Otherwise exit
+0597            JR   <a href="#0588 WSAD_1">#0588,WSAD_1</a>        Try again if no succes.
+
+<font size=+2>THE 'SEND DATA TO FDC' SUBROUTINE</font>
+This subroutine handles the actual saving of a sector. It keeps sending a byte at a time
+to the FDC as long as it asks for one (sector length doesn't matter).
+
+<a NAME="0599 WR_OP"></a>0599 WR_OP      CALL <a href="#0553 STORE_IFF">#0553,STORE_IFF</a>     Store maskable interrupt state and
+                                         disable maskable interrupts.
+059C            LD   BC,251              BC holds the I/O port address of the
+                                         data register of the FDC.
+059F            JR   <a href="#05A4 WR_TST_DRQ">#05A4,WR_TST_DRQ</a>    Jump into the save loop.
+
+<a NAME="05A1 WR_LOOP"></a>05A1 WR_LOOP    OUTI                     Send a byte to the FDC (port BC) then
+                                         increment HL (and decrement B).
+05A3            NOP                      Waste some time.
+<a NAME="05A4 WR_TST_DRQ"></a>05A4 WR_TST_DRQ IN   A,(227)             Fetch FDC status.
+05A6            BIT  1,A                 Test Data ReQuest bit.
+05A8            JR   NZ,<a href="#05A1 WR_LOOP">#05A1,WR_LOOP</a>    Jump if FDC requests a byte.
+05AA            IN   A,(227)             Otherwise fetch FDC status again.
+05AC            BIT  1,A
+05AE            JR   NZ,<a href="#05A1 WR_LOOP">#05A1,WR_LOOP</a>    Jump if FDC requests a byte.
+05B0            IN   A,(227)
+05B2            BIT  1,A
+05B4            JR   NZ,<a href="#05A1 WR_LOOP">#05A1,WR_LOOP</a>
+05B6            IN   A,(227)
+05B8            BIT  1,A
+05BA            JR   NZ,<a href="#05A1 WR_LOOP">#05A1,WR_LOOP</a>
+05BC            BIT  0,A                 Test Busy bit.
+05BE            JR   NZ,<a href="#05A4 WR_TST_DRQ">#05A4,WR_TST_DRQ</a> Repeat until FDC is ready.
+05C0            CALL <a href="#055F REST_IFF">#055F,REST_IFF</a>      Restore the interrupt state.
+05C3            BIT  6,A                 Test Write Protected bit.
+05C5            RET  Z                   Return if not write protected.
+05C6            CALL <a href="#0B56 DEC_MAPUSE">#0B56,DEC_MAPUSE</a>    Decrease (MAPUSED), the number of files
+                                         using the disk bitmap.
+05C9            JP   <a href="errrst.htm#1672 REP_23">#1672,REP_23</a>        Otherwise give 'Disc WRITE protected'
+                                         error.
+
+<font size=+2>THE 'READ SECTOR' SUBROUTINE</font>
+This subroutine loads the contents of the data buffer from sector E on track D.
+
+<a NAME="05CC RSAD"></a>05CC RSAD       XOR  A                   Clear retry counter.
+05CD            LD   (#3DDB),A
+<a NAME="05D0 RSAD_1"></a>05D0 RSAD_1     CALL <a href="#0667 SET_TRKSEC">#0667,SET_TRKSEC</a>    Set drive, side, density, sector and
+                                         position the head above the correct
+                                         track.
+05D3            LD   C,%10000000         Read a single sector, enable spin-up
+                                         sequence, no settling delay.
+05D5            CALL <a href="#06F7 LD_COM_REG">#06F7,LD_COM_REG</a>    Give the command to the FDC.
+05D8            CALL <a href="#0D86 HL_BUFFER">#0D86,HL_BUFFER</a>     Make HL point to the data buffer.
+05DB            CALL <a href="#05E3 RD_OP">#05E3,RD_OP</a>         Read the sector.
+05DE            CALL <a href="#060D SECTOR_ERR">#060D,SECTOR_ERR</a>    Check if there was an error, report it
+                                         if retried often enough. Otherwise exit
+05E1            JR   <a href="#05D0 RSAD_1">#05D0,RSAD_1</a>        Try again if no succes.
+
+<font size=+2>THE 'GET DATA FROM FDC' SUBROUTINE</font>
+This subroutine handles the actual loading of a sector. It keeps fetching a byte at a
+time from the FDC as long as it asks to get one (sector length doesn't matter).
+
+<a NAME="05E3 RD_OP"></a>05E3 RD_OP      CALL <a href="#0553 STORE_IFF">#0553,STORE_IFF</a>     Store the maskable interrupt state and
+                                         disable interrupts.
+05E6            LD   BC,251              I/O address of the FDCs data register.
+05E9            JR   #05EE,RD_TEST_DRQ   Jump into the load loop.
+
+<a NAME="05EB RD_LOOP"></a>05EB RD_LOOP    INI                      Get a byte from the FDC and increment
+                                         HL (and decrement B).
+05ED            NOP                      Wait for a moment.
+<a NAME="05EE RD_TST_DRQ"></a>05EE RD_TST_DRQ IN   A,(227)             Fetch FDC status.
+05F0            BIT  1,A                 Test Data ReQuest bit.
+05F2            JR   NZ,<a href="#05EB RD_LOOP">#05EB,RD_LOOP</a>    Jump if FDC has read a byte.
+05F4            IN   A,(227)             Otherwise fetch FDC status again.
+05F6            BIT  1,A
+05F8            JR   NZ,<a href="#05EB RD_LOOP">#05EB,RD_LOOP</a>    Jump if FDC has read a byte.
+05FA            IN   A,(227)
+05FC            BIT  1,A
+05FE            JR   NZ,<a href="#05EB RD_LOOP">#05EB,RD_LOOP</a>
+0600            IN   A,(227)
+0602            BIT  1,A
+0604            JR   NZ,<a href="#05EB RD_LOOP">#05EB,RD_LOOP</a>
+0606            BIT  0,A                 Test Busy bit.
+0608            JR   NZ,<a href="#05EE RD_TST_DRQ">#05EE,RD_TST_DRQ</a> Repeat until FDC is ready.
+060A            JP   <a href="#055F REST_IFF">#055F,REST_IFF</a>      Restore interrupt state and exit.
+
+<font size=+2>THE 'CHECK SECTOR ERROR' SUBROUTINE</font>
+This subroutine checks if the FDC reported an error, on entry A holds the FDC status
+byte. If there wasn't one HL points to the start of the data buffer and the RPT is reset.
+If there was an positioning error the routine moves the head to the correct track. With
+other errors the head is repositioned above the current track, unless ten retries have
+been made, then an error is reported.
+
+<a NAME="060D SECTOR_ERR"></a>060D SECTOR_ERR AND  %00011100           Mask the non error bits.
+060F            JR   NZ,<a href="#0618 SEC_ERR1">#0618,SEC_ERR1</a>   Jump with an error.
+0611            CALL <a href="#0DAA RES_RPT">#0DAA,RES_RPT</a>       Otherwise reset the data buffer pointer
+                                         (RPT).
+0614            POP  HL                  Drop return address and exit with
+0615            JP   <a href="#0D86 HL_BUFFER">#0D86,HL_BUFFER</a>     HL pointing to the data buffer.
+
+<a NAME="0618 SEC_ERR1"></a>0618 SEC_ERR1   PUSH AF                  Save error.
+0619            LD   A,(#3DDB)           Increment the retry counter.
+061C            INC  A
+061D            LD   (#3DDB),A
+0620            CP   10                  If 10 retries have been made 'SECTOR
+0622            JP   NC,<a href="errrst.htm#164C REP_4">#164C,REP_4</a>      error' is given.
+0625            POP  AF
+0626            BIT  4,A
+0628            JR   NZ,<a href="#0636 SEC_ERR2">#0636,SEC_ERR2</a>   Jump with positioning error.
+062A            CALL <a href="#0DCF STEP_IN">#0DCF,STEP_IN</a>       Otherwise shake the the dust out of
+062D            CALL <a href="#0DCB STEP_OUT">#0DCB,STEP_OUT</a>      the drive.
+0630            CALL <a href="#0DCB STEP_OUT">#0DCB,STEP_OUT</a>
+0633            JP   <a href="#0DCF STEP_IN">#0DCF,STEP_IN</a>
+
+The routine now checks whether the head is above the right track. The current
+tracknumber is found by reading the ID Field of the first encountered sector on this
+track. The track number is then stored into the track register of the FDC. When no ID
+Field can be found the retry counter is incremented, when this reaches 16 the 'FORMAT
+data lost' error is given.
+
+<a NAME="0636 SEC_ERR2"></a>0636 SEC_ERR2   LD   C,%11000000         Read Address, disable spinup, no delay.
+0638            CALL <a href="#06F7 LD_COM_REG">#06F7,LD_COM_REG</a>    Execute the command.
+063B            LD   HL,#3DDC            Address where the ID Field is loaded.
+063E            CALL <a href="#05E3 RD_OP">#05E3,RD_OP</a>         Get the six byte ID Field of the first
+                                         sector encountered.
+0641            AND  %00011100
+0643            JR   NZ,<a href="#064B SEC_ERR3">#064B,SEC_ERR3</a>   Jump if there was an error.
+0645            LD   A,(#3DDC)           Otherwise store the current track
+0648            OUT  (235),A             number into the FDC's track register.
+064A            RET
+<a NAME="064B SEC_ERR3"></a>064B SEC_ERR3   LD   A,(#3DDB)
+064E            INC  A                   Increment retry counter.
+064F            LD   (#3DDB),A
+0652            CP   16                  Give up if tried 16 times, 'FORMAT
+0654            JP   Z,<a href="errrst.htm#164E REP_5">#164E,REP_5</a>       data lost'.
+0657            CP   10
+0659            JR   NZ,<a href="#0662 SEC_ERR4">#0662,SEC_ERR4</a>   After 10 times try something different.
+065B            PUSH DE
+065C            CALL <a href="#06A4 TRACK_0">#06A4,TRACK_0</a>       Start from the beginning of the disk.
+065F            POP  DE
+0660            JR   <a href="#0636 SEC_ERR2">#0636,SEC_ERR2</a>
+<a NAME="0662 SEC_ERR4"></a>0662 SEC_ERR4   CALL <a href="#0DCF STEP_IN">#0DCF,STEP_IN</a>       Take one small step.
+0665            JR   <a href="#0636 SEC_ERR2">#0636,SEC_ERR2</a>      And retry again.
+
+<font size=+2>THE 'SET TRACK AND SECTOR' SUBROUTINE</font>
+This subroutine is used to select the required drive, side, density, sector to be
+handled and to position the drive head above the required track.
+<b>NOTE:</b> The head is moved relative to the current position (fetched from the FDCs track
+register), when the drive selected is not the same as the previous one the +D can get confused.
+
+<a NAME="0667 SET_TRKSEC"></a>0667 SET_TRKSEC LD   A,D
+0668            OR   E
+0669            JR   NZ,<a href="#0676 SET_TRK1">#0676,SET_TRK1</a>   Jump if DE<>0.
+066B            CALL <a href="flags.htm#1626 TEST_2">#1626,TEST_2</a>        Test the .. flag.
+066E            JP   Z,<a href="errrst.htm#167A REP_27">#167A,REP_27</a>      Give 'END of file' error when reset.
+0671            LD   SP,(#2066)          Otherwise clear the machine stack.
+0675            RET
+<a NAME="0676 SET_TRK1"></a>0676 SET_TRK1   CALL <a href="#071C SET_DRVSD">#071C,SET_DRVSD</a>     Select drive, side and density.
+0679            LD   A,E                 Store the required sector number into
+067A            OUT  (243),A             the FDC's sector register.
+067C            CALL #1684,FLASH_REST    Change the border colour when wanted.
+<a NAME="067F SET_TRK2"></a>067F SET_TRK2   LD   A,D                 Track to A.
+0680            AND  #7F                 Mask highest bit which indicates side.
+0682            LD   B,A
+0683            CALL <a href="#06E6 FDC_READY">#06E6,FDC_READY</a>     Wait until FDC is ready, test BREAK.
+0686            IN   A,(235)             Fetch contents of FDC's track register.
+0688            CP   B                   Compare against required track.
+0689            RET  Z                   Exit if already on right track.
+068A            CALL NC,<a href="#0DCB STEP_OUT">#0DCB,STEP_OUT</a>   Step out if required track lies
+                                         outwards (more towards track 0).
+068D            CALL C,<a href="#0DCF STEP_IN">#0DCF,STEP_IN</a>     Otherwise step in.
+0690            JR   <a href="#067F SET_TRK2">#067F,SET_TRK2</a>      Continue until on the right track.
+
+<font size=+2>THE 'STEP DELAY' SUBROUTINE</font>
+This subroutine does the waiting between the executing of two step commands. By altering
+the value of the (STPRAT) system variabele (POKE @3,n) the time being 
+waited can be altered. 
+
+<a NAME="0692 STEP_DELAY"></a>0692 STEP_DELAY LD   A,(#2003)           Fetch (STPRAT).
+0695            AND  A
+<a NAME="0696 STEP_D1"></a>0696 STEP_D1    RET  Z                   Exit if 'msec-counter' reaches zero.
+<a NAME="0697 WAIT_1MSEC"></a>0697 WAIT_1MSEC PUSH AF
+0698            LD   BC,135              With this value the following loop
+                                         takes 3505 T states (about 1msec) to
+                                         complete.
+<a NAME="069B WAIT_1M1"></a>069B WAIT_1M1   DEC  BC
+069C            LD   A,B
+069D            OR   C
+069E            JR   NZ,<a href="#069B WAIT_1M1">#069B,WAIT_1M1</a>   Repeat until counter reaches zero.
+06A0            POP  AF
+06A1            DEC  A                   Decrease 'msec-counter'.
+06A2            JR   <a href="#0696 STEP_D1">#0696,STEP_D1</a>
+
+<font size=+2>THE 'TRACK_0' SUBROUTINE</font>
+This subroutine resets the head of the current drive to track 0. It has two entry
+points, the first is used by the ROM located routines, while the second (at #06B6) is
+used by the 'REST' command code (code 64 or #40). After the head has been resetted, a
+test is made whether there is a disk in the drive.
+
+<a NAME="06A4 TRACK_0"></a>06A4 TRACK_0    LD   A,(#2003)
+06A7            RLCA                     Double (STPRAT).
+06A8            LD   (#2003),A
+06AB            CALL <a href="#06B6 REST">#06B6,REST</a>          Move head to track 0.
+06AE            LD   A,(#2003)
+06B1            RRCA                     Restore original (STPRAT) value.
+06B2            LD   (#2003),A
+06B5            RET
+
+<a NAME="06B6 REST"></a>06B6 REST       LD   DE,#0001            Signal 'track 0, sector 1'.
+06B9            CALL <a href="#071C SET_DRVSD">#071C,SET_DRVSD</a>     Set drive, side and density.
+
+The following code resets the drive head to track 0.
+
+06BC            LD   C,%11010000         Terminate all operations.
+06BE            CALL <a href="#06FA LD_COM_R1">#06FA,LD_COM_R1</a>     Execute the FDC command.
+06C1            LD   B,0                 Wait about 1 msec.
+<a NAME="06C3 REST_1"></a>06C3 REST_1     DJNZ <a href="#06C3 REST_1">#06C3,REST_1</a>
+
+The routine now checks whether there is a disk in the drive. The bug present in the
+DISCiPLE ROM is corrected, the +D doesn't wait forever for an INDEX pulse.
+
+06C5            LD   HL,0                The INDEX signal has to become low
+                                         and high again within about 1.4 sec.
+<a NAME="06C8 REST_2"></a>06C8 REST_2     IN   A,(227)             Fetch FDC status.
+06CA            BIT  1,A
+06CC            CALL NZ,<a href="#06F0 REST_5">#06F0,REST_5</a>     Call if INDEX signal is high.
+06CF            JR   NZ,<a href="#06C8 REST_2">#06C8,REST_2</a>     Wait for it to become low.
+<a NAME="06D1 REST_3"></a>06D1 REST_3     IN   A,(227)             Fetch FDC status.
+06D3            CPL                      Invert the bits.
+06D4            BIT  1,A
+06D6            CALL NZ,<a href="#06F0 REST_5">#06F0,REST_5</a>     Call if INDEX signal is low.
+06D9            JR   NZ,<a href="#06D1 REST_3">#06D1,REST_3</a>     Wait for it to become high again.
+<a NAME="06DB REST_4"></a>06DB REST_4     IN   A,(227)             Fetch the FDC status register.
+06DD            BIT  2,A
+06DF            JR   NZ,<a href="#06E6 FDC_READY">#06E6,FDC_READY</a>  Exit if head is above track 0.
+06E1            CALL <a href="#0DCB STEP_OUT">#0DCB,STEP_OUT</a>      Otherwise, step-out and continue
+06E4            JR   <a href="#06DB REST_4">#06DB,REST_4</a>        the loop.
+
+<font size=+2>THE 'WAIT UNTIL FDC IS READY' SUBROUTINE</font>
+This small subroutine waits until the FDC is ready. When the BREAK key is pressed during
+the waiting, an error is reported.
+
+<a NAME="06E6 FDC_READY"></a>06E6 FDC_READY  IN   A,(227)             Fetch the FDC status.
+06E8            BIT  0,A
+06EA            RET  Z                   Exit if it's indicating 'FDC ready'.
+06EB            CALL <a href="misc1.htm#0497 TST_BREAK">#0497,TST_BREAK</a>     Test for BREAK.
+06EE            JR   <a href="#06E6 FDC_READY">#06E6,FDC_READY</a>     Repeat until FDC is ready.
+
+<font size=+2>THE 'TRACK_0' ROUTINE CONTINUED</font>
+
+<a NAME="06F0 REST_5"></a>06F0 REST_5     DEC  HL                  Decrease time limit.
+06F1            LD   A,H
+06F2            OR   L
+06F3            RET  NZ                  Return if limit isn't exceeded.
+06F4            JP   <a href="errrst.htm#1650 REP_6">#1650,REP_6</a>         Otherwise 'NO DISC in drive'.
+
+<font size=+2>THE 'LOAD FDC COMMAND REG.' SUBROUTINE</font>
+This subroutine loads the FDC command register with the command held in the Z80's C
+register. The entry point 'LD_COM_R1' is used to give the 'terminate all operations'
+command to the FDC, it makes no sense to wait for the FDC to get ready if the current
+command is to be aborted.
+
+<a NAME="06F7 LD_COM_REG"></a>06F7 LD_COM_REG CALL <a href="#06E6 FDC_READY">#06E6,FDC_READY</a>     Wait until FDC is ready, test BREAK.
+<a NAME="06FA LD_COM_R1"></a>06FA LD_COM_R1  LD   A,C                 Load the command in the FDC's command
+06FB            OUT  (227),A             register.
+06FD            LD   B,20                Wait for 73 µsec.
+<a NAME="06FF LD_COM_R2"></a>06FF LD_COM_R2  DJNZ <a href="#06FF LD_COM_R2">#06FF,LD_COM_R2</a>     Waste some time.
+0701            RET                      Finished.
+
+<font size=+2>THE 'TEST DRIVE' SUBROUTINE</font>
+This subroutine checks if the specified drive is defined (only if it's number isn't 1,
+then it is accepted right away). The entry point at #0702 is used when the drive is
+specified in UFIA1. The entry point at #0705 is used whenever the drive is specified in
+the A register. On exit (IX+11) holds the hardware representation of the drive to be
+used.
+
+<a NAME="0702 TEST_DRV"></a>0702 TEST_DRV   LD   A,(#3E01)           Fetch drive number from UFIA1.
+<a NAME="0705 TEST_DRV1"></a>0705 TEST_DRV1  CP   1
+0707            JR   Z,<a href="#0718 TEST_DRV2">#0718,TEST_DRV2</a>   Jump if drive one is to be used.
+0709            CP   2                   Otherwise give 'Wrong DRIVE' error if
+070B            JP   NZ,<a href="errrst.htm#1670 REP_22">#1670,REP_22</a>     drive isn't drive two.
+070E            LD   A,(#2002)           Fetch (TRAKS2) system variable.
+0711            CP   0
+0713            JP   Z,<a href="errrst.htm#1670 REP_22">#1670,REP_22</a>      Give error if drive isn't defined.
+0716            LD   A,2                 Select drive two.
+<a NAME="0718 TEST_DRV2"></a>0718 TEST_DRV2  LD   (IX+11),A           Store hardware representation.
+071B            RET
+
+<font size=+2>THE 'SET DRIVE PARAMETERS' SUBROUTINE</font>
+This subroutine selects the drive, side and density by setting the right bits in the
+control port (I/O address 239).
+
+<a NAME="071C SET_DRVSD"></a>071C SET_DRVSD  LD   B,(IX+11)           Fetch hardware drive representation.
+071F            LD   A,(#3DDA)           Fetch current control port status.
+0722            AND  %00000011           Keep only drive 1&2 select bits.
+0724            CP   B                   Set Zero flag if drive isn't changed.
+0725            PUSH AF
+0726            LD   A,(#3DDA)           Fetch current control port status
+0729            AND  %01111100           again. Mask drive and side select bits.
+072B            LD   C,A                 Store result temporary.
+072C            LD   A,D                 Fetch track.
+072D            AND  %10000000           Only keep side select.
+072F            OR   B                   Include drive select.
+0730            OR   C                   Include all other bits.
+0731            LD   (#3DDA),A           Set current control port status.
+0734            OUT  (239),A             Activate settings.
+0736            POP  AF                  Get Zero flag.
+0737            RET  Z                   Exit if drive hasn't changed.
+
+<b>NOTE:</b> This would have been a nice place to update the FDC's track register, it is very
+unlikely that both drives are on the same track all the time.
+
+0738            LD   A,128               Otherwise wait for 128 msec.
+073A            JP   <a href="#0697 WAIT_1MSEC">#0697,WAIT_1MSEC</a>    Exit via 'WAIT_1MSEC'.
+
+<font size=+2>THE 'PROGRAM NUMBER' SUBROUTINE</font>
+This subroutine calculates the program number from track and sector number and the
+contents of RPT-high (which holds 0 for odd program numbers and 1 for even ones). It is
+used to get the program number printed in the extended CATalogue.
+
+<a NAME="073D PROG_NUM"></a>073D PROG_NUM   PUSH DE                  Track and sector to BC.
+073E            POP  BC
+073F            XOR  A                   Clear A.
+0740            DEC  B
+0741            JP   M,<a href="#074A PROG_N2">#074A,PROG_N2</a>     Jump with track 0, B now holds -1.
+<a NAME="0744 PROG_N1"></a>0744 PROG_N1    ADD  A,10                Otherwise set A to 10*track number.
+0746            DEC  B
+0747            JP   P,<a href="#0744 PROG_N1">#0744,PROG_N1</a>     Repeat until B gets below zero.
+<a NAME="074A PROG_N2"></a>074A PROG_N2    LD   B,A
+074B            SLA  B                   Otherwise double number of tens.
+074D            SLA  C                   Together with the next instruction the
+074F            DEC  C                   effect is 'INC C'.
+0750            LD   A,(IX+14)           Fetch high byte of RPT.
+0753            ADD  A,C                 Add adjusted sector.
+0754            ADD  A,B                 Add adjusted track.
+0755            RET                      Exit with A holding the program number.
+
+<font size=+2>THE 'SECT_END_Z' SUBROUTINE</font>
+This subroutine returns with the Zero flag set if RPT has reached the sector end, that
+is if RPT points to the next track and sector numbers present in each sector.
+
+<a NAME="0756 SECT_END_Z"></a>0756 SECT_END_Z CALL <a href="#0D97 RPT_HL1">#0D97,RPT_HL1</a>       Get RPT in HL and the disk buffer
+0759            LD   A,C                 position in BC.
+075A            CP   254                 Exit if disk buffer position 510 (or
+075C            RET  NZ                  254) hasn't been reached, Zero reset.
+075D            LD   A,B                 Position 510 has to be reached before
+075E            CP   1                   returning with Zero set.
+0760            RET
+
+<font size=+2>THE 'SAVE A BYTE TO DISK' SUBROUTINE</font>
+This subroutine saves the byte in A in the data buffer at the location pointed to by RPT
+(the disk buffer pointer). If the buffer is full, an automatic sector save to disk will
+take place, RPT will be reset to the start of the buffer and the value will then be
+saved.
+
+<a NAME="0761 SBYT"></a>0761 SBYT       PUSH BC
+0762            PUSH DE
+0763            PUSH HL
+0764            PUSH AF
+0765            CALL <a href="#0756 SECT_END_Z">#0756,SECT_END_Z</a>    Check if the data buffer is full.
+0768            JR   NZ,<a href="#0777 SBYT_1">#0777,SBYT_1</a>     Jump if data buffer not full.
+076A            CALL <a href="#0925 MK_ALLOC">#0925,MK_ALLOC</a>      Allocate the first free sector.
+076D            LD   (HL),D              Store it's track and sector number into
+076E            INC  HL                  the last two bytes of the data buffer.
+076F            LD   (HL),E
+0770            EX   DE,HL
+0771            CALL <a href="#0DC1 GET_SECTOR">#0DC1,GET_SECTOR</a>    Fetch track and sector number of the
+                                         current sector into DE, store the next
+                                         track and sector number.
+0774            CALL <a href="#0584 WSAD">#0584,WSAD</a>          Write the sector to disk.
+<a NAME="0777 SBYT_1"></a>0777 SBYT_1     POP  AF
+0778            LD   (HL),A              Store value.
+0779            POP  HL
+077A            POP  DE
+077B            POP  BC
+077C            JP   <a href="#0DA2 INC_RPT">#0DA2,INC_RPT</a>       Exit while increasing RPT.
+
+<font size=+2>THE 'LOAD A BYTE FROM DISK' SUBROUTINE</font>
+This subroutine loads the byte pointed to by RPT from the data buffer, and returns with
+it in A and RPT updated. If the buffer is empty, another sector is read from the disk.
+
+<a NAME="077F LBYT"></a>077F LBYT       PUSH BC
+0780            PUSH DE
+0781            PUSH HL
+0782            CALL <a href="#0756 SECT_END_Z">#0756,SECT_END_Z</a>    Check if the data buffer is empty.
+0785            JR   NZ,<a href="#078D LBYT_1">#078D,LBYT_1</a>     Jump if data buffer not empty.
+0787            LD   D,(HL)              Otherwise fetch track and sector number
+0788            INC  HL                  of next sector into DE.
+0789            LD   E,(HL)
+078A            CALL <a href="#05CC RSAD">#05CC,RSAD</a>          Load the next sector.
+<a NAME="078D LBYT_1"></a>078D LBYT_1     LD   A,(HL)              Get a byte.
+078E            POP  HL
+078F            POP  DE
+0790            POP  BC
+0791            JP   <a href="#0DA2 INC_RPT">#0DA2,INC_RPT</a>       Exit while increasing RPT.
+
+<font size=+2>THE 'LOAD FILE' ROUTINE</font>
+This very important routine handles the loading of any file from disk. The entry point
+is at address #079E. On entry HL holds the load address, while DE holds the number of
+bytes to be loaded. The routine first empties the data buffer, which was loaded with the
+first sector to obtain the 9 byte file header. When the data buffer is empty the routine
+loads all sectors, but the last, into the memory directly. The last sector is loaded into
+the data buffer again and then the remaining bytes are loaded from it.
+
+<a NAME="0794 LD_BUF"></a>0794 LD_BUF     LD   A,(HL)              Fetch a byte from the data buffer.
+0795            CALL <a href="#0DA2 INC_RPT">#0DA2,INC_RPT</a>       Increment RPT.
+0798            LD   HL,(#3AC8)          Fetch load address.
+079B            LD   (HL),A              Load the byte into memory.
+079C            INC  HL
+079D            DEC  DE
+<a NAME="079E LOAD_FILE"></a>079E LOAD_FILE  LD   (#3AC8),HL          Store load address into (FILEADDR).
+07A1            LD   A,D
+07A2            OR   E
+07A3            RET  Z                   Exit if no more bytes left.
+<a NAME="07A4 LD_BUF1"></a>07A4 LD_BUF1    CALL <a href="#0756 SECT_END_Z">#0756,SECT_END_Z</a>    The data buffer has to be empty before
+07A7            JR   NZ,<a href="#0794 LD_BUF">#0794,LD_BUF</a>     sectors can be loaded directly into
+                                         memory. Jump if data buffer not empty.
+07A9            LD   (#3AC5),DE          Store the number of bytes left to load
+                                         into (BYTESLEFT).
+07AD            LD   D,(HL)              Fetch next track and sector.
+07AE            INC  HL
+07AF            LD   E,(HL)
+07B0            CALL <a href="#0833 STO_BUFLEN">#0833,STO_BUFLEN</a>    Store the data buffer length.
+<a NAME="07B3 LD_OP"></a>07B3 LD_OP      CALL <a href="#083B LAST_SEC_C">#083B,LAST_SEC_C</a>    Check if this sector is the last one.
+07B6            JP   C,<a href="#0829 LD_LAST">#0829,LD_LAST</a>     Jump if last sector.
+07B9            INC  HL                  Balance the Carry flag subtracted in
+                                         'LAST_SEC_C'.
+07BA            LD   (#3AC5),HL          Store number of bytes left after this
+                                         sector has been loaded.
+07BD            XOR  A                   Clear retry counter.
+07BE            LD   (#3DDB),A
+07C1            CALL <a href="#0DBA STORE_SEC">#0DBA,STORE_SEC</a>     Store track and sector.
+<a NAME="07C4 LD_AGAIN"></a>07C4 LD_AGAIN   CALL <a href="#0667 SET_TRKSEC">#0667,SET_TRKSEC</a>    Set drive, side, density, sector and
+                                         track.
+07C7            LD   C,%10000000         Read a single sector, enable spin-up,
+                                         no settling delay.
+07C9            CALL <a href="#06F7 LD_COM_REG">#06F7,LD_COM_REG</a>    Execute the FDC command.
+07CC            CALL <a href="#0553 STORE_IFF">#0553,STORE_IFF</a>     Store interrupt state and disable.
+07CF            EXX                      HL' has to be rescued because the
+07D0            PUSH HL                  'main' ROM needs it.
+07D1            LD   BC,251              I/O address of FDC's data register.
+07D4            LD   DE,2                DE' holds the length of the next sector
+                                         address in each sector.
+07D7            CALL <a href="#0D86 HL_BUFFER">#0D86,HL_BUFFER</a>     HL' points to the data buffer.
+07DA            EXX
+07DB            LD   BC,251              I/O address of FDC's data register.
+07DE            LD   DE,(#3ACA)          DE holds length of data buffer. DE +
+                                         DE' hold the length of a sector.
+07E2            LD   HL,(#3AC8)          HL holds the load address.
+07E5            JR   <a href="#07EF LD_TST_DRQ">#07EF,LD_TST_DRQ</a>    Jump into the load loop.
+
+<a NAME="07E7 LD_LOOP"></a>07E7 LD_LOOP    INI                      Get a byte from the FDC, increment HL.
+07E9            DEC  DE                  Decrement byte counter.
+07EA            LD   A,D
+07EB            OR   E
+07EC            JR   NZ,<a href="#07EF LD_TST_DRQ">#07EF,LD_TST_DRQ</a> Jump if not zero.
+07EE            EXX                      Otherwise select the other HL and DE.
+<a NAME="07EF LD_TST_DRQ"></a>07EF LD_TST_DRQ IN   A,(227)             Fetch FDC status.
+07F1            BIT  1,A                 Test Data ReQuest bit.
+07F3            JR   NZ,<a href="#07E7 LD_LOOP">#07E7,LD_LOOP</a>    Jump if FDC has read a byte.
+07F5            IN   A,(227)             Otherwise fetch FDC status again.
+07F7            BIT  1,A
+07F9            JR   NZ,<a href="#07E7 LD_LOOP">#07E7,LD_LOOP</a>    Jump if FDC has read a byte.
+07FB            IN   A,(227)
+07FD            BIT  1,A
+07FF            JR   NZ,<a href="#07E7 LD_LOOP">#07E7,LD_LOOP</a>
+0801            IN   A,(227)
+0803            BIT  1,A
+0805            JR   NZ,<a href="#07E7 LD_LOOP">#07E7,LD_LOOP</a>
+0807            BIT  0,A                 Test Busy bit.
+0809            JR   NZ,<a href="#07EF LD_TST_DRQ">#07EF,LD_TST_DRQ</a> Repeat until FDC is ready.
+080B            EXX                      When the FDC is ready, DE and DE' both
+080C            POP  HL                  are 0, and the 'EXX' at #07EE has been
+080D            EXX                      executed twice, so to restore HL'
+                                         a 'EXX' has to be executed first.
+080E            CALL <a href="#055F REST_IFF">#055F,REST_IFF</a>      Restore interrupt state.
+0811            AND  %00011100           Mask non error bits of FDC status.
+0813            JR   Z,<a href="#081D LD_OK">#081D,LD_OK</a>       Jump with no errors.
+0815            CALL <a href="#0DB3 FETCH_SEC">#0DB3,FETCH_SEC</a>     Otherwise fetch track and sector again.
+0818            CALL <a href="#0618 SEC_ERR1">#0618,SEC_ERR1</a>      Check if there was a sector error.
+081B            JR   <a href="#07C4 LD_AGAIN">#07C4,LD_AGAIN</a>      Try to load the sector again.
+
+If there are no errors the next sector can be loaded.
+
+<a NAME="081D LD_OK"></a>081D LD_OK      LD   (#3AC8),HL          Store the load address into (FILEADDR).
+0820            CALL <a href="#0D86 HL_BUFFER">#0D86,HL_BUFFER</a>     Make HL point to the data buffer.
+0823            LD   D,(HL)              Fetch the next track and sector number.
+0824            INC  HL
+0825            LD   E,(HL)
+0826            JP   <a href="#07B3 LD_OP">#07B3,LD_OP</a>         Load the next sector.
+
+The last sector is loaded into the data buffer.
+
+<a NAME="0829 LD_LAST"></a>0829 LD_LAST    CALL <a href="#05CC RSAD">#05CC,RSAD</a>          Load the last sector.
+082C            LD   DE,(#3AC5)          Fetch number of bytes left (BYTESLEFT)
+0830            JP   <a href="#07A4 LD_BUF1">#07A4,LD_BUF1</a>       and copy them to 'main' RAM.
+
+<font size=+2>THE 'STORE BUFFER LENGTH' SUBROUTINE</font>
+This subroutine stores the length of the data buffer into (#1ACA). Because the +D only
+uses double density this is always 510.
+
+<a NAME="0833 STO_BUFLEN"></a>0833 STO_BUFLEN LD   BC,510              Length of DD data buffer.
+0836            LD   (#3ACA),BC          Store the length into (BUFLEN).
+083A            RET
+
+<font size=+2>THE 'LAST_SEC_C' SUBROUTINE</font>
+This subroutine returns with the Carry flag set if the last sector is to be loaded.
+
+<a NAME="083B LAST_SEC_C"></a>083B LAST_SEC_C LD   HL,(#3AC5)          Fetch the number of bytes left to be
+                                         loaded from (BYTESLEFT).
+083E            LD   BC,(#3ACA)          Fetch the data buffer length from
+                                         (BUFLEN).
+0842            SCF                      Set the Carry flag, now the Carry flag
+                                         will be set after the 'SBC' if HL=BC.
+0843            SBC  HL,BC               Exit with Carry set signalling 'last
+0845            RET                      sector to be loaded'.
+
+<font size=+2>THE 'SAVE FILE' ROUTINE</font>
+This is the opposite of the 'LOAD_FILE' routine above. The entry address is #0850, on
+entry HL holds the save address and DE holds the number of bytes to be saved. The routine
+first fills up the data buffer, which contains the 9 byte file header already. The data
+buffer is saved to disk, after which a sector address table is build for all but the last
+sector. All sectors, the addresses of which are contained in the table, are saved
+directly from memory. The last sector is saved into the data buffer again after which the
+file should be closed.
+
+<a NAME="0846 SA_BUF"></a>0846 SA_BUF     LD   (HL),D              Save the byte in the data buffer.
+0847            CALL <a href="#0DA2 INC_RPT">#0DA2,INC_RPT</a>       Increment RPT.
+084A            LD   HL,(#3AC8)          Fetch save address from (FILEADDR).
+084D            INC  HL
+084E            POP  DE
+084F            DEC  DE
+<a NAME="0850 HSVBK_2"></a>0850 HSVBK_2    LD   A,D
+0851            OR   E
+0852            RET  Z                   Exit if no more bytes to save.
+0853            PUSH DE
+0854            LD   D,(HL)              Fetch a byte from memory.
+0855            LD   (#3AC8),HL          Store save address into (FILEADDR).
+0858            CALL <a href="#0756 SECT_END_Z">#0756,SECT_END_Z</a>    The data buffer has to be full before
+085B            JR   NZ,<a href="#0846 SA_BUF">#0846,SA_BUF</a>     the sector can be saved. Jump if data
+                                         buffer isn't full.
+085D            POP  DE                  Fetch number of bytes left to save and
+085E            LD   (#3AC5),DE          store it into (BYTESLEFT).
+0862            CALL <a href="#0925 MK_ALLOC">#0925,MK_ALLOC</a>      Allocate the first free sector.
+0865            LD   (HL),D              Store track and sector number into the
+0866            INC  HL                  data buffer.
+0867            LD   (HL),E
+0868            EX   DE,HL
+0869            CALL <a href="#0DC1 GET_SECTOR">#0DC1,GET_SECTOR</a>    Fetch track and sector number of the
+                                         current sector in DE, store the next
+                                         track and sector number.
+086C            CALL <a href="#0584 WSAD">#0584,WSAD</a>          Write the sector to disk.
+086F            XOR  A                   Clear sector counter.
+0870            LD   (#3DEA),A
+0873            CALL <a href="#0833 STO_BUFLEN">#0833,STO_BUFLEN</a>    Store the data buffer length.
+0876            CALL <a href="#083B LAST_SEC_C">#083B,LAST_SEC_C</a>    Check if this is the last sector.
+0879            JP   C,<a href="#0918 SA_LAST">#0918,SA_LAST</a>     Jump if it is.
+087C            CALL <a href="#0D86 HL_BUFFER">#0D86,HL_BUFFER</a>     HL points to the data buffer.
+<a NAME="087F SA_ALLOC"></a>087F SA_ALLOC   PUSH HL                  Store data buffer address.
+0880            CALL <a href="#083B LAST_SEC_C">#083B,LAST_SEC_C</a>    Check if this is the last sector.
+0883            PUSH HL                  DE now holds the number of bytes left
+0884            POP  DE                  -1.
+0885            POP  HL                  Restore data buffer pointer.
+0886            JR   C,<a href="#089D SA_OP">#089D,SA_OP</a>       Jump if all but last sector allocated.
+0888            INC  DE                  Balance the Carry subtracted in
+0889            LD   (#3AC5),DE          'LAST_SEC_C' before storing the number
+                                         of bytes left into (BYTESLEFT).
+088D            CALL <a href="#0925 MK_ALLOC">#0925,MK_ALLOC</a>      Allocate a sector.
+0890            LD   (HL),D              Store its track and sector number into
+0891            INC  HL                  the data buffer.
+0892            LD   (HL),E
+0893            INC  HL
+0894            LD   A,(#3DEA)           Increase sector counter.
+0897            INC  A
+0898            LD   (#3DEA),A
+089B            JR   NZ,<a href="#087F SA_ALLOC">#087F,SA_ALLOC</a>   Repeat until all sectors have been
+                                         allocated or the sector counter
+                                         overflows.
+<a NAME="089D SA_OP"></a>089D SA_OP      XOR  A                   Reset retry counter.
+089E            LD   (#3DDB),A
+08A1            CALL <a href="#0DB3 FETCH_SEC">#0DB3,FETCH_SEC</a>     Fetch the sector to be saved.
+<a NAME="08A4 SA_AGAIN"></a>08A4 SA_AGAIN   CALL <a href="#0667 SET_TRKSEC">#0667,SET_TRKSEC</a>    Set drive, side, etc.
+08A7            CALL <a href="#056C PRECOMP">#056C,PRECOMP</a>       Enable precompensation when neccesary
+                                         and execute the write sector command.
+08AA            CALL <a href="#0553 STORE_IFF">#0553,STORE_IFF</a>     Store interrupt state and disable.
+08AD            EXX                      HL' has to be stored because the
+08AE            PUSH HL                  'main' ROM needs it.
+08AF            CALL <a href="#0D97 RPT_HL1">#0D97,RPT_HL1</a>       HL' points to the sector address
+                                         table, build up in the data buffer.
+08B2            LD   DE,2                DE' holds the length of the next
+                                         sector address in each sector.
+08B5            LD   BC,251              BC' holds the I/O address of the FDC's
+                                         data register.
+08B8            EXX
+08B9            LD   HL,(#3AC8)          HL holds the save address.
+08BC            LD   DE,(#3ACA)          DE holds the length of the data space
+                                         inside a sector. DE+DE' hold the
+                                         length of a complete sector.
+08C0            LD   BC,251              BC holds the same as BC'.
+08C3            JR   <a href="#08CD SA_TST_DRQ">#08CD,SA_TST_DRQ</a>    Jump into the save loop.
+
+<a NAME="08C5 SA_LOOP"></a>08C5 SA_LOOP    OUTI                     Send a byte to the FDC, increment HL.
+08C7            DEC  DE                  Decrement byte counter.
+08C8            LD   A,D
+08C9            OR   E
+08CA            JR   NZ,<a href="#08CD SA_TST_DRQ">#08CD,SA_TST_DRQ</a> Jump if not zero.
+08CC            EXX                      Otherwise select the other HL and DE.
+<a NAME="08CD SA_TST_DRQ"></a>08CD SA_TST_DRQ IN   A,(227)             Fetch FDC status.
+08CF            BIT  1,A                 Test Data ReQuest bit.
+08D1            JR   NZ,<a href="#08C5 SA_LOOP">#08C5,SA_LOOP</a>    Jump if FDC requests a byte.
+08D3            IN   A,(227)             Otherwise fetch FDC status again.
+08D5            BIT  1,A
+08D7            JR   NZ,<a href="#08C5 SA_LOOP">#08C5,SA_LOOP</a>    Jump if FDC requests a byte.
+08D9            IN   A,(227)
+08DB            BIT  1,A
+08DD            JR   NZ,<a href="#08C5 SA_LOOP">#08C5,SA_LOOP</a>
+08DF            IN   A,(227)
+08E1            BIT  1,A
+08E3            JR   NZ,<a href="#08C5 SA_LOOP">#08C5,SA_LOOP</a>
+08E5            BIT  0,A                 Test Busy bit.
+08E7            JR   NZ,<a href="#08CD SA_TST_DRQ">#08CD,SA_TST_DRQ</a> Repeat until FDC is ready.
+08E9            CALL <a href="#055F REST_IFF">#055F,REST_IFF</a>      Restore interrupt state.
+08EC            AND  %00011100           Mask non error bits of FDC status.
+08EE            JR   Z,<a href="#08FB SA_OK">#08FB,SA_OK</a>       Jump with no errors.
+08F0            EXX
+08F1            POP  HL                  Restore HL'.
+08F2            EXX
+08F3            CALL <a href="#0DB3 FETCH_SEC">#0DB3,FETCH_SEC</a>     Fetch track and sector again.
+08F6            CALL <a href="#0618 SEC_ERR1">#0618,SEC_ERR1</a>      Check if there was a sector error.
+08F9            JR   <a href="#08A4 SA_AGAIN">#08A4,SA_AGAIN</a>      Try to save the sector again.
+
+If there are no errors the next sector can be saved, but first its track and sector
+number have to be retrieved.
+
+<a NAME="08FB SA_OK"></a>08FB SA_OK      LD   (#3AC8),HL          Store the save address into (FILEADDR)
+08FE            EXX
+08FF            DEC  HL                  Fetch track and sector number of next
+0900            LD   E,(HL)              sector.
+0901            DEC  HL
+0902            LD   D,(HL)
+0903            CALL <a href="#0DA2 INC_RPT">#0DA2,INC_RPT</a>       Update RPT.
+0906            CALL <a href="#0DA2 INC_RPT">#0DA2,INC_RPT</a>
+0909            CALL <a href="#0DBA STORE_SEC">#0DBA,STORE_SEC</a>     Store the next sector's track and
+                                         sector number.
+090C            POP  HL                  Restore HL'.
+090D            EXX
+090E            LD   A,(#3DEA)           Decrease sector counter.
+0911            DEC  A
+0912            LD   (#3DEA),A           Save the next sector as long as it
+0915            JP   NZ,<a href="#089D SA_OP">#089D,SA_OP</a>      isn't the last one.
+<a NAME="0918 SA_LAST"></a>0918 SA_LAST    CALL <a href="#0DAA RES_RPT">#0DAA,RES_RPT</a>       The bytes of the last sector are saved
+091B            LD   DE,(#3AC5)          into the data buffer again. Fetch the
+091F            LD   HL,(#3AC8)          number of bytes left and the save
+0922            JP   <a href="#0850 HSVBK_2">#0850,HSVBK_2</a>       address. Then save the bytes into the
+                                         data buffer.
+
+<font size=+2>THE 'ALLOCATE SECTOR' SUBROUTINE</font>
+This subroutine allocates the first free sector, which track and sector number are
+returned in the DE register pair. The routine searches the disk bitmap at #1A00 for a
+free sector, if there isn't one an error is reported.
+
+<a NAME="0925 MK_ALLOC"></a>0925 MK_ALLOC   PUSH HL
+0926            PUSH BC
+0927            LD   HL,#3A00            Address where disk bitmap is located.
+092A            LD   DE,#0401            Start with track 4, sector 1.
+092D            LD   C,0                 Clear bitmap offset.
+<a NAME="092F MK_ALL1"></a>092F MK_ALL1    LD   A,(HL)
+0930            CP   #FF
+0932            JR   NZ,<a href="#0946 MK_ALL3">#0946,MK_ALL3</a>    Jump if there is a free sector here.
+0934            LD   A,E                 Otherwise update sector number.
+0935            ADD  A,8                 Each byte holds 8 sectors.
+0937            LD   E,A
+0938            SUB  10                  But each track holds 10.
+093A            JR   C,<a href="#0942 MK_ALL2">#0942,MK_ALL2</a>     Jump if still on the same track, i.e.
+093C            JR   Z,<a href="#0942 MK_ALL2">#0942,MK_ALL2</a>     with sectors <=9 and 10.
+093E            LD   E,A                 Otherwise the next sector has been
+093F            CALL <a href="#0956 NEXT_TRACK">#0956,NEXT_TRACK</a>    computed, next track is computed now.
+<a NAME="0942 MK_ALL2"></a>0942 MK_ALL2    INC  C                   Increase bitmap offset.
+0943            INC  HL                  Next byte of bitmap.
+0944            JR   <a href="#092F MK_ALL1">#092F,MK_ALL1</a>       Find a free sector.
+
+Now the routine continues to find which sector is free.
+
+<a NAME="0946 MK_ALL3"></a>0946 MK_ALL3    LD   B,1                 Reset bit pointer.
+<a NAME="0948 MK_ALL4"></a>0948 MK_ALL4    LD   A,(HL)
+0949            AND  B
+094A            JR   Z,#0968,MK_ALLOC5   Jump if free sector has been found.
+094C            CALL <a href="#0D7E NEXT_SEC">#0D7E,NEXT_SEC</a>      Increase sector number.
+094F            CALL Z,<a href="#0956 NEXT_TRACK">#0956,NEXT_TRACK</a>  Next track if sector is on it.
+0952            RLC  B                   Test next sector.
+0954            JR   <a href="#0948 MK_ALL4">#0948,MK_ALL4</a>
+
+<font size=+2>THE 'NEXT TRACK' SUBROUTINE</font>
+This subroutine checks whether the next track (current track held in D) still exists and
+returns holding the next track in D when it does exist. If the drive capacity is
+exceeded, the 'Not enough SPACE on disc' error is given.
+
+<a NAME="0956 NEXT_TRACK"></a>0956 NEXT_TRACK INC  D                   Increase track.
+0957            CALL <a href="#0985 DRV_CAP">#0985,DRV_CAP</a>       Get number of tracks on current drive
+                                         in the A register.
+095A            CP   D                   Decrement 'number of files using the
+095B            CALL Z,<a href="#0B56 DEC_MAPUSE">#0B56,DEC_MAPUSE</a>  disk bitmap' and give an error if
+095E            JP   Z,<a href="errrst.htm#1674 REP_24">#1674,REP_24</a>      drive capacity is exceeded.
+0961            AND  #7F                 Mask off side bit.
+0963            CP   D
+0964            RET  NZ                  Return if side 0 isn't full.
+0965            LD   D,128               Otherwise return with track 0, side 1.
+0967            RET
+
+<font size=+2>THE 'ALLOCATE SECTOR' ROUTINE CONTINUED</font>
+Now the 'ALLOCATE SECTOR' routine continues by unfreeing the found sector.
+
+<a NAME="0968 MK_ALL5"></a>0968 MK_ALL5    LD   A,(HL)              Make found sector unfree in disk
+0969            OR   B                   bitmap.
+096A            LD   (HL),A
+096B            LD   A,B
+096C            LD   B,0
+096E            PUSH IX
+0970            ADD  IX,BC               Add bitmap offset.
+0972            OR   (IX+34)             Set new sector in file bitmap.
+0975            LD   (IX+34),A
+0978            POP  IX                  Restore disk channel pointer.
+097A            INC  (IX+31)             Increment number of sectors used.
+097D            JR   NZ,<a href="#0982 MK_ALL6">#0982,MK_ALL6</a>
+097F            INC  (IX+30)
+<a NAME="0982 MK_ALL6"></a>0982 MK_ALL6    POP  BC
+0983            POP  HL
+0984            RET                      Finished.
+
+<font size=+2>THE 'GET DRIVE CAPACITY' SUBROUTINE</font>
+This small subroutine returns with the A register holding the capacity of the selected
+drive, as found in the system variables.
+
+<a NAME="0985 DRV_CAP"></a>0985 DRV_CAP    PUSH HL
+0986            LD   HL,#2001            This is TRAKS1, drive 1's capacity.
+0989            LD   A,(#3DDA)           Fetch current control port state.
+098C            BIT  0,A
+098E            JR   NZ,<a href="#0991 DRV_CAP1">#0991,DRV_CAP1</a>   Jump if drive 1 selected.
+0990            INC  HL                  Otherwise point to TRAKS2.
+<a NAME="0991 DRV_CAP1"></a>0991 DRV_CAP1   LD   A,(HL)              Fetch drive capacity.
+0992            POP  HL
+0993            RET                      Finished.
+
+<font size=+2>THE 'PRINT NAME' SUBROUTINE</font>
+This subroutine is used to print the name of a file during a 'CAT' command and when the
+'overwrite' message is printed.
+
+<a NAME="0994 PRT_NAME"></a>0994 PRT_NAME   LD   (IX+13),1           Point to the first character of the
+                                         name.
+0998            CALL <a href="#0D97 RPT_HL1">#0D97,RPT_HL1</a>       Make HL point to it.
+099B            LD   B,10                A name has 10 characters.
+<a NAME="099D PRT_NAM1"></a>099D PRT_NAM1   LD   A,(HL)              Fetch a character.
+099E            CALL <a href="misc2.htm#1799 PRT_A">#1799,PRT_A</a>         Print it.
+09A1            INC  HL
+09A2            DJNZ #09A2,PRT_NAM1      Repeat for all 10 characters.
+09A4            RET
+
+<font size=+2>THE 'SCAN CATALOGUE' SUBROUTINE</font>
+This very important subroutine scans the CATalogue of a disk, whether this is for a free
+entry, a matching filename, or for printing the directory. On entry all needed parameters
+other than the A register should be contained in UFIA1. The A register determines where
+to scan for as follows: (bits set)
+    - bit 0 : Search for the file with the specified program number.
+    - bit 1 : Print a 'names only' CATalogue to the current stream. A filename
+              must be specified.
+    - bit 2 : Print an 'extended' CATalogue to the current stream. A filename
+              has to be specified.
+    - bit 3 : Search for a file with the specified type and name.
+    - bit 4 : Search for a file with the specified filename.
+    - bit 5 : Produce the disk bitmap.
+    - bit 6 : Find the first unused entry.
+Note that some functions exclude others. A return is made with DE holding the track and
+sector number of the found entry, the data buffer holding the sector, RPT pointing to the
+entry and the Zero flag signalling 'success' when set.
+
+<a NAME="09A5 SCAN_CAT"></a>09A5 SCAN_CAT   LD   IX,#3AC3            IX points to the disk channel.
+09A9            LD   (IX+4),A            Store scan-type.
+09AC            XOR  A                   Clear column counter.
+09AD            LD   (#3DEB),A
+09B0            CALL <a href="#06B6 REST">#06B6,REST</a>          Reset drive head to track 0, DE = 1.
+<a NAME="09B3 EACH_ENTRY"></a>09B3 EACH_ENTRY CALL <a href="#05CC RSAD">#05CC,RSAD</a>          Load a CATalogue sector.
+<a NAME="09B6 EACH_E1"></a>09B6 EACH_E1    CALL <a href="#0D93 RPT_HL">#0D93,RPT_HL</a>        HL points to the start of data buffer.
+09B9            LD   A,(HL)              Fetch file type.
+09BA            AND  A                   Jump if it's an unused entry (could be
+09BB            JP   Z,<a href="#0AA7 SCAN_FREE">#0AA7,SCAN_FREE</a>   ERASEd).
+09BE            BIT  0,(IX+4)
+09C2            JR   Z,<a href="#09D0 NO_PRGNUM">#09D0,NO_PRGNUM</a>   Jump if not searching for a filenumber
+09C4            CALL <a href="#073D PROG_NUM">#073D,PROG_NUM</a>      Otherwise load program number into A.
+09C7            LD   B,A
+09C8            LD   A,(#3E02)           Fetch specified program number.
+09CB            CP   B
+09CC            RET  Z                   Exit if they are equal.
+09CD            JP   <a href="#0A88 SCAN_NEXT">#0A88,SCAN_NEXT</a>     Otherwise continue scanning.
+
+<b>NOTE:</b> All entries with numbers below the specified one are considered, this isn't really
+needed.
+
+<a NAME="09D0 NO_PRGNUM"></a>09D0 NO_PRGNUM  BIT  1,(IX+4)            Jump if a short CATalogue should be
+09D4            JR   NZ,<a href="#09DC PRINT_CAT">#09DC,PRINT_CAT</a>  printed.
+09D6            BIT  2,(IX+4)
+09DA            JR   Z,<a href="#0A55 NO_CAT">#0A55,NO_CAT</a>      Jump if no CATalogue is desired.
+<a NAME="09DC PRINT_CAT"></a>09DC PRINT_CAT  LD   (IX+13),11          RPT points to number of sectors used.
+09E0            CALL <a href="#0D97 RPT_HL1">#0D97,RPT_HL1</a>       Make HL hold RPT.
+09E3            LD   B,(HL)              Fetch number of sectors used.
+09E4            INC  HL
+09E5            LD   C,(HL)
+09E6            LD   (#3AC3),BC          Store it for printing.
+09EA            LD   HL,(#3DD8)          Add it to total number of sectors used
+09ED            ADD  HL,BC
+09EE            LD   (#3DD8),HL
+09F1            BIT  7,A
+09F3            JP   NZ,<a href="#0A88 SCAN_NEXT">#0A88,SCAN_NEXT</a>  Jump if this entry is hidden.
+09F6            CALL <a href="#0AB0 MATCH_NAME">#0AB0,MATCH_NAME</a>
+09F9            JP   NZ,<a href="#0A88 SCAN_NEXT">#0A88,SCAN_NEXT</a>  Jump if filename doesn't match.
+09FC            BIT  1,(IX+4)
+0A00            JR   NZ,SCAN_1           Jump with short CAT.
+0A02            CALL <a href="#073D PROG_NUM">#073D,PROG_NUM</a>      Calculate program number.
+0A05            PUSH DE
+0A06            LD   H,0                 Program number to HL.
+0A08            LD   L,A
+0A09            LD   A,32                Use leading spaces.
+0A0B            CALL <a href="misc2.htm#1758 PRT_N10">#1758,PRT_N10</a>       Print the program number.
+0A0E            POP  DE                  Restore sector address.
+0A0F            CALL <a href="misc2.htm#1797 PRT_SPACE">#1797,PRT_SPACE</a>     Print a space.
+<a NAME="0A12 SCAN_1"></a>0A12 SCAN_1     CALL <a href="#0994 PRT_NAME">#0994,PRT_NAME</a>      Print filename.
+0A15            BIT  1,(IX+4)
+0A19            JR   Z,<a href="#0A3F EXT_CAT">#0A3F,EXT_CAT</a>     Jump with extended CAT.
+0A1B            LD   B,3                 Otherwise print three columns wide.
+0A1D            LD   A,(#3E03)           Except when using stream 3.
+0A20            CP   3
+0A22            JR   NZ,<a href="#0A26 SCAN_2">#0A26,SCAN_2</a>
+0A24            SLA  B                   Then print six columns wide.
+<a NAME="0A26 SCAN_2"></a>0A26 SCAN_2     LD   A,(#3DEB)           Increment column counter.
+0A29            INC  A
+0A2A            CP   B
+0A2B            JR   Z,<a href="#0A34 SCAN_3">#0A34,SCAN_3</a>      Jump if last column reached.
+0A2D            LD   (#3DEB),A           Otherwise store column counter and
+0A30            LD   A,32                separate the columns with a SPACE.
+0A32            JR   <a href="#0A3A SCAN_4">#0A3A,SCAN_4</a>
+
+This line is full, the next entry will be printed on the next line.
+
+<a NAME="0A34 SCAN_3"></a>0A34 SCAN_3     XOR  A                   Clear column counter.
+0A35            LD   (#3DEB),A
+0A38            LD   A,13                Print a NEWLINE.
+<a NAME="0A3A SCAN_4"></a>0A3A SCAN_4     CALL <a href="misc2.htm#1799 PRT_A">#1799,PRT_A</a>
+0A3D            JR   <a href="#0A88 SCAN_NEXT">#0A88,SCAN_NEXT</a>     Continue with the next entry.
+
+With an extended CAT there has to be printed somewhat more.
+
+<a NAME="0A3F EXT_CAT"></a>0A3F EXT_CAT    PUSH DE                  Store track and sector number.
+0A40            LD   HL,(#3AC3)          Fetch length of file in sectors.
+0A43            LD   A,32                Print it with leading spaces.
+0A45            CALL <a href="misc2.htm#1752 PRT_N100">#1752,PRT_N100</a>
+0A48            CALL <a href="misc2.htm#1797 PRT_SPACE">#1797,PRT_SPACE</a>     Print a trailing space.
+0A4B            CALL <a href="#0D93 RPT_HL">#0D93,RPT_HL</a>        HL points to the start of the entry.
+0A4E            LD   A,(HL)              Fetch file type
+0A4F            CALL <a href="misc2.htm#169B PRT_TYPE">#169B,PRT_TYPE</a>      and print it.
+0A52            POP  DE                  Restore track and sector number.
+0A53            JR   <a href="#0A88 SCAN_NEXT">#0A88,SCAN_NEXT</a>     Continue with the next entry.
+
+Now the routine continues with the search part.
+
+<a NAME="0A55 NO_CAT"></a>0A55 NO_CAT     BIT  3,(IX+4)
+0A59            JR   NZ,<a href="#0A61 SCAN_NAME">#0A61,SCAN_NAME</a>  Jump if searching for name and type.
+0A5B            BIT  4,(IX+4)
+0A5F            JR   Z,<a href="#0A65 SCAN_5">#0A65,SCAN_5</a>      Jump if not searching for name alone.
+<a NAME="0A61 SCAN_NAME"></a>0A61 SCAN_NAME  CALL <a href="#0AB0 MATCH_NAME">#0AB0,MATCH_NAME</a>    Return with Zero flag set to signal
+0A64            RET  Z                   'matching name (and type) found'.
+<a NAME="0A65 SCAN_5"></a>0A65 SCAN_5     BIT  5,(IX+4)
+0A69            JR   Z,<a href="#0A88 SCAN_NEXT">#0A88,SCAN_NEXT</a>   Jump if no disk map wanted.
+
+This part of the routine builds up the bitmap.
+
+0A6B            PUSH IX
+0A6D            LD   (IX+13),15          RPT points to the start of file bitmap
+0A71            CALL <a href="#0D97 RPT_HL1">#0D97,RPT_HL1</a>       Make HL hold RPT.
+0A74            LD   IX,#3A00            Start of disk bitmap.
+0A78            LD   B,195               There are 1560 bits in the bitmap.
+<a NAME="0A7A SCAN_MAP"></a>0A7A SCAN_MAP   LD   A,(IX+0)            Fetch a disk map byte.
+0A7D            OR   (HL)                Incorporate the corresponding file map
+0A7E            LD   (IX+0),A            byte.
+0A81            INC  IX                  Point to the next map bytes.
+0A83            INC  HL
+0A84            DJNZ <a href="#0A7A SCAN_MAP">#0A7A,SCAN_MAP</a>      Repeat for all map bytes.
+0A86            POP  IX                  Restore disk channel pointer.
+
+Another entry has been handled, go on with the next.
+
+<a NAME="0A88 SCAN_NEXT"></a>0A88 SCAN_NEXT  LD   A,(IX+14)           Fetch RPT-hi.
+0A8B            CP   1                   Jump if the second entry has been 
+0A8D            JR   Z,#A098,SCAN_6      handled.
+0A8F            CALL <a href="#0DAA RES_RPT">#0DAA,RES_RPT</a>       Reset RPT.
+0A92            INC  (IX+14)             Point to the second entry.
+0A95            JP   <a href="#09B6 EACH_E1">#09B6,EACH_E1</a>       Repeat for this entry.
+
+The next CAT sector has to be retrieved (if there is one).
+
+<a NAME="0A98 SCAN_6"></a>0A98 SCAN_6     CALL <a href="#0D7E NEXT_SEC">#0D7E,NEXT_SEC</a>      Calculate next sector.
+0A9B            JP   NZ,<a href="#09B3 EACH_ENTRY">#09B3,EACH_ENTRY</a> Jump if on same track.
+0A9E            INC  D                   Otherwise next track.
+0A9F            LD   A,D
+0AA0            CP   4
+0AA2            JP   NZ,<a href="#09B3 EACH_ENTRY">#09B3,EACH_ENTRY</a> Jump if still a CATalogue track.
+0AA5            AND  A                   Otherwise signal 'unsuccessfull' and
+0AA6            RET                      exit.
+
+An unused entry was found, so if we are searching for one then exit else continue.
+
+<a NAME="0AA7 SCAN_FREE"></a>0AA7 SCAN_FREE  LD   A,(IX+4)            Fetch scan-type.
+0AAA            CPL                      Invert all bits.
+0AAB            BIT  6,A
+0AAD            RET  Z                   Return if searching for a free entry.
+0AAE            JR   <a href="#0A88 SCAN_NEXT">#0A88,SCAN_NEXT</a>     Otherwise continue with next entry.
+
+<font size=+2>THE 'MATCH NAME' SUBROUTINE</font>
+This subroutine checks whether the filename and, when needed, directory description of
+the current entry matches the specification. If they don't match the Zero flag is
+returned reset.
+
+<a NAME="0AB0 MATCH_NAME"></a>0AB0 MATCH_NAME PUSH IX                  Store disk channel pointer.
+0AB2            CALL <a href="#0D93 RPT_HL">#0D93,RPT_HL</a>        HL points to the start of the entry.
+0AB5            LD   B,11                Length of file description.
+0AB7            BIT  3,(IX+4)
+0ABB            LD   IX,#3E05            IX points to the file description in
+                                         UFIA1.
+0ABF            JR   Z,<a href="#0AD1 MATCH_N2">#0AD1,MATCH_N2</a>    Jump if directory description doesn't
+                                         need to match.
+<a NAME="0AC1 MATCH_N1"></a>0AC1 MATCH_N1   LD   A,(IX+0)            Fetch character of search string.
+0AC4            CP   42,"*"              Jump if it's a '*', then all other
+0AC6            JR   Z,<a href="#0AD6 MATCH_N3">#0AD6,MATCH_N3</a>    characters don't matter.
+0AC8            CP   63,"?"              Jump if it's a '?', then this
+0ACA            JR   Z,<a href="#0AD1 MATCH_N2">#0AD1,MATCH_N2</a>    character doesn't matter.
+0ACC            XOR  (HL)                Compare with entries character.
+0ACD            AND  #DF                 Capitalize.
+0ACF            JR   NZ,<a href="#0AD6 MATCH_N3">#0AD6,MATCH_N3</a>   Jump if they don't match.
+<a NAME="0AD1 MATCH_N2"></a>0AD1 MATCH_N2   INC  IX                  Next character.
+0AD3            INC  HL
+0AD4            DJNZ <a href="#0AC1 MATCH_N1">#0AC1,MATCH_N1</a>      Repeat for all characters.
+<a NAME="0AD6 MATCH_N3"></a>0AD6 MATCH_N3   POP  IX                  Restore disk channel pointer.
+0AD8            RET                      Return with Zero set signalling
+                                         'match'.
+
+<font size=+2>THE 'OPEN A FILE FOR SAVE' SUBROUTINE</font>
+This subroutine opens a file, with the specified filename, for saving. If the filename
+wasn't used the file is opened, a return is made with the Zero flag set to signal
+'successfull'. If the filename was used, the 'OVERWRITE' message is printed, when the 'Y'
+key is pressed the existing file is ERASEd and the opening is retried. Otherwise the
+routine returns with the Zero flag reset to signal 'unsuccessfull'.
+
+<a NAME="0AD9 OFSM_2"></a>0AD9 OFSM_2     PUSH IX                  Store disk channel pointer.
+0ADB            LD   A,(#3DEF)           This is (MAPUSED), the (in)famous
+                                         @7663. It holds the number of files
+                                         which are using the disk bitmap.
+0ADE            CP   0
+0AE0            LD   A,%00010000         Scan catalogue for specified filename.
+0AE2            JR   NZ,<a href="#0AF0 OFSM_SCAN">#0AF0,OFSM_SCAN</a>  Jump if (@7663)<>0, the disk bitmap
+                                         isn't to be rebuild.
+0AE4            LD   HL,#3A00            Otherwise clear the disk bitmap.
+0AE7            LD   B,195
+<a NAME="0AE9 OFSM_CLR"></a>0AE9 OFSM_CLR   LD   (HL),0
+0AEB            INC  HL
+0AEC            DJNZ <a href="#0AE9 OFSM_CLR">#0AE9,OFSM_CLR</a>
+0AEE            LD   A,%00110000         Scan catalogue for specified filename
+                                         and produce a disk bitmap.
+<a NAME="0AF0 OFSM_SCAN"></a>0AF0 OFSM_SCAN  CALL <a href="#09A5 SCAN_CAT">#09A5,SCAN_CAT</a>
+0AF3            JR   NZ,<a href="#0B1C OFSM_FREE">#0B1C,OFSM_FREE</a>  Jump if filename not used.
+0AF5            PUSH DE                  Otherwise store sector address.
+0AF6            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Clear the lower part of the screen by
+0AF7            DEFW #0D6E,CLS_LOWER     calling 'CLS_LOWER' in 'main' ROM.
+0AF9            SET  5,(IY+2)            Signal 'lower screen has to be
+                                         cleared'. (TV_FLAG)
+0AFD            CALL <a href="misc2.htm#17FE MESG_1">#17FE,MESG_1</a>        Print 'OVERWRITE' message.
+0B00            CALL <a href="#0994 PRT_NAME">#0994,PRT_NAME</a>      Print filename.
+0B03            CALL <a href="misc2.htm#1823 MESG_3">#1823,MESG_3</a>        Print 'Y/N' message.
+0B06            CALL <a href="#0B60 TEST_Y">#0B60,TEST_Y</a>        Test the 'Y' key.
+0B09            JR   Z,<a href="#0B0F OFSM_ERASE">#0B0F,OFSM_ERASE</a>  Jump if 'Y' was pressed.
+0B0B            POP  DE                  When any other key was pressed the
+0B0C            POP  IX                  routine returns with Zero reset to
+0B0E            RET                      signal 'unsuccessfull'.
+
+The filename existed already, the user wants it to be overwritten, so ERASE it.
+
+<a NAME="0B0F OFSM_ERASE"></a>0B0F OFSM_ERASE POP  DE                  Restore track and sector number.
+0B10            CALL <a href="#0D93 RPT_HL">#0D93,RPT_HL</a>        Make HL point to the entry to be
+                                         overwritten.
+0B13            LD   (HL),0              ERASE this file.
+0B15            CALL <a href="#0584 WSAD">#0584,WSAD</a>          Write the entry back to disk.
+0B18            POP  IX                  Restore disk channel pointer.
+0B1A            JR   <a href="#0AD9 OFSM_2">#0AD9,OFSM_2</a>        Retry opening the file.
+
+The filename wasn't used so now the file can be opened.
+
+<a NAME="0B1C OFSM_FREE"></a>0B1C OFSM_FREE  POP  IX                  Restore disk channel pointer.
+0B1E            PUSH IX
+0B20            LD   B,0                 Clear the file entry space in the disk
+<a NAME="0B22 OFSM_CLR"></a>0B22 OFSM_CLR   LD   (IX+19),0           channel.
+0B26            INC  IX
+0B28            DJNZ <a href="#0B22 OFSM_CLR">#0B22,OFSM_CLR</a>
+0B2A            POP  IX                  Restore disk channel pointer.
+0B2C            PUSH IX
+0B2E            LD   HL,#3E05            HL points to the file descriptor in
+                                         UFIA1.
+0B31            LD   B,11                Length of file descriptor.
+<a NAME="0B33 OFSM_FDESC"></a>0B33 OFSM_FDESC LD   A,(HL)              Copy file descriptor to the file entry
+0B34            LD   (IX+19),A           space in the disk channel.
+0B37            INC  HL
+0B38            INC  IX
+0B3A            DJNZ <a href="#0B33 OFSM_FDESC">#0B33,OFSM_FDESC</a>
+0B3C            POP  IX                  Restore disk channel pointer.
+0B3E            CALL <a href="#0925 MK_ALLOC">#0925,MK_ALLOC</a>      Allocate a sector.
+0B41            CALL <a href="#0DBA STORE_SEC">#0DBA,STORE_SEC</a>     Store its track and sector number.
+0B44            LD   (IX+32),D           Store its sector address also into the
+0B47            LD   (IX+33),E           file entry space.
+0B4A            CALL <a href="#0DAA RES_RPT">#0DAA,RES_RPT</a>       Reset RPT.
+0B4D            LD   A,(#3DEF)           Increment (MAPUSED), there is one more
+0B50            INC  A                   file which uses the disk bitmap.
+0B51            LD   (#3DEF),A
+0B54            XOR  A                   Return with Zero flag set to signal
+0B55            RET                      'successfull'.
+
+<font size=+2>THE 'DECREMENT MAPUSE' SUBROUTINE</font>
+This small subroutine decrements the MAPUSED system variable. This variable keeps track
+of the number of files using the disk bitmap. When it reaches 0 the bitmap has to be
+rebuild.
+
+<a NAME="0B56 DEC_MAPUSE"></a>0B56 DEC_MAPUSE PUSH AF
+0B57            LD   A,(#3DEF)           Decrease (MAPUSED), the number of
+0B5A            DEC  A                   files using the disk bitmap.
+0B5B            LD   (#3DEF),A
+0B5E            POP  AF
+0B5F            RET
+
+<font size=+2>THE 'TEST FOR YES' SUBROUTINE</font>
+This subroutine tests whether the 'Y'-key is pressed, it returns with the Zero flag set
+if it was, reset otherwise.
+
+<a NAME="0B60 TEST_Y"></a>0B60 TEST_Y     CALL <a href="#0B75 BEEP">#0B75,BEEP</a>          Produce a 'middle C' for one second.
+<a NAME="0B63 TEST_Y1"></a>0B63 TEST_Y1    RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          The 'main' ROM is called to scan the
+0B64            DEFW #028E,KEY_SCAN      keyboard.
+0B66            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          It is also called to determine if a
+0B67            DEFW #031E,KEY_TEST      key was pressed.
+0B69            JR   NC,<a href="#0B63 TEST_Y1">#0B63,TEST_Y1</a>    Repeat scanning and testing until a
+                                         key has been pressed.
+0B6B            AND  #DF                 Capitalize.
+0B6D            CP   89,"Y"              Set the Zero flag if it was the
+0B6F            PUSH AF                  'Y'-key.
+0B70            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Again the 'main' ROM is called, this
+0B71            DEFW #0D6E,CLS_LOWER     time for clearing the lower screen.
+0B73            POP  AF                  Retrieve Zero flag.
+0B74            RET                      Finished.
+
+<font size=+2>THE 'MAKE A BEEP' SUBROUTINE</font>
+This subroutine produces a beep (the note 'middle C' in fact) for one second.
+
+<a NAME="0B75 BEEP"></a>0B75 BEEP       PUSH HL
+0B76            PUSH DE
+0B77            PUSH BC
+0B78            PUSH IX
+0B7A            LD   HL,1642             Parameters needed by 'BEEPER' to
+0B7D            LD   DE,261              produce a 'middle C'.
+0B80            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Produce the note.
+0B81            DEFW #03B5,BEEPER
+0B83            POP  IX
+0B85            POP  BC
+0B86            POP  DE
+0B87            POP  HL
+0B88            RET
+
+<font size=+2>THE 'CLOSE A SAVE FILE' SUBROUTINE</font>
+This subroutine closes a save file, by writing the last sector (contained in the data
+buffer) to disk and by writing the CATalogue entry.
+
+<a NAME="0B89 CFSM"></a>0B89 CFSM       CALL <a href="#0D97 RPT_HL1">#0D97,RPT_HL1</a>       HL points to the first unused position
+                                         in the data buffer.
+0B8C            LD   A,C                 C holds buffer offset-lo.
+0B8D            AND  A
+0B8E            JR   NZ,<a href="#0B95 CFSM_FILL">#0B95,CFSM_FILL</a>  Jump if buffer isn't full yet.
+0B90            LD   A,B                 B holds buffer offset-hi.
+0B91            CP   2
+0B93            JR   Z,<a href="#0B9C CFSM_SAVE">#0B9C,CFSM_SAVE</a>   Jump if buffer is full.
+<a NAME="0B95 CFSM_FILL"></a>0B95 CFSM_FILL  LD   (HL),0              Otherwise fill up buffer with zero's.
+0B97            CALL <a href="#0DA2 INC_RPT">#0DA2,INC_RPT</a>       Increment RPT.
+0B9A            JR   <a href="#0B89 CFSM">#0B89,CFSM</a>          And close the file.
+
+The last sector is ready to be saved, it has been filled up with zero's if needed.
+
+<a NAME="0B9C CFSM_SAVE"></a>0B9C CFSM_SAVE  CALL <a href="#0DB3 FETCH_SEC">#0DB3,FETCH_SEC</a>     Fetch last sector's track and sector
+0B9F            CALL <a href="#0584 WSAD">#0584,WSAD</a>          number and save it to disk.
+0BA2            CALL <a href="#0B56 DEC_MAPUSE">#0B56,DEC_MAPUSE</a>    One file less uses the disk bitmap.
+0BA5            PUSH IX                  Store disk channel pointer.
+0BA7            LD   A,%01000000         Search the CATalogue for an unused
+0BA9            CALL <a href="#09A5 SCAN_CAT">#09A5,SCAN_CAT</a>      entry.
+0BAC            JP   NZ,<a href="errrst.htm#1676 REP_25">#1676,REP_25</a>     If none found report 'Directory FULL'.
+0BAF            CALL <a href="#0D93 RPT_HL">#0D93,RPT_HL</a>        HL points to the entry.
+0BB2            LD   (#3ACA),IX          Store disk channel pointer 2, this one
+                                         points to the DFCA.
+0BB6            POP  IX                  Restore disk channel pointer 1, this
+                                         one can point to 'main' RAM (OPENTYPE)
+0BB8            PUSH IX                  Store it again.
+0BBA            LD   B,0                 Copy the file entry to the CAT entry 0BBC
+CFSM_ENTRY LD   A,(IX+19)           in the data buffer.
+0BBF            LD   (HL),A
+0BC0            INC  IX
+0BC2            INC  HL
+0BC3            DJNZ #0BBC,CFSM_ENTRY
+0BC5            LD   IX,(#3ACA)          Restore disk channel pointer 2.
+0BC9            CALL <a href="#0584 WSAD">#0584,WSAD</a>          Write the sector to disk.
+0BCC            POP  IX                  Restore disk channel pointer 1.
+0BCE            RET                      Finished.
+
+<font size=+2>THE 'OPEN A FILE FOR LOAD' SUBROUTINE</font>
+This subroutine opens a file, with the specified filename, for loading. If the filename
+isn't found an error is given. If the filename is found it is opened and the first sector
+is loaded into the data buffer.
+
+<a NAME="0BCF HGFLE_2"></a>0BCF HGFLE_2    LD   A,(#3E04)           Fetch device description from UFIA1.
+0BD2            AND  #DF                 Capitalize.
+0BD4            CP   80,"P"
+0BD6            JR   NZ,<a href="#0BFC HGFL_NONUM">#0BFC,HGFL_NONUM</a> Jump if no program number specified.
+0BD8            LD   A,%00000001         Search for the specified program
+0BDA            CALL <a href="#09A5 SCAN_CAT">#09A5,SCAN_CAT</a>      number.
+0BDD            JP   NZ,<a href="errrst.htm#1678 REP_26">#1678,REP_26</a>     If file isn't found report 'File NOT
+                                         FOUND'.
+0BE0            CALL <a href="#0D93 RPT_HL">#0D93,RPT_HL</a>        HL points to the entry.
+0BE3            LD   DE,#3E05            Copy the 11 byte file descriptor to
+0BE6            LD   BC,11               UFIA1.
+0BE9            LDIR
+0BEB            LD   (IX+13),211         RPT points to the file header of the
+                                         file.
+0BEF            CALL <a href="#0D97 RPT_HL1">#0D97,RPT_HL1</a>       Make HL point to it.
+0BF2            LD   DE,#3E10            Copy the 9 byte file header to UFIA1.
+0BF5            LD   BC,9
+0BF8            LDIR
+0BFA            JR   <a href="#0C04 LOAD_1ST">#0C04,LOAD_1ST</a>      Jump forward to load the first sector.
+
+Now search for the file with the given name.
+
+<a NAME="0BFC HGFL_NONUM"></a>0BFC HGFL_NONUM LD   A,%00010000         Search for the specified filename.
+0BFE            CALL <a href="#09A5 SCAN_CAT">#09A5,SCAN_CAT</a>      If file isn't found report 'File NOT
+0C01            JP   NZ,<a href="errrst.htm#1678 REP_26">#1678,REP_26</a>     FOUND'.
+                                         Otherwise the first sector is loaded
+                                         by entering the 'LOAD FIRST SECTOR'
+                                         subroutine below.
+
+<font size=+2>THE 'LOAD FIRST SECTOR' SUBROUTINE</font>
+When the CAT entry of the file to be loaded is found, this routine can be used to fetch
+the first sector of the file. The first sector holds the 9 byte file header (with certain
+filetypes) which should be identical to the 9 byte file header present in the CAT entry.
+
+<a NAME="0C04 LOAD_1ST"></a>0C04 LOAD_1ST   CALL <a href="#0D93 RPT_HL">#0D93,RPT_HL</a>        HL points to the entry.
+0C07            LD   DE,#3E1E            Copy the 11 byte file descriptor to
+0C0A            LD   BC,11               UFIA2.
+0C0D            LDIR
+0C0F            LD   (IX+13),220         RPT points to the SNAPSHOT registers,
+                                         that is when they are present.
+0C13            CALL <a href="#0D97 RPT_HL1">#0D97,RPT_HL1</a>       Make HL point to it.
+0C16            LD   DE,#3FEA            Copy the 22 SNAPSHOT values to the
+0C19            LD   BC,22               internal stack bottom.
+0C1C            LDIR
+0C1E            LD   (IX+13),13          RPT points to track and sector number.
+0C22            CALL <a href="#0D97 RPT_HL1">#0D97,RPT_HL1</a>       Now HL points to it also.
+0C25            LD   D,(HL)              Fetch track and sector number.
+0C26            INC  HL
+0C27            LD   E,(HL)
+0C28            JP   <a href="#05CC RSAD">#05CC,RSAD</a>          And exit while loading the first
+                                         sector.
+
+<font size=+2>THE 'FORMAT A DISK' ROUTINE</font>
+This routine formats a disk by writing one track at a time to disk. The track is first
+build up in 'main' RAM. After the formatting is completed, the other disk is completely
+copied (cloned) or the disk is checked for bad sectors.
+
+<a NAME="0C2B FORMAT_RUN"></a>0C2B FORMAT_RUN CALL <a href="#0702 TEST_DRV">#0702,TEST_DRV</a>      See if the drive is defined.
+0C2E            CALL <a href="#071C SET_DRVSD">#071C,SET_DRVSD</a>
+0C31            LD   B,20                First step 20 times inward.
+<a NAME="0C33 FRMT_1"></a>0C33 FRMT_1     PUSH BC
+0C34            CALL <a href="#0DCF STEP_IN">#0DCF,STEP_IN</a>
+0C37            POP  BC
+0C38            DJNZ <a href="#0C33 FRMT_1">#0C33,FRMT_1</a>
+0C3A            CALL <a href="#06A4 TRACK_0">#06A4,TRACK_0</a>       Then position the head above track 0.
+0C3D            LD   IX,#3AC3            IX points to the DFCA.
+<a NAME="0C41 FRMT_TRK"></a>0C41 FRMT_TRK   CALL <a href="#0CF5 MK_TRK_DD">#0CF5,MK_TRK_DD</a>     Build up a double density track.
+0C44            LD   C,%11110000         Write track, disable spin-up sequence,
+                                         no delay, enable precompensation.
+0C46            CALL <a href="#056E PRECOMP1">#056E,PRECOMP1</a>      Why call this routine ? The precomp.
+                                         has already been enabled.
+0C49            LD   HL,49152            HL points to the track build up in
+                                         'main' memory.
+0C4C            CALL <a href="#0599 WR_OP">#0599,WR_OP</a>         Write the track.
+0C4F            CALL <a href="#0692 STEP_DELAY">#0692,STEP_DELAY</a>    Wait a moment.
+0C52            INC  D                   Next track.
+0C53            CALL <a href="#0985 DRV_CAP">#0985,DRV_CAP</a>       Get drive capacity in A.
+0C56            CP   D
+0C57            JR   Z,<a href="#0C79 FRMT_DONE">#0C79,FRMT_DONE</a>   Jump if all tracks have been formatted
+0C59            AND  #7F                 Mask off side.
+0C5B            CP   D
+0C5C            JR   Z,<a href="#0C6E FRMT_SIDE1">#0C6E,FRMT_SIDE1</a>  Jump if side1 hasn't been formatted.
+0C5E            CALL <a href="#0DCF STEP_IN">#0DCF,STEP_IN</a>       Next track.
+
+The following code determines the skew, i.e. the shifting between the sectors of a track
+and the previous track. The +D uses a skew of +2, so sector 1 on track T lies adjacent to
+sector 9 on track T+1.
+
+0C61            DEC  E
+0C62            JR   NZ,<a href="#0C66 FRMT_2">#0C66,FRMT_2</a>     Jump if sector >= 1.
+0C64            LD   E,10                Sector numbers have range 1..10.
+<a NAME="0C66 FRMT_2"></a>0C66 FRMT_2     DEC  E
+0C67            JR   NZ,<a href="#0C6B FRMT_3">#0C6B,FRMT_3</a>     Jump if sector >= 1.
+0C69            LD   E,10                This instruction is never reached ??
+<a NAME="0C6B FRMT_3"></a>0C6B FRMT_3     JP   <a href="#0C41 FRMT_TRK">#0C41,FRMT_TRK</a>      Format the next track.
+
+If a double sided drive is used, the formatting continues on track 0 side 1.
+
+<a NAME="0C6E FRMT_SIDE1"></a>0C6E FRMT_SIDE1 CALL <a href="#06A4 TRACK_0">#06A4,TRACK_0</a>       Reset drive head.
+0C71            LD   D,128               Track 0, side 1.
+0C73            CALL <a href="#071C SET_DRVSD">#071C,SET_DRVSD</a>     Set drive, side, density, etc.
+0C76            JP   <a href="#0C41 FRMT_TRK">#0C41,FRMT_TRK</a>      Continue formatting.
+
+When the formatting of all tracks is completed, the routine checks whether it is
+supposed to copy another disk to this one, or to verify the disk.
+
+<a NAME="0C79 FRMT_DONE"></a>0C79 FRMT_DONE  CALL <a href="#06B6 REST">#06B6,REST</a>          Reset drive head.
+0C7C            LD   A,(#3E1A)
+0C7F            CP   #FF
+0C81            JR   Z,<a href="#0CD3 FRMT_CHK">#0CD3,FRMT_CHK</a>    Jump if UFIA2 is empty.
+
+When the disk in the other drive is to be cloned, it will be copied a track at a time.
+
+<a NAME="0C83 FRMT_COPY"></a>0C83 FRMT_COPY  LD   HL,49152            Address of track buffer.
+0C86            LD   (#3AC5),HL          Store load address.
+0C89            LD   (#3AC8),HL          Store save address.
+0C8C            LD   A,(#3E1A)           Fetch source drive number from UFIA2.
+0C8F            CALL <a href="#0705 TEST_DRV1">#0705,TEST_DRV1</a>     Check and set drive.
+<a NAME="0C92 FRMT_C1"></a>0C92 FRMT_C1    CALL <a href="#05CC RSAD">#05CC,RSAD</a>          Load a sector.
+0C95            PUSH DE                  Store track and sector number.
+0C96            LD   HL,#3BD6            DRAM sector buffer address.
+0C99            LD   DE,(#3AC5)          Fetch load address.
+0C9D            LD   BC,512              BC holds sector length.
+0CA0            LDIR                     Copy the contents of the buffer to
+                                         'main' RAM.
+0CA2            LD   (#3AC5),DE          Store new load address.
+0CA6            POP  DE                  Restore track and sector number.
+0CA7            CALL <a href="#0D7E NEXT_SEC">#0D7E,NEXT_SEC</a>      Compute next sector number.
+0CAA            JR   NZ,<a href="#0C92 FRMT_C1">#0C92,FRMT_C1</a>    Jump if there is still a sector on this
+                                         track.
+0CAC            LD   A,(#3E01)           Fetch destination drive from UFIA1.
+0CAF            CALL <a href="#0705 TEST_DRV1">#0705,TEST_DRV1</a>     Check and set drive.
+<a NAME="0CB2 FRMT_C2"></a>0CB2 FRMT_C2    PUSH DE                  Store track and sector number.
+0CB3            LD   HL,(#3AC8)          Fetch save address.
+0CB6            LD   DE,#3BD6            DRAM sector buffer address.
+0CB9            LD   BC,512              BC holds sector length.
+0CBC            LDIR                     Copy a sector to the sector buffer.
+0CBE            LD   (#3AC8),HL          Store new save address.
+0CC1            POP  DE                  Restore track and sector number.
+0CC2            CALL <a href="#0584 WSAD">#0584,WSAD</a>          Save the sector.
+0CC5            CALL <a href="#0D7E NEXT_SEC">#0D7E,NEXT_SEC</a>      Compute next sector number.
+0CC8            JR   NZ,<a href="#0CB2 FRMT_C2">#0CB2,FRMT_C2</a>    Jump if not all sectors on this track
+                                         have been written.
+0CCA            CALL <a href="#0CE4 NXT_TRK">#0CE4,NXT_TRK</a>       Compute next track number.
+0CCD            JR   NZ,<a href="#0C83 FRMT_COPY">#0C83,FRMT_COPY</a>  Jump if not all tracks have been
+                                         copied.
+0CCF            EI                       Enable interrupts and exit via
+0CD0            JP   <a href="#06B6 REST">#06B6,REST</a>          'REST'.
+
+The routine now verifies if all sectors are readable. An error is given if a sector
+can't be read, it would have been more usefull if a 'badsectors' file was saved.
+
+<a NAME="0CD3 FRMT_CHK"></a>0CD3 FRMT_CHK   CALL <a href="#05CC RSAD">#05CC,RSAD</a>          Load a sector.
+0CD6            CALL <a href="#0D7E NEXT_SEC">#0D7E,NEXT_SEC</a>      Compute next sector number.
+0CD9            JR   NZ,<a href="#0CD3 FRMT_CHK">#0CD3,FRMT_CHK</a>   Jump if not all sectors on one track
+                                         have been loaded.
+0CDB            CALL <a href="#0CE4 NXT_TRK">#0CE4,NXT_TRK</a>       Compute next track number.
+0CDE            JR   NZ,<a href="#0CD3 FRMT_CHK">#0CD3,FRMT_CHK</a>   Jump if not all tracks on the disk have
+                                         been verified.
+0CE0            EI                       Enable interrupts and exit via
+0CE1            JP   <a href="#06B6 REST">#06B6,REST</a>          'REST'.
+
+<font size=+2>THE 'NXT_TRK' SUBROUTINE</font>
+This subroutine is almost the same as the 'NEXT_TRACK' subroutine at #0956. But the
+differences are essential. No error is given when a non existent track is reached and the
+Zero flag is used to signal 'no more tracks on this side' when set.
+
+<a NAME="0CE4 NXT_TRK"></a>0CE4 NXT_TRK    INC  D                   Increase track number.
+0CE5            CALL <a href="#0985 DRV_CAP">#0985,DRV_CAP</a>       Get drive capacity in A.
+0CE8            CP   D
+0CE9            RET  Z                   Return with Zero set if last track
+                                         reached.
+0CEA            AND  #7F                 Mask off side bit.
+0CEC            CP   D
+0CED            RET  NZ                  Return with Zero reset if last track
+                                         on side0 hasn't been reached.
+0CEE            CALL <a href="#06B6 REST">#06B6,REST</a>          Reset drive head.
+0CF1            LD   D,128               Track 0, side 1.
+0CF3            CP   D                   Reset Zero flag.
+0CF4            RET
+
+<font size=+2>THE 'BUILD UP A DD TRACK' SUBROUTINE</font>
+This subroutine builds up a double density track in the 'main' memory starting at
+address 49152.
+
+<a NAME="0CF5 MK_TRK_DD"></a>0CF5 MK_TRK_DD  LD   HL,49152            Start of track buffer.
+0CF8            LD   BC,#3C4E            Store 60 bytes #4E. GAP I.
+0CFB            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0CFE            LD   B,10                Number of sectors on a track.
+<a NAME="0D00 MK_TRK_DD1"></a>0D00 MK_TRK_DD1 PUSH BC
+0D01            LD   BC,#0C00            12 bytes #00. Last part of GAP III.
+0D04            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D07            LD   BC,#03F5            3 bytes #F5 (written as #A1).
+0D0A            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D0D            LD   BC,#01FE            1 byte  #FE (ID field ID).
+0D10            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D13            LD   A,D                 Fetch track number.
+0D14            AND  #7F                 Mask side bit.
+0D16            LD   C,A
+0D17            LD   B,1                 1 byte  track number.
+0D19            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D1C            LD   A,D                 Fetch track again.
+0D1D            AND  #80                 Keep only side bit.
+0D1F            RLCA                     Rotate it to bit 0.
+0D20            LD   C,A
+0D21            LD   B,1                 1 byte  side number.
+0D23            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D26            LD   C,E                 Fetch sector number.
+0D27            CALL <a href="#0D7E NEXT_SEC">#0D7E,NEXT_SEC</a>      Increment sector number.
+0D2A            LD   B,1                 1 byte  sector number.
+0D2C            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D2F            LD   BC,#0102            1 byte  #02 (sector length = 512).
+0D32            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D35            LD   BC,#01F7            1 byte  #F7 (two CRC bytes written).
+0D38            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D3B            LD   BC,#164E            22 bytes #4E. GAP II.
+0D3E            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D41            LD   BC,#0C00            12 bytes #00.
+0D44            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D47            LD   BC,#03F5            3 bytes #F5 (written as #A1).
+0D4A            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D4D            LD   BC,#01FB            1 byte  #FB (data field ID).
+0D50            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D53            LD   BC,#0000            512 bytes #00. Data bytes.
+0D56            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D59            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D5C            LD   BC,#01F7            1 byte  #F7 (two CRC bytes written).
+0D5F            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D62            LD   BC,#184E            24 bytes #4E. First part of GAP III.
+0D65            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D68            POP  BC                  Retrieve sector counter.
+0D69            DEC  B                   Repeat until all 10 sectors have been
+0D6A            JP   NZ,<a href="#0D00 MK_TRK_DD1">#0D00,MK_TRK_DD1</a> build up.
+0D6D            LD   BC,#004E            768 bytes #00. GAP IV.
+0D70            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D73            CALL <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+0D76            JP   <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>
+
+<font size=+2>THE 'STORE B TIMES BYTE C' SUBROUTINE</font>
+This subroutine is used in the construction of a track in memory, it stores the byte
+held in the C register, B times.
+
+<a NAME="0D79 B_TIMES_C"></a>0D79 B_TIMES_C  LD   (HL),C              Store C.
+0D7A            INC  HL                  Next address.
+0D7B            DJNZ <a href="#0D79 B_TIMES_C">#0D79,B_TIMES_C</a>     Repeat until B=0.
+0D7D            RET
+
+<font size=+2>THE 'NEXT SECTOR' SUBROUTINE</font>
+This subroutine computes the next sector number in E, it returns with the Zero flag set
+indicating 'next track'.
+
+<a NAME="0D7E NEXT_SEC"></a>0D7E NEXT_SEC   INC  E                   Increment sector number.
+0D7F            LD   A,E
+0D80            CP   11
+0D82            RET  NZ                  Return with Zero reset signalling
+                                         'same track'.
+0D83            LD   E,1                 Otherwise start with sector 1 again.
+0D85            RET                      Return with Zero set signalling 'next
+                                         track'.
+
+<font size=+2>THE 'MAKE HL POINT TO BUFFER' SUBROUTINE</font>
+This subroutine returns with HL holding the start of the data buffer. On entry IX must
+point to the start of the disk channel.
+
+<a NAME="0D86 HL_BUFFER"></a>0D86 HL_BUFFER  PUSH BC
+0D87            PUSH IX                  Disk channel pointer to BC.
+0D89            POP  BC
+0D8A            LD   L,(IX+15)           Fetch data buffer offset.
+0D8D            LD   H,(IX+16)
+0D90            ADD  HL,BC               HL now points to the data buffer.
+0D91            POP  BC
+0D92            RET
+
+<font size=+2>THE 'FETCH RPT INTO HL' SUBROUTINE</font>
+This subroutine returns with HL holding the RAM PoinTer, which points to the next data
+byte in the data buffer. When entering at #0D97, RPT-lo is first reset.
+
+<a NAME="0D93 RPT_HL"></a>0D93 RPT_HL     LD   (IX+13),0           Reset RPT-lo.
+<a NAME="0D97 RPT_HL1"></a>0D97 RPT_HL1    CALL <a href="#0D86 HL_BUFFER">#0D86,HL_BUFFER</a>     HL points to the data buffer.
+0D9A            LD   B,(IX+14)           Fetch RPT offset into BC.
+0D9D            LD   C,(IX+13)
+0DA0            ADD  HL,BC               Add the offset to the start of the
+                                         data buffer.
+0DA1            RET                      Finished.
+
+<font size=+2>THE 'INCREMENT RPT' SUBROUTINE</font>
+This small subroutine increments the RAM PoinTer offset.
+
+<a NAME="0DA2 INC_RPT"></a>0DA2 INC_RPT    INC  (IX+13)             Increment RPT-lo.
+0DA5            RET  NZ
+0DA6            INC  (IX+14)             Increment RPT-hi when necessary.
+0DA9            RET
+
+<font size=+2>THE 'RESET RPT' SUBROUTINE</font>
+This small subroutine resets the RAM PoinTer offset.
+
+<a NAME="0DAA RES_RPT"></a>0DAA RES_RPT    LD   (IX+13),0           Clear RPT offset.
+0DAE            LD   (IX+14),0
+0DB2            RET
+
+<font size=+2>THE 'FETCH SECTOR ADDRESS' SUBROUTINE</font>
+This subroutine returns with DE holding the stored track and sector number.
+
+<a NAME="0DB3 FETCH_SEC"></a>0DB3 FETCH_SEC  LD   D,(IX+18)
+0DB6            LD   E,(IX+17)
+0DB9            RET
+
+<font size=+2>THE 'STORE SECTOR ADDRESS' SUBROUTINE</font>
+This subroutine stores the track and sector number held in DE into the disk channel.
+
+<a NAME="0DBA STORE_SEC"></a>0DBA STORE_SEC  LD   (IX+18),D
+0DBD            LD   (IX+17),E
+0DC0            RET
+
+<font size=+2>THE 'GET SECTOR ADDRESS' SUBROUTINE</font>
+This subroutine returns with DE holding the stored track and sector number and the track
+and sector number held in HL stored into the disk channel.
+
+<a NAME="0DC1 GET_SECTOR"></a>0DC1 GET_SECTOR CALL <a href="#0DB3 FETCH_SEC">#0DB3,FETCH_SEC</a>     Fetch the stored track and sector
+0DC4            LD   (IX+18),H           number. And store the track and sector
+0DC7            LD   (IX+17),L           number held in HL.
+0DCA            RET
+
+<font size=+2>THE 'STEP' SUBROUTINES</font>
+These two small subroutines are used to move the drive head one step in or out.
+
+<a NAME="0DCB STEP_OUT"></a>0DCB STEP_OUT   LD   C,%01111000         Step-out, update track register,
+0DCD            JR   STEP                disable spin-up sequence, no verify,
+                                         step rate 6 ms.
+<a NAME="0DCF STEP_IN"></a>0DCF STEP_IN    LD   C,%01011000         Step-in, update track register,
+                                         disable spin-up sequence, no verify,
+                                         step rate 6 ms.
+<a NAME="0DD1 STEP"></a>0DD1 STEP       CALL <a href="#06F7 LD_COM_REG">#06F7,LD_COM_REG</a>    Execute the command, move one track.
+0DD4            JP   <a href="#0692 STEP_DELAY">#0692,STEP_DELAY</a>    Wait for the number of msec's
+                                         specified by (STPRAT).
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="misc1.htm">Previous</a></td>
+<td><a href="hookcode.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

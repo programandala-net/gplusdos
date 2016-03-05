@@ -1,0 +1,502 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>The syntax checking routines </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="basic1.htm">Previous</a></td>
+<td><a href="basic2.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>The syntax checking routines </font></b>
+
+<font size=+2>THE 'SEPARATOR' SUBROUTINE</font>
+This small subroutine tests whether the current character is a separator or a quote. It
+returns with Zero flag set if it was a ";", "," or a """, with the first two A holds the
+next character.
+
+<a NAME="25A2 SEPARATOR"></a>25A2 SEPARATOR  CP   44,","
+25A4            JR   Z,<a href="#25AD SEPAR_1">#25AD,SEPAR_1</a>     Jump if current character is a comma.
+25A6            CP   59,";"
+25A8            JR   Z,<a href="#25AD SEPAR_1">#25AD,SEPAR_1</a>     Jump if it is a semicolon.
+25AA            CP   34,"""
+25AC            RET                      Return with Zero set if it's a quote.
+<a NAME="25AD SEPAR_1"></a>25AD SEPAR_1    RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Get next character.
+25AE            LD   (#3DEA),A
+25B1            XOR  A                   Set Zero flag.
+25B2            LD   A,(#3DEA)
+25B5            RET
+
+<font size=+2>THE 'EVALUATE STRING EXPR.' SUBROUTINE</font>
+A call is made to the 'main' ROM 'EXPT_EXP' (class-0A) subroutine, to evaluate a string
+expression. During runtime, the parameters of the string (start and length) are returned
+in the DE and BC register pairs.
+
+<a NAME="25B6 EXPT_STR"></a>25B6 EXPT_STR   RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Evaluate the string expression.
+25B7            DEFW #1C8C,EXPT_EXP
+25B9            RST  #30,<a href="restart.htm#0030 SYNTAX_Z">SYNTAX_Z</a>
+25BA            RET  Z                   Return if syntax is being checked.
+25BB            PUSH AF                  Save the character following the string
+25BC            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          and the zero flag.
+25BD            DEFW #2BF1,STK_FETCH     Fetch the string parameters.
+25BF            POP  AF
+25C0            RET
+
+<font size=+2>THE 'EVAL. MICRODRIVE SYNTAX' SUBROUTINE</font>
+This subroutine is entered at 'MD_SYNTAX' or 'MD_SYNTAX1' depending upon whether or not
+the character pointer is to be updated to the next character. A single character string
+is evaluated, and its ASCII value is stored during runtime. If a separator isn't present
+after the single character string, an error is given.
+
+<a NAME="25C1 MD_SYNTAX"></a>25C1 MD_SYNTAX  RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+<a NAME="25C2 MD_SYN1"></a>25C2 MD_SYN1    CALL <a href="#25B6 EXPT_STR">#25B6,EXPT_STR</a>
+25C5            JR   Z,<a href="#25D9 MD_SYN2">#25D9,MD_SYN2</a>     Jump if syntax is being checked.
+25C7            PUSH AF                  Save the character following the
+25C8            LD   A,C                 string. A holds string length low byte.
+25C9            DEC  A
+25CA            OR   B                   Give an error if there isn't exactly
+25CB            JP   NZ,<a href="errrst.htm#1658 REP_10">#1658,REP_10</a>     one character in the string.
+25CE            LD   A,(DE)              Fetch the channel specifier.
+25CF            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call 'ALPHA' to see if it's a valid
+25D0            DEFW #2C8D,ALPHA         letter.
+25D2            JP   NC,<a href="errrst.htm#1658 REP_10">#1658,REP_10</a>     Give error if not a valid letter.
+25D5            LD   (#3E04),A           Store the specifier in the UFIA.
+25D8            POP  AF                  Restore next character.
+<a NAME="25D9 MD_SYN2"></a>25D9 MD_SYN2    CP   59,";"
+25DB            RET  Z                   Return if it's a semicolon.
+25DC            CP   44,","
+25DE            RET  Z                   Return if it's a comma.
+25DF            JP   <a href="errrst.htm#1644 REP_0">#1644,REP_0</a>         Otherwise give error.
+
+<font size=+2>THE 'EVALUATE DEVICE NUMBER' SUBROUTINE</font>
+This subroutine is used to evaluate the device number.
+
+<a NAME="25E2 EXPT_DEVN"></a>25E2 EXPT_DEVN  AND  #DF                 Make upper case.
+25E4            CP   80,"P"
+25E6            JR   NZ,<a href="#25F9 EXPT_DEVN1">#25F9,EXPT_DEVN1</a> Jump if the device wasn't "P".
+25E8            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+25E9            CALL <a href="#2611 EXPT_NUM">#2611,EXPT_NUM</a>      Get the program number.
+25EC            RET  Z                   Return if syntax checking.
+25ED            PUSH AF
+25EE            LD   A,(#3E01)           Store program number.
+25F1            LD   (#3E02),A
+25F4            CALL <a href="#2604 LAST_DRV">#2604,LAST_DRV</a>      Drive is last drive.
+25F7            POP  AF
+25F8            RET
+
+Now a check is made whether the last used device is wanted.
+
+<a NAME="25F9 EXPT_DEVN1"></a>25F9 EXPT_DEVN1 RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Get next character.
+<a NAME="25FA EXPT_DEVN2"></a>25FA EXPT_DEVN2 CP   42,"*"
+25FC            JR   NZ,EXPT_NUM         Jump if it wasn't a "*".
+25FE            RST  #30,<a href="restart.htm#0030 SYNTAX_Z">SYNTAX_Z</a>
+25FF            CALL NZ,<a href="#2604 LAST_DRV">#2604,LAST_DRV</a>   Store last drive number during runtime.
+2602            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+2603            RET
+
+<font size=+2>THE 'SET LAST DRIVE' SUBROUTINE</font>
+This subroutine is used whenever the last used drive is to be used again.
+
+<a NAME="2604 LAST_DRV"></a>2604 LAST_DRV   LD   A,(#3DDA)           Fetch current control port status.
+2607            AND  #01                 Keep only drive select.
+2609            ADD  A,#01               A holds 1 for drive 2, 2 for drive 1.
+260B            XOR  #03                 1 becomes 2, 2 becomes 1.
+260D            LD   (#3E01),A           Store drive number.
+2610            RET
+
+<font size=+2>THE 'EVALUATE NUMERIC EXPR.' SUBROUTINE</font>
+This subroutine is used to evaluate a single numeric expression. The result is returned
+during runtime into the BC register pair and into UFIA1.
+
+<a NAME="2611 EXPT_NUM"></a>2611 EXPT_NUM   RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Evaluate the expression by calling
+2612            DEFW #1C82,EXPT_1NUM     'EXPT_1NUM' in the 'main' ROM.
+2614            RST  #30,<a href="restart.htm#0030 SYNTAX_Z">SYNTAX_Z</a>
+2615            RET  Z                   Return if syntax is being checked.
+2616            PUSH AF
+2617            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Fetch the value from the calculator
+2618            DEFW #1E99,FIND_INT2     stack.
+261A            LD   A,C
+261B            LD   (#3E01),A           Store it in UFIA1.
+261E            POP  AF
+261F            RET
+
+<font size=+2>THE 'EVALUATE 2ND FILENAME' SUBROUTINE</font>
+This routine evaluates the second filename of a BASIC command. Because 'EXP_F_NAME'
+stores the filename in UFIA1, both UFIAS are swapped first,
+then 'EXP_F_NAME' is called and an exit is made via 'SWAP_UFIAS' to get the UFIA's in
+the right place again.
+
+<a NAME="2620 EXPT_2FNAM"></a>2620 EXPT_2FNAM CALL <a href="#2626 SWAP_UFIAS">#2626,SWAP_UFIAS</a>    Swap UFIA1 and 2.
+2623            CALL <a href="#2640 EXPT_FNAME">#2640,EXPT_FNAME</a>    Evaluate filename.
+                                         Exit via 'SWAP_UFIAS'.
+<font size=+2>THE 'SWAP UFIAS' SUBROUTINE</font>
+This subroutine swaps the contents of UFIA1 and UFIA2 in DFCA.
+
+<a NAME="2626 SWAP_UFIAS"></a>2626 SWAP_UFIAS PUSH AF
+2627            PUSH BC
+2628            PUSH DE
+2629            PUSH HL
+262A            LD   B,24                An UFIA is 24 bytes long.
+262C            LD   DE,#3E01            Start of UFIA1.
+262F            LD   HL,#3E1A            Start of UFIA2.
+<a NAME="2632 SWAP_LOOP"></a>2632 SWAP_LOOP  LD   A,(DE)              Exchange the contents.
+2633            LD   C,(HL)
+2634            EX   DE,HL
+2635            LD   (DE),A
+2636            LD   (HL),C
+2637            INC  DE
+2638            INC  HL
+2639            DJNZ <a href="#2632 SWAP_LOOP">#2632,SWAP_LOOP</a>     Repeat for all 24 bytes.
+263B            POP  HL
+263C            POP  DE
+263D            POP  BC
+263E            POP  AF
+263F            RET
+
+<font size=+2>THE 'EVALUATE A FILENAME' SUBROUTINE</font>
+A string expression is evaluated and, provided that the length is within the range 1..10
+characters, is stored in UFIA1.
+
+<a NAME="2640 EXPT_FNAME"></a>2640 EXPT_FNAME CALL <a href="#25B6 EXPT_STR">#25B6,EXPT_STR</a>      Evaluate the string.
+2643            RET  Z                   Return if checking syntax.
+2644            PUSH AF
+2645            LD   A,C
+2646            OR   B
+2647            JP   Z,<a href="errrst.htm#1654 REP_8">#1654,REP_8</a>       Give error with null string.
+264A            LD   HL,10
+264D            SBC  HL,BC
+264F            JP   C,<a href="errrst.htm#1654 REP_8">#1654,REP_8</a>       Give error with string length > 10.
+2652            LD   HL,#3E05            Clear the filename and the directory
+2655            LD   A,11                description of UFIA1.
+<a NAME="2657 CLR_FNAME"></a>2657 CLR_FNAME  LD   (HL),32
+2659            INC  HL
+265A            DEC  A
+265B            JR   NZ,<a href="#2657 CLR_FNAME">#2657,CLR_FNAME</a>  Repeat for all 11 bytes.
+265D            LD   HL,#3E06            Copy the filename into UFIA1.
+2660            EX   DE,HL
+2661            LDIR
+2663            POP  AF
+2664            RET
+
+<font size=+2>THE 'EVALUATE PARAMETERS' SUBROUTINE</font>
+This very important subroutine is called to evaluate the syntax of the +D 'SAVE',
+'LOAD', 'MERGE' and 'VERIFY' commands. The routine is entered with CH_ADD pointing to the
+command; on exit during runtime UFIA1 is filled with the proper values.
+
+<a NAME="2665 EXPT_PARMS"></a>2665 EXPT_PARMS RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Get next character from BASIC line.
+2666            CP   32," "              Give an error with character codes
+2668            JP   C,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>       below 32, i.e. colour codes, etc.
+266B            CP   170,"SCREEN$"
+266D            JP   Z,<a href="misc3.htm#301D DUMP_SCR$">#301D,DUMP_SCR$</a>   Jump with 'SCREEN$'.
+2670            LD   (#3E04),A           Otherwise store it in DEV_TYPE1.
+2673            CP   64,"@"
+2675            JR   NZ,<a href="#26AE NOT_@">#26AE,NOT_@</a>      Jump if not a '@'.
+
+Now deal with @.
+
+2677            CALL <a href="#25E2 EXPT_DEVN">#25E2,EXPT_DEVN</a>     Evaluate drive number.
+267A            CALL <a href="#25A2 SEPARATOR">#25A2,SEPARATOR</a>
+267D            JP   NZ,<a href="errrst.htm#1648 REP_2">#1648,REP_2</a>      Give error if no separator was found.
+2680            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call 'EXPT_1NUM' to evaluate the track
+2681            DEFW #1C82,EXPT_1NUM     number.
+2683            CALL <a href="#25A2 SEPARATOR">#25A2,SEPARATOR</a>     Test for another separator and give an
+2686            JP   NZ,<a href="errrst.htm#1648 REP_2">#1648,REP_2</a>      error if none found.
+2689            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Evaluate sector number.
+268A            DEFW #1C82,EXPT_1NUM
+268C            CALL <a href="#25A2 SEPARATOR">#25A2,SEPARATOR</a>     Again a separator has to be found.
+268F            JP   NZ,<a href="errrst.htm#1648 REP_2">#1648,REP_2</a>
+2692            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Evaluate address.
+2693            DEFW #1C82,EXPT_1NUM
+2695            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement, and exit
+                                         during syntax checking.
+2698            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Fetch the address from the calculator
+2699            DEFW #1E99,FIND_INT2     stack.
+269B            LD   (#3E15),BC          Store it in LENGTH1_2
+269F            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Fetch sector.
+26A0            DEFW #1E99,FIND_INT2
+26A2            LD   (#3E13),BC          Store it in FILE_ADDR1
+26A6            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Fetch track.
+26A7            DEFW #1E99,_FIND_INT2
+26A9            LD   (#3E11),BC          Store it in LENGTH1_1
+26AD            RET                      Exit.
+
+<a NAME="26AE NOT_@"></a>26AE NOT_@      CP   42,"*"              Call 'MD_SYNTAX' if it was a "*".
+26B0            CALL Z,<a href="#25C1 MD_SYNTAX">#25C1,MD_SYNTAX</a>
+26B3            CALL <a href="#25E2 EXPT_DEVN">#25E2,EXPT_DEVN</a>     Fetch device or program number.
+26B6            CALL <a href="#25A2 SEPARATOR">#25A2,SEPARATOR</a>     Test for a separator.
+26B9            PUSH AF
+26BA            RST  #30,<a href="restart.htm#0030 SYNTAX_Z">SYNTAX_Z</a>
+26BB            JR   Z,<a href="#26D6 FILENAME">#26D6,FILENAME</a>    Jump if syntax checking.
+26BD            LD   A,(#3E04)           Fetch device descriptor.
+26C0            AND  #DF                 Only capitals.
+26C2            CP   68,"D"
+26C4            JR   Z,<a href="#26D1 NOT_@1">#26D1,NOT_@1</a>      Jump if device is disk.
+26C6            CP   77,"M"
+26C8            JR   Z,<a href="#26D1 NOT_@1">#26D1,NOT_@1</a>      Or disk with Microdrive syntax.
+26CA            CP   80,"P"
+26CC            JR   Z,<a href="#26DB PARAMS">#26DB,PARAMS</a>      Jump with program.
+26CE            JP   NZ,<a href="errrst.htm#1658 REP_10">#1658,REP_10</a>     Give error with unknown device.
+<a NAME="26D1 NOT_@1"></a>26D1 NOT_@1     POP  AF                  Give error if no separator or quote
+26D2            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      found with devices "D" and "M".
+26D5            PUSH AF                  Balance 'POP AF' below.
+<a NAME="26D6 FILENAME"></a>26D6 FILENAME   POP  AF
+26D7            CALL Z,<a href="#2640 EXPT_FNAME">#2640,EXPT_FNAME</a>  Evaluate filename if necessary.
+26DA            PUSH AF                  Balance next instruction.
+<a NAME="26DB PARAMS"></a>26DB PARAMS     POP  AF
+26DC            CP   13
+26DE            JP   Z,<a href="#276F NO_PARAMS">#276F,NO_PARAMS</a>   Jump with ENTER.
+26E1            CP   58,":"
+26E3            JP   Z,<a href="#276F NO_PARAMS">#276F,NO_PARAMS</a>   Jump with colon.
+26E6            CP   204,"TO"
+26E8            JP   Z,<a href="basic1.htm#2308 TO">#2308,TO</a>          Jump with 'TO'.
+26EB            CP   170,"SCREEN$"
+26ED            JP   Z,<a href="#27A5 SCREEN$">#27A5,SCREEN$</a>     Jump with 'SCREEN$'.
+26F0            CP   175,"CODE"
+26F2            JP   Z,<a href="#27C0 CODE">#27C0,CODE</a>        Jump with 'CODE'.
+26F5            CP   228,"DATA"
+26F7            JP   Z,<a href="#281A DATA">#281A,DATA</a>        Jump with 'DATA'.
+26FA            CP   202,"LINE"
+26FC            JP   Z,<a href="#275F LINE">#275F,LINE</a>        Jump with 'LINE'.
+26FF            AND  #DF                 Only capitals.
+2701            CP   83,"S"
+2703            JR   NZ,<a href="#270F NOT_S">#270F,NOT_S</a>      Jump with other than 'S'.
+2705            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+2706            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax checking.
+2709            LD   A,5                 Signal '48K Snapshot'.
+270B            LD   (#3E05),A
+270E            RET                      Finished.
+
+<a NAME="270F NOT_S"></a>270F NOT_S      CP   75,"K"
+2711            JR   NZ,<a href="#271D NOT_K">#271D,NOT_K</a>      Jump with other than 'K'.
+2713            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+2714            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax checking.
+2717            LD   A,9                 Signal '128K Snapshot'.
+2719            LD   (#3E05),A
+271C            RET                      Finished.
+
+<a NAME="271D NOT_K"></a>271D NOT_K      CP   88,"X"
+271F            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      Give error with other than 'X'.
+2722            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+2723            CALL <a href="#25A2 SEPARATOR">#25A2,SEPARATOR</a>     Jump if a separator found, there is
+2726            JR   Z,<a href="#2736 XFILE_1">#2736,XFILE_1</a>     more.
+2728            CALL <a href="flags.htm#1635 TEST_5">#1635,TEST_5</a>        There must follow a address if SAVEing.
+272B            JP   NZ,<a href="errrst.htm#1648 REP_2">#1648,REP_2</a>      Give error if SAVEing.
+272E            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax checking.
+2731            LD   BC,#3BD6            Load address of execute file.
+2734            JR   <a href="#273F XFILE_2">#273F,XFILE_2</a>       Jump forward.
+
+A separator has been found, so there should follow an address.
+
+<a NAME="2736 XFILE_1"></a>2736 XFILE_1    RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Evaluate address.
+2737            DEFW #1C82,EXPT_1NUM
+2739            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax checking.
+273C            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Fetch the address.
+273D            DEFW #1E99,FIND_INT2
+<a NAME="273F XFILE_2"></a>273F XFILE_2    LD   (#3E13),BC          Store it in FILE_ADDR1
+2743            LD   BC,510              Length of execute file on double
+2746            LD   A,(#3DDA)           density disks.
+2749            AND  #04
+274B            JR   Z,<a href="#2750 XFILE_3">#2750,XFILE_3</a>     Jump if double density selected.
+274D            LD   BC,254              Otherwise this is the length of the
+                                         execute file.
+<a NAME="2750 XFILE_3"></a>2750 XFILE_3    LD   (#3E11),BC          Store length in LENGTH1_1.
+2754            LD   A,3                 File type is 'CODE'.
+2756            LD   (#3E10),A           Store it in FILE_TYPE1.
+2759            LD   A,11                Signal 'Execute file'.
+275B            LD   (#3E05),A           Store in DIR_DESCR1
+275E            RET                      Finished.
+
+Now deal with LINE. The +D allows LOAD, VERIFY and MERGE .. LINE to be entered as a
+command but the LINE is completely ignored.
+
+<a NAME="275F LINE"></a>275F LINE       RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Advance CH_ADD.
+2760            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Evaluate autostart line number by
+2761            DEFW #1C82,EXPT_1NUM     calling 'EXPT_1NUM' in the 'main' ROM.
+2763            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement, and exit
+                                         during syntax checking.
+2766            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Fetch the autostart line number.
+2767            DEFW #1E99,FIND_INT2
+2769            LD   (#3E17),BC          Store it in AUTOSTART1.
+276D            JR   <a href="#2772 PROG">#2772,PROG</a>
+
+If there are no parameters, as with a BASIC program, the syntax checking ends here.
+
+<a NAME="276F NO_PARAMS"></a>276F NO_PARAMS  CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement, exit when
+                                         syntax checking.
+<a NAME="2772 PROG"></a>2772 PROG       LD   A,(#3E04)
+2775            AND  #DF                 Only capitals.
+2777            CP   80,"P"              Jump if the device wasn't "P", i.e. no
+2779            JR   NZ,<a href="#2782 PROG_1">#2782,PROG_1</a>     program number was specified.
+277B            CALL <a href="flags.htm#1635 TEST_5">#1635,TEST_5</a>        'SAVE pn' is not supported, so give an
+277E            RET  Z                   error if saving, otherwise return.
+277F            JP   <a href="errrst.htm#1644 REP_0">#1644,REP_0</a>
+
+<a NAME="2782 PROG_1"></a>2782 PROG_1     XOR  A                   File type is 'BASIC'.
+2783            LD   (#3E10),A
+2786            LD   A,1                 Signal 'BASIC file'.
+2788            LD   (#3E05),A
+278B            LD   HL,(23641)          Fetch (E_LINE), the first location past
+                                         the variables area.
+278E            LD   DE,(23635)          Fetch (PROG), the 'start' of the BASIC
+2792            LD   (#3E13),DE          program and store it in FILE_ADDR1
+2796            SCF                      Calculate ((E_LINE)-(PROG)-1), i.e. the
+2797            SBC  HL,DE               length of the program and its
+2799            LD   (#3E11),HL          variables. Store it in LENGTH1_1.
+279C            LD   HL,(23627)          Fetch (VARS) and calculate
+279F            SBC  HL,DE               (VARS)-(PROG), i.e. the length of the
+                                         program without its variables.
+27A1            LD   (#3E15),HL          Store it into LENGTH1_2.
+27A4            RET                      Finished.
+
+If the token is SCREEN$, the parameters are entered directly into the file header.
+
+<a NAME="27A5 SCREEN$"></a>27A5 SCREEN$    RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Get the next character.
+27A6            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax checking.
+27A9            LD   HL,6912             The size of the display file is stored
+27AC            LD   (#3E11),HL          into LENGTH1_1.
+27AF            LD   HL,16384            The startaddress is stored into
+27B2            LD   (#3E13),HL          FILE_ADDR1
+27B5            LD   A,3                 File type is 'CODE'.
+27B7            LD   (#3E10),A
+27BA            LD   A,7                 Signal 'SCREEN$'.
+27BC            LD   (#3E05),A
+27BF            RET
+
+Now deal with CODE, three parameters are needed: "start", "length" and "execute
+address". With LOAD there may be none, one, two or three parameters, but with SAVE at
+least two parameters must be present.
+
+<a NAME="27C0 CODE"></a>27C0 CODE       RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Update CH_ADD.
+27C1            CP   13                  If there are no further parameters,
+27C3            JR   Z,<a href="#27C9 CODE_1">#27C9,CODE_1</a>      jump to use '0' as default value.
+27C5            CP   58,":"              Jump if there are parameters to be
+27C7            JR   NZ,<a href="#27D4 CODE_2">#27D4,CODE_2</a>     evaluated (i.e. the next character is
+                                         not a colon).
+<a NAME="27C9 CODE_1"></a>27C9 CODE_1     CALL <a href="flags.htm#1635 TEST_5">#1635,TEST_5</a>        'SAVE .. CODE' has to be followed by at
+27CC            JP   NZ,<a href="errrst.htm#1648 REP_2">#1648,REP_2</a>      least two numbers, so give an error if
+                                         none present.
+27CF            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          A call to the 'main' ROM routine
+27D0            DEFW #1CE6,USE_ZERO      'USE_ZERO' is made to use a value of
+27D2            JR   <a href="#27DC CODE_3">#27DC,CODE_3</a>        zero as default.
+
+It's likely that an address follows.
+
+<a NAME="27D4 CODE_2"></a>27D4 CODE_2     RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Use the 'main' ROM routine to evaluate
+27D5            DEFW #1C82,EXPT_1NUM     the first parameter.
+27D7            CALL <a href="#25A2 SEPARATOR">#25A2,SEPARATOR</a>
+27DA            JR   Z,<a href="#27E7 CODE_4">#27E7,CODE_4</a>      Jump if a separator is present.
+<a NAME="27DC CODE_3"></a>27DC CODE_3     CALL <a href="flags.htm#1635 TEST_5">#1635,TEST_5</a>        Give an error if there isn't a second
+27DF            JP   NZ,<a href="errrst.htm#1648 REP_2">#1648,REP_2</a>      number with 'SAVE .. CODE'.
+27E2            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Otherwise use zero as default.
+27E3            DEFW #1CE6,USE_ZERO
+27E5            JR   <a href="#27EF CODE_5">#27EF,CODE_5</a>
+
+The length seems to be present also.
+
+<a NAME="27E7 CODE_4"></a>27E7 CODE_4     RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Evaluate the second parameter.
+27E8            DEFW #1C82,EXPT_1NUM
+27EA            CALL <a href="#25A2 SEPARATOR">#25A2,SEPARATOR</a>     Jump if a second separator is found.
+27ED            JR   Z,<a href="#27F4 CODE_6">#27F4,CODE_6</a>
+<a NAME="27EF CODE_5"></a>27EF CODE_5     RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Otherwise zero is default.
+27F0            DEFW #1CE6,USE_ZERO
+27F2            JR   <a href="#27F7 CODE_7">#27F7,CODE_7</a>
+
+There's even an execute address.
+
+<a NAME="27F4 CODE_6"></a>27F4 CODE_6     RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Evaluate the third parameter.
+27F5            DEFW #1C82,EXPT_1NUM
+<a NAME="27F7 CODE_7"></a>27F7 CODE_7     CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax checking.
+27FA            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Fetch the "autoexecute" address from
+27FB            DEFW #1E99,FIND_INT2     the calculator stack and store it into
+27FD            LD   (#3E17),BC          AUTOSTART1
+2801            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Fetch the "length".
+2802            DEFW #1E99,FIND_INT2
+2804            LD   (#3E11),BC          Store it into LENGTH1_1
+2808            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Fetch the "start".
+2809            DEFW #1E99,FIND_INT2
+280B            LD   (#3E13),BC          Store it into FILE_ADDR1
+280E            LD   A,3                 File type is 'CODE'.
+2811            LD   (#3E10),A
+2814            LD   A,4                 Signal 'CODE file'.
+2816            LD   (#3E05),A
+2819            RET                      Finished.
+
+Finally the routine to evaluate DATA parameters.
+
+<a NAME="281A DATA"></a>281A DATA       CALL <a href="flags.htm#163A TEST_6">#163A,TEST_6</a>        Give an error if attempting to MERGE an
+281D            JP   NZ,<a href="errrst.htm#1660 REP_14">#1660,REP_14</a>     array.
+2820            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+2821            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Call LOOK_VARS to look for the array
+2822            DEFW #28B2,LOOK_VARS     name.
+2824            SET  7,C
+2826            JR   NC,<a href="#2833 DATA_1">#2833,DATA_1</a>     Jump if handling an existing array or
+                                         if syntax checking.
+2828            LD   HL,#0000            Signal 'using a new array'.
+282B            CALL <a href="flags.htm#1630 TEST_4">#1630,TEST_4</a>
+282E            JR   NZ,<a href="#284E DATA_3">#284E,DATA_3</a>     Jump if LOADing the array.
+2830            JP   <a href="errrst.htm#165A REP_11">#165A,REP_11</a>        Otherwise give error 'Variable not
+                                         found'.
+<a NAME="2833 DATA_1"></a>2833 DATA_1     JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      Give error if not an array variable.
+
+<b>NOTE:</b> This test fails to exclude simple strings, but the 'bug' (present in the 'main'
+ROM) is corrected at #283E.
+
+2836            RST  #30,<a href="restart.htm#0030 SYNTAX_Z">SYNTAX_Z</a>
+2837            JR   Z,<a href="#2860 DATA_5">#2860,DATA_5</a>      Jump if syntax is being checked.
+2839            CALL <a href="flags.htm#1635 TEST_5">#1635,TEST_5</a>
+283C            JR   Z,#2843,DATA_2      Jump if LOADing.
+283E            BIT  7,(HL)              Give an error if trying to SAVE a
+2840            JP   Z,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>       simple string.
+<a NAME="2843 DATA_2"></a>2843 DATA_2     INC  HL                  Point to the 'length' of the array.
+2844            LD   A,(HL)              Store the length into LENGTH1_1.
+2845            LD   (#3E11),A
+2848            INC  HL
+2849            LD   A,(HL)
+284A            LD   (#3E12),A
+284D            INC  HL                  Advance to the start of the array.
+<a NAME="284E DATA_3"></a>284E DATA_3     LD   A,C                 Store array name into LSB of LENGTH1_2.
+284F            LD   (#3E15),A
+2852            LD   A,1                 File type is 'NUM ARRAY'.
+2854            BIT  6,C
+2856            JR   Z,<a href="#2859 DATA_4">#2859,DATA_4</a>      Jump if really a numeric array.
+2858            INC  A                   File type is 'STR ARRAY'.
+<a NAME="2859 DATA_4"></a>2859 DATA_4     LD   (#3E10),A           Store file type into FILE_TYPE1.
+285C            INC  A                   Signal: (A=2) 'Numeric array',
+285D            LD   (#3E05),A           (A=3) 'String array'.
+<a NAME="2860 DATA_5"></a>2860 DATA_5     EX   DE,HL               DE holds 'start' of the array (or #0000
+                                         with a 'new' array to be LOADed).
+2861            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+2862            CP   41,")"              Check that the ')' does exist.
+2864            JP   NZ,<a href="errrst.htm#1648 REP_2">#1648,REP_2</a>      Report an error if not.
+2867            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Next character.
+2868            CALL <a href="patches.htm#3148 ST_END_RAM">#3148,ST_END_RAM</a>    Confirm end of statement and exit
+                                         during syntax checking.
+286B            LD   (#3E13),DE          Store "start" of the array into
+286F            RET                      FILE_ADDR1 and exit.
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="basic1.htm">Previous</a></td>
+<td><a href="basic2.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

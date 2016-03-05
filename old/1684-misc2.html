@@ -1,0 +1,260 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>Miscalleneous routines II </title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="errrst.htm">Previous</a></td>
+<td><a href="errrout.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>Miscalleneous routines II </font></b>
+
+<font size=+2>THE 'FLASH BORDER' SUBROUTINE</font>
+When +D system variable RBCC (address @0) doesn't hold zero, this subroutine flashes the
+border. The border colour is then obtained by masking the E register (holds sectornumber)
+with RBCC.
+
+<a NAME="1684 FLASH_BORD"></a>1684 FLASH_BORD LD   A,(#2000)           Fetch RBCC.
+1687            AND  E                   Incorporate sectornumber.
+1688            RET  Z                   Return if 'no flashing'.
+1689            AND  #07                 Keep border colour only.
+168B            OUT  (254),A             Set the border and finished.
+168D            RET
+
+<font size=+2>THE 'BORDER COLOUR RESTORE' SUBROUTINE</font>
+This subroutine is used whenever the border colour was changed during an I/O operation,
+and needs to be restored to its original state.
+
+<a NAME="168E BORD_REST"></a>168E BORD_REST  PUSH AF
+168F            LD   A,(23624)           Fetch lower screen attribute (BORDCR).
+1692            AND  #38                 Only the border bits.
+1694            RRCA                     Move the bits to 0-2.
+1695            RRCA
+1696            RRCA
+1697            OUT  (254),A             Restore colour.
+1699            POP  AF
+169A            RET
+
+<font size=+2>THE 'PRINT DIRECTORY DESCR.' SUBROUTINE</font>
+This subroutine is used to print the directory description of a file during an 'extended
+CAT' command. On entry the A register holds the directory description.
+
+<a NAME="169B PRT_TYPE"></a>169B PRT_TYPE   PUSH AF
+169C            LD   HL,<a href="#16E9 TYPE_TABLE">#16E9,TYPE_TABLE</a> Start of messages table.
+169F            LD   BC,85               Length of table excluding 'WHAT?'.
+16A2            CPIR                     Make HL point to right message. HL
+                                         points to 'WHAT?' with unknown types.
+16A4            CALL <a href="errrout.htm#18B8 PRT_MSG_HL">#18B8,PRT_MSG_HL</a>    Print the message.
+16A7            POP  AF                  Restore file type.
+16A8            CP   1
+16AA            JR   NZ,<a href="#16C1 PRT_NOBAS">#16C1,PRT_NOBAS</a>  Jump with no 'BASIC' files.
+16AC            LD   (IX+13),219         Make RPT point to autostart line high.
+16B0            CALL <a href="disk.htm#0D97 RPT_HL1">#0D97,RPT_HL1</a>       HL points to it now.
+16B3            LD   A,(HL)
+16B4            AND  192
+16B6            JR   NZ,<a href="#16E4 PRT_EXIT">#16E4,PRT_EXIT</a>   Jump if no autostart line present.
+16B8            LD   D,(HL)              Otherwise fetch it.
+16B9            DEC  HL
+16BA            LD   E,(HL)
+16BB            EX   DE,HL
+16BC            CALL <a href="#1744 PRT_NUM">#1744,PRT_NUM</a>       Print it.
+16BF            JR   <a href="#16E4 PRT_EXIT">#16E4,PRT_EXIT</a>
+
+Now the other directory descriptions are handled.
+
+<a NAME="16C1 PRT_NOBAS"></a>16C1 PRT_NOBAS  CP   4
+16C3            JR   NZ,<a href="#16E4 PRT_EXIT">#16E4,PRT_EXIT</a>   Jump with no 'CODE' files.
+16C5            LD   (IX+13),215         RPT points to file address high byte.
+16C9            CALL <a href="disk.htm#0D97 RPT_HL1">#0D97,RPT_HL1</a>       Make HL hold RPT.
+16CC            LD   D,(HL)              Fetch file address.
+16CD            DEC  HL
+16CE            LD   E,(HL)
+16CF            EX   DE,HL
+16D0            PUSH DE
+16D1            CALL <a href="#1744 PRT_NUM">#1744,PRT_NUM</a>       Print file address.
+16D4            LD   A,44                Print a ','.
+16D6            CALL <a href="#1799 PRT_A">#1799,PRT_A</a>
+16D9            POP  HL
+16DA            DEC  HL
+16DB            LD   D,(HL)              Fetch file length.
+16DC            DEC  HL
+16DD            LD   E,(HL)
+16DE            EX   DE,HL
+16DF            LD   A,0                 Ignore leading zero's.
+16E1            CALL #1746,PRT_N10000    Print the length.
+<a NAME="16E4 PRT_EXIT"></a>16E4 PRT_EXIT   LD   A,13                Print a NEWLINE and exit.
+16E6            JP   <a href="#1799 PRT_A">#1799,PRT_A</a>
+
+<font size=+2>THE 'DIRECTORY DESCRIPTION' TABLE</font>
+This table contains the directory description messages as printed with an 'extended
+CAT'. Each message is preceeded by is description value.
+
+<a NAME="16E9 TYPE_TABLE"></a>16E9 TYPE_TABLE DEFB 1
+16EA            DEFM "BAS "
+16EE            DEFB 2
+16EF            DEFM "D.ARRAY"
+16F6            DEFB 3
+16F7            DEFM "$.ARRAY"
+16FE            DEFB 4
+16FF            DEFM "CDE "
+1703            DEFB 5
+1704            DEFM "SNP 48k"
+170B            DEFB 6
+170C            DEFM "MD.FILE"
+1713            DEFB 7
+1714            DEFM "SCREEN$"
+171B            DEFB 8
+171C            DEFM "SPECIAL"
+1723            DEFB 9
+1724            DEFM "SNP 128k"
+172C            DEFB 10
+172D            DEFM "OPENTYPE"
+1735            DEFB 11
+1736            DEFM "EXECUTE"
+173D            DEFB 12
+173E            DEFM "WHAT?"
+1743            DEFB 0
+
+<font size=+2>THE 'PRINT NUMBER' SUBROUTINE</font>
+This subroutine prints the number held in the HL register. Entering the routine at #1744
+prints leading spaces, while the other entry points prints the character held in the A
+register in place of leading zero's. A value of 0 means don't print anything.
+
+<a NAME="1744 PRT_NUM"></a>1744 PRT_NUM    LD   A,32                Spaces are printed in place of leading
+                                         zero's.
+1746            LD   DE,10000            Start printing with tens-of-thousands.
+1749            CALL <a href="#1763 PRT_DIGIT">#1763,PRT_DIGIT</a>
+<a NAME="174C PRT_N1000"></a>174C PRT_N1000  LD   DE,1000             Start printing with thousands.
+174F            CALL <a href="#1763 PRT_DIGIT">#1763,PRT_DIGIT</a>
+<a NAME="1752 PRT_N100"></a>1752 PRT_N100   LD   DE,100              Start printing with hundreds.
+1755            CALL <a href="#1763 PRT_DIGIT">#1763,PRT_DIGIT</a>
+<a NAME="1758 PRT_N10"></a>1758 PRT_N10    LD   DE,10               Start printing with tens.
+175B            CALL <a href="#1763 PRT_DIGIT">#1763,PRT_DIGIT</a>
+175E            LD   A,L                 Print units.
+175F            ADD  A,"0"               Add ASCII offset for digits.
+1761            JR   <a href="#1799 PRT_A">#1799,PRT_A</a>
+
+<font size=+2>THE 'PRINT DIGIT' SUBROUTINE</font>
+This subroutine is used to print a digit, the HL register holds the number and the DE
+register the value for 'repeated subtraction'.
+
+<a NAME="1763 PRT_DIGIT"></a>1763 PRT_DIGIT  PUSH AF                  Preserve leading character.
+1764            XOR  A                   Clear Carry and counter.
+<a NAME="1765 PRT_DIG1"></a>1765 PRT_DIG1   SBC  HL,DE               The 'trial' subtraction.
+1767            JR   C,<a href="#176C PRT_DIG2">#176C,PRT_DIG2</a>    Jump if exhausted.
+1769            INC  A                   Count each trial.
+176A            JR   <a href="#1765 PRT_DIG1">#1765,PRT_DIG1</a>      Jump back for next try.
+
+The A register now holds the digit to be printed.
+
+<a NAME="176C PRT_DIG2"></a>176C PRT_DIG2   ADD  HL,DE               Restore last subtraction.
+176D            AND  A
+176E            JR   NZ,<a href="#1775 PRT_DIG3">#1775,PRT_DIG3</a>   Jump if a non zero value is to be
+                                         printed.
+1770            POP  DE                  Retrieve the leading character into D.
+1771            ADD  A,D                 Add it to zero.
+1772            RET  Z                   Return if nothing has to be printed.
+1773            JR   <a href="#1799 PRT_A">#1799,PRT_A</a>         Otherwise print the leading character.
+
+Now print the digit.
+
+<a NAME="1775 PRT_DIG3"></a>1775 PRT_DIG3   ADD  A,"0"               Add ASCII offset for digits.
+1777            CALL <a href="#1799 PRT_A">#1799,PRT_A</a>         Print the digit.
+177A            POP  DE                  Balance the stack.
+177B            LD   A,"0"               All zeroes after any non zero digit
+177D            RET                      will be printed as '0'.
+
+<font size=+2>THE 'PRINT OUT MESSAGE' SUBROUTINE</font>
+This subroutine handles the printing of messages directly following the 'CALL'
+instruction to this routine. When the +D's own error stack pointer (D_ERR_SP) holds a
+non-zero value, i.e during hook and command codes, no printing has to take place. The
+carry flag is set and the A register then holds 32, signalling 'error during hook/command
+code execution' as usual.
+
+<a NAME="177E PO_MSG"></a>177E PO_MSG     LD   HL,(#2066)          Fetch (D_ERR_SP).
+1781            LD   A,H
+1782            OR   L
+1783            JR   Z,<a href="#178A PO_MSG1">#178A,PO_MSG1</a>     Jump if it isn't used.
+1785            LD   SP,HL               Clear machine stack.
+1786            LD   A,32                Signal 'error 32'.
+1788            SCF
+1789            RET                      Exit.
+
+Now the message can be printed.
+
+<a NAME="178A PO_MSG1"></a>178A PO_MSG1    POP  HL                  HL points to the message to be printed
+<a NAME="178B PO_MSG2"></a>178B PO_MSG2    LD   A,(HL)              Fetch a character.
+178C            AND  #7F
+178E            CALL <a href="#1799 PRT_A">#1799,PRT_A</a>         Print it.
+1791            BIT  7,(HL)              Bit 7 set signals 'End of message'.
+1793            RET  NZ
+1794            INC  HL
+1795            JR   <a href="#178B PO_MSG2">#178B,PO_MSG2</a>       Repeat for all characters.
+
+<font size=+2>THE 'PRINT A SPACE' SUBROUTINE</font>
+This subroutine prints a space to the current stream.
+
+<a NAME="1797 PRT_SPACE"></a>1797 PRT_SPACE  LD   A,32                Continue in the 'PRT_A' routine.
+
+<font size=+2>THE 'PRINT CHARACTER' SUBROUTINE</font>
+This subroutine prints the character held in the A register to the current stream.
+
+<a NAME="1799 PRT_A"></a>1799 PRT_A      PUSH AF
+179A            PUSH BC
+179B            PUSH DE
+179C            PUSH HL
+179D            PUSH IX
+179F            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Print the character in the A register
+17A0            DEFW #0010,PRINT_A_1     by calling the 'main' ROM routine.
+17A2            POP  IX
+17A4            POP  HL
+17A5            POP  DE
+17A6            POP  BC
+17A7            POP  AF
+17A8            RET
+
+<font size=+2>THE 'ROM' MESSAGES</font>
+Now follow some messages used by the +D system.
+
+<a NAME="17A9 MESG_0"></a>17A9 MESG_0     CALL <a href="#177E PO_MSG">#177E,PO_MSG</a>
+17AC            DEFB #0D,#0D,#0D,#0D,#0D,#0D
+17B2            DEFM "        "SYSTEM" LOADING"
+17CA            DEFB #0D,#0D
+17CC            DEFM "          PLEASE  WAIT"
+17E2            DEFB #0D,#0D
+17E4            DEFM "        (+D ROM Ver 1.A)"
+17FC            DEFB #0D,#8D
+
+<a NAME="17FE MESG_1"></a>17FE MESG_1     CALL <a href="#177E PO_MSG">#177E,PO_MSG</a>
+1801            DEFM "OVERWRITE "
+180B            DEFB """+128
+
+<a NAME="180C MESG_2"></a>180C MESG_2     CALL <a href="#177E PO_MSG">#177E,PO_MSG</a>
+180F            DEFM "Are you SURE ? (y/n"
+1822            DEFB ")"+128
+
+<a NAME="1823 MESG_3"></a>1823 MESG_3     CALL <a href="#177E PO_MSG">#177E,PO_MSG</a>
+1826            DEFM " (y/n)"
+182C            DEFB ")"+128
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="errrst.htm">Previous</a></td>
+<td><a href="errrout.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>

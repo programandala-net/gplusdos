@@ -1,0 +1,266 @@
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="Author" content="JR Biesma">
+   <meta name="GENERATOR" content="QuickBASIC">
+   <title>Miscalleneous routines I</title>
+</head>
+
+<body>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="init.htm">Previous</a></td>
+<td><a href="disk.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+
+<pre>
+<b><font size=+3>Miscalleneous routines I</font></b>
+
+<font size=+2>THE '"P" CHANNEL DATA' TABLE</font>
+Here follow the '5' bytes that compose the +D "P" channel.
+
+<a NAME="0407 P_CHANNEL"></a>0407 P_CHANNEL  DEFW #0008
+0409            DEFW #0008
+040B            DEFB "P"
+
+<font size=+2>THE 'TAKEOVER PRINTER' SUBROUTINE</font>
+If the printer is to be controlled by the +D system, the following subroutine copies the
+"P" channel data into the channel.
+
+<a NAME="040C TAKE_PRTR"></a>040C TAKE_PRTR  CALL <a href="#0527 SYSTEM_Z">#0527,SYSTEM_Z</a>
+040F            CALL Z,<a href="rsysvar.htm#208C JPRTR">#208C,JPRTR</a>
+0412            LD   A,(#200B)           (ZXPNT)
+0415            BIT  0,A
+0417            RET  NZ                  Return if the printer isn't to be
+0418            AND  A                   handled by the +D.
+0419            CALL NZ,<a href="#0433 INIT_PRT1">#0433,INIT_PRT1</a>  If necessary initialize printer.
+041C            LD   HL,(23631)          Get address of channel data. (CHANS)
+041F            LD   BC,15               Offset for channel "P".
+0422            ADD  HL,BC
+0423            EX   DE,HL
+0424            LD   HL,<a href="#0407 P_CHANNEL">#0407,P_CHANNEL</a>
+0427            LD   BC,5
+042A            LDIR                     Copy the "P" channel data.
+042C            RET
+
+<font size=+2>THE 'INIT PRINTER' SUBROUTINE</font>
+This subroutine initialises the printer, if it's to be handled by the +D and if it's
+attached, by sending the initialisation codes and the permanent setting codes as
+mentioned in the 'Setup' program.
+
+<a NAME="042D INIT_PRTR"></a>042D INIT_PRTR  LD   A,(#200B)
+0430            BIT  0,A                 Exit if printer not to be handled
+0432            RET  NZ                  by +D.
+<a NAME="0433 INIT_PRT1"></a>0433 INIT_PRT1  XOR  A
+0434            LD   (#200B),A
+0437            IN   A,(247)
+0439            BIT  7,A
+043B            RET  NZ                  Exit if the printer is busy.
+043C            LD   DE,<a href="rsysvar.htm#2012 INIT_PRT">#2012,INIT_PRT</a>   Send initialisation codes to printer.
+043F            CALL <a href="printer.htm#140B PO_ESC_SEQ">#140B,PO_ESC_SEQ</a>
+0442            LD   DE,<a href="rsysvar.htm#201A CHAR_PITCH">#201A,CHAR_PITCH</a> Set character pitch.
+0445            CALL <a href="printer.htm#140B PO_ESC_SEQ">#140B,PO_ESC_SEQ</a>
+0448            LD   DE,<a href="rsysvar.htm#2022 N/72_LSPC">#2022,N/72_LSPC</a>  Set line spacing to (#2007)/72 inch.
+044B            CALL <a href="printer.htm#140B PO_ESC_SEQ">#140B,PO_ESC_SEQ</a>
+044E            LD   A,(#2007)
+0451            CALL <a href="printer.htm#15C9 PNTP">#15C9,PNTP</a>
+0454            LD   DE,<a href="rsysvar.htm#2032 INIT_PRT2">#2032,INIT_PRT2</a>  Set other permanent printer settings.
+0457            JP   <a href="printer.htm#140B PO_ESC_SEQ">#140B,PO_ESC_SEQ</a>
+
+<font size=+2>THE 'CHECK SYSTEM CHECKSUM' ROUTINE</font>
+This subroutine calculates the checksum of the system file in RAM. Its is used to check
+if the system isn't corrupted.
+
+<a NAME="045A SYSTEM_OK"></a>045A SYSTEM_OK  XOR  A
+045B            PUSH AF                  Calculate checksum.
+045C            LD   HL,#2080
+045F            LD   BC,#197F
+<a NAME="0462 SYS_OK1"></a>0462 SYS_OK1    POP  AF
+0463            ADD  A,(HL)
+0464            PUSH AF
+0465            INC  HL
+0466            DEC  BC
+0467            LD   A,B
+0468            OR   C
+0469            JR   NZ,<a href="#0462 SYS_OK1">#0462,SYS_OK1</a>
+046B            POP  AF
+046C            CP   (HL)                Exit with Zero set if checksums
+046D            RET                      match.
+
+<font size=+2>THE 'END OF STATEMENT' ROUTINE</font>
+After the syntax of the 'new' commands has been checked, a jump is made here to confirm
+that the statement is finished. An error report is given if it isn't finished. A return
+to the calling routine is made only during runtime, otherwise the control returns to the
+'main' ROM interpreter. 
+
+<a NAME="046E ST_END"></a>046E ST_END     CALL <a href="restart.htm#002C GET_C">#002C,GET_C</a>         Get current character.
+0471            CP   13
+0473            JR   Z,<a href="#047A ST_END1">#047A,ST_END1</a>     Jump if the statement ends with ENTER.
+0475            CP   58,":"              Give an error if statement doesn't end
+0477            JP   NZ,<a href="errrst.htm#1648 REP_2">#1648,REP_2</a>      with a colon.
+<a NAME="047A ST_END1"></a>047A ST_END1    RST  #30,<a href="restart.htm#0030 SYNTAX_Z">SYNTAX_Z</a>
+047B            RET  NZ                  Return during runtime.
+
+<font size=+2>THE 'RETURN TO THE INTERPRETER' ROUTINE</font>
+The control is returned to the BASIC interpreter for interpretation of the next
+statement.
+
+<a NAME="047C END"></a>047C END        LD   SP,(23613)          Clear machine stack. (ERR_SP)
+0480            LD   (IY+0),#FF          Clear error code. (ERR_NR)
+0484            LD   HL,#1BF4,STMT_NEXT  Return address to 'main' ROM is
+0487            RST  #30,<a href="restart.htm#0030 SYNTAX_Z">SYNTAX_Z</a>        'STMT_NEXT' if syntax is being checked.
+0488            JP   Z,<a href="restart.htm#004F UNPAGE_HL">#004F,UNPAGE_HL</a>
+048B            CALL <a href="misc2.htm#168E BORD_REST">#168E,BORD_REST</a>     Restore border color.
+048E            CALL <a href="#0497 TST_BREAK">#0497,TST_BREAK</a>     Test for BREAK.
+0491            LD   HL,#1B7D,STMT_R_1   Return address during runtime is
+0494            JP   <a href="restart.htm#004F UNPAGE_HL">#004F,UNPAGE_HL</a>     'STMT_R_1'.
+
+<font size=+2>THE 'TEST_BREAK' SUBROUTINE</font>
+The BREAK key is checked and the appropriate error is given if it is pressed. 
+
+<a NAME="0497 TST_BREAK"></a>0497 TST_BREAK  LD   A,#7F
+0499            IN   A,(254)
+049B            RRA
+049C            RET  C                   Return if SPACE wasn't pressed.
+049D            LD   A,#FE
+049F            IN   A,(254)
+04A1            RRA
+04A2            RET  C                   Return if CAPS wasn't pressed.
+04A3            JP   <a href="errrst.htm#164A REP_3">#164A,REP_3</a>
+
+<font size=+2>THE 'CALBAS_2' ROUTINE</font>
+This routine calls the required 'main' ROM routine.
+ 
+<a NAME="04A6 CALBAS_2"></a>04A6 CALBAS_2   LD   (#3AC5),DE          Free DE and HL.
+04AA            LD   (#3AC8),HL
+04AD            POP  HL                  Get return address, points to address
+04AE            LD   E,(HL)              of 'main' ROM routine to be called.
+04AF            INC  HL                  Fetch address of routine to be called.
+04B0            LD   D,(HL)
+04B1            INC  HL
+04B2            PUSH HL                  Restack return address.
+04B3            LD   HL,#3DE5
+04B6            LD   (HL),#47            Signal 'CALBAS executing'.
+04B8            LD   HL,#0066            Return address to +D system is
+04BB            PUSH HL                  'NMI_RAM'.
+04BC            PUSH DE                  Push address of routine to be called.
+04BD            LD   HL,(#3AC8)          Restore HL and DE.
+04C0            LD   DE,(#3AC5)
+04C4            JP   <a href="restart.htm#0050 UNPAGE_1">#0050,UNPAGE_1</a>      Do the CALBAS.
+
+<font size=+2>THE 'POKE @' COMMAND ROUTINE</font>
+The POKE @ command allows a value between 0 and 255 to be stored in the +D system
+variables. But if the value is between 256 and 65535 the POKE @ behaves as a DPOKE.
+Because the +D system vars have a offset of #2000 (or 8192) this value has to be
+subtracted if the POKE @ is to be made directly to the given address. So POKE
+@60000-8192,1000 to DPOKE 60000,1000.
+
+<a NAME="04C7 POKE@"></a>04C7 POKE@      CALL <a href="#0527 SYSTEM_Z">#0527,SYSTEM_Z</a>      Maybe there is an alternative routine
+04CA            CALL Z,<a href="rsysvar.htm#2089 JPOKE">#2089,JPOKE</a>       in the system file.
+04CD            RST  #28,<a href="restart.htm#0028 NEXT_C">NEXT_C</a>          Get next character.
+04CE            CP   64,"@"
+04D0            JP   NZ,<a href="errrst.htm#1644 REP_0">#1644,REP_0</a>      If it isn't "@" give error.
+04D3            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          Evaluate the two following numeric
+04D4            DEFW #1C79,NEXT_2NUM     expressions.
+04D6            CALL <a href="#046E ST_END">#046E,ST_END</a>        Confirm end of statement and exit
+04D9            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>          during syntax checking.
+04DA            DEFW #1E99,FIND_INT2     Fetch value to be POKEd in BC.
+04DC            PUSH BC
+04DD            RST  #10,<a href="restart.htm#0010 CALBAS">CALBAS</a>
+04DE            DEFW #1E99,FIND_INT2     Fetch POKE address.
+04E0            LD   HL,#2000            Offset for +D system variables.
+04E3            ADD  HL,BC
+04E4            POP  BC
+04E5            LD   (HL),C              POKE address,low byte.
+04E6            LD   A,B
+04E7            AND  A
+04E8            JP   Z,<a href="#047C END">#047C,END</a>         Exit if 8 bit value.
+04EB            INC  HL                  Otherwise POKE address+1,high byte
+04EC            LD   (HL),B              before exiting.
+04ED            JP   <a href="#047C END">#047C,END</a>
+
+<font size=+2>THE 'SPECTRUM ERROR' ROUTINE</font>
+This routine must be entered with the error code in (ERR_NR), and does the same as the
+'main' ROM  'ERROR' restart, except when error messages are to be supressed. This is
+indicated by a non zero value in 23728.
+
+<a NAME="04F0 SPEC_ERR"></a>04F0 SPEC_ERR   LD   HL,(#3DD6)          Fetch D_CH_ADD.
+04F3            LD   (23645),HL          Restore CH_ADD.
+04F6            LD   (23647),HL          Restore X_PTR.
+<a NAME="04F9 SPEC_ERR1"></a>04F9 SPEC_ERR1  LD   HL,#0058
+04FC            RST  #30,<a href="restart.htm#0030 SYNTAX_Z">SYNTAX_Z</a>        RETurn to #58, which is in ERROR_2, in
+04FD            JP   Z,<a href="restart.htm#004F UNPAGE_HL">#004F,UNPAGE_HL</a>   the Spectrum ROM when checking syntax.
+0500            LD   A,(23728)
+0503            AND  A                   Also RETurn to #58 in 'main' ROM when
+0504            JP   Z,<a href="restart.htm#004F UNPAGE_HL">#004F,UNPAGE_HL</a>   error messages aren't to be supressed.
+0507            SET  7,(IY+0)            Otherwise signal 'Spectrum error'.
+050B            LD   HL,#1B7D,STMT_R_1   And RETurn to STMT_R_1 in the Spectrum
+050E            JP   <a href="restart.htm#004F UNPAGE_HL">#004F,UNPAGE_HL</a>     ROM.
+
+<font size=+2>THE 'RESTORE PRINTER BUFFER' SUBROUTINE</font>
+This subroutine restores the printer buffers 10 bytes which were destroyed by the
+'?_ROMBANK' subroutine.
+
+<a NAME="0511 REST_PBUF"></a>0511 REST_PBUF  LD   HL,#3BE6
+0514            LD   DE,23296
+0517            LD   BC,10
+051A            LDIR
+051C            RET
+
+<font size=+2>THE 'DETERMINE 48K OR 128K ROM' ROUTINE</font>
+This small routine is copied to 23296, it returns with the Zero flag set if address
+#0001 in the 'main' ROM contains 175, that is when the 48K ROM bank is paged in.
+
+<a NAME="051D DET_ROM"></a>051D DET_ROM    OUT  (231),A             Page +D out.
+051F            LD   A,(#0001)
+0522            CP   175
+0524            JP   <a href="snapshot.htm#0066 NMI">#0066,NMI</a>           Page +D in.
+
+<font size=+2>THE 'SYSTEM_Z' SUBROUTINE</font>
+This subroutine returns with the Zero flag set when the system file is present in RAM.
+
+<a NAME="0527 SYSTEM_Z"></a>0527 SYSTEM_Z   LD   (#3DEA),A
+052A            LD   A,(#3DE4)
+052D            CP   #44
+052F            LD   A,(#3DEA)
+0532            RET
+
+<font size=+2>THE 'POWER_UP2' ROUTINE</font>
+The routine continues, with the proper register contents, in the 'main' ROM 'START/NEW'
+routine.
+
+<a NAME="0533 POWER_UP2"></a>0533 POWER_UP2  LD   A,#02               Red instead of black border.
+0535            OUT  (254),A
+0537            LD   A,#3F               Set interrupt vector.
+0539            LD   I,A
+053B            NOP
+053C            NOP
+053D            NOP
+053E            NOP
+053F            NOP
+0540            NOP
+0541            NOP
+0542            NOP
+0543            LD   HL,#7FFF            The stackpointer has to point into RAM,
+0546            LD   SP,HL               otherwise: trouble (for the
+                                         UNPAGE_HL routine).
+0547            IM   1                   Set interrupt mode 1.
+0549            XOR  A                   Restore registers for 'main' ROM
+054A            LD   DE,#FFFF            'START/NEW'.
+054D            LD   HL,#11CB
+0550            JP   <a href="restart.htm#004F UNPAGE_HL">#004F,UNPAGE_HL</a>     Jump to 'START/NEW' in the 'main' ROM.
+
+</pre>
+<table BORDER COLS=4 WIDTH="33%">
+<tr>
+<td><a href="init.htm">Previous</a></td>
+<td><a href="disk.htm">Next</a></td>
+<td><a href="plusd.htm">Contents</a></td>
+<td><a href="../index.htm">Index</a></td>
+</tr>
+</table>
+</body>
+</html>
