@@ -24,3 +24,5 @@ suitable for studying and editing it with the Vim editor.
 2016-03-06::
 
 - Added DFCA, UFIA1 and UFIA2.
+- Moved the assembling addresses to the line comments, thus getting an
+  actual Z80 source.
