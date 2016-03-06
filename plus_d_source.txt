@@ -7,7 +7,7 @@
 ;
 ; This edited version by Marcos Cruz (programandala.net), 2016-03.
 
-; Last modified: 201603052210
+; Last modified: 201603060256
 
 ; ===============================================================
 ; The restart routines
@@ -790,7 +790,7 @@
 
 037B RUN        SET  7,(IY+10)           ; Clear the 'jump' signal set by using
                                          ; the 'RUN' command.
-037F            LD   IX,$3AC3
+037F            LD   IX,DFCA 
 0383            LD   A,1                 ; Signal 'drive 1 is being used'.
 0385            LD   (IX+11),A
 0388            LD   A,1                 ; Set drive 1.
@@ -1516,7 +1516,7 @@
 ; whenever the drive is specified in the A register. On exit (IX+11) holds the
 ; hardware representation of the drive to be used.
 
-0702 TEST_DRV   LD   A,($3E01)           ; Fetch drive number from UFIA1.
+0702 TEST_DRV   LD   A,(UFIA1)           ; Fetch drive number from UFIA1.
 0705 TEST_DRV1  CP   1
 0707            JR   Z,TEST_DRV2         ; Jump if drive one is to be used.
 0709            CP   2                   ; Otherwise give 'Wrong DRIVE' error if
@@ -2062,7 +2062,7 @@
 ; found entry, the data buffer holding the sector, RPT pointing to the entry
 ; and the Zero flag signalling 'success' when set.
 
-09A5 SCAN_CAT   LD   IX,$3AC3            ; IX points to the disk channel.
+09A5 SCAN_CAT   LD   IX,DFCA
 09A9            LD   (IX+4),A            ; Store scan-type.
 09AC            XOR  A                   ; Clear column counter.
 09AD            LD   ($3DEB),A
@@ -2093,7 +2093,7 @@
 09E3            LD   B,(HL)              ; Fetch number of sectors used.
 09E4            INC  HL
 09E5            LD   C,(HL)
-09E6            LD   ($3AC3),BC          ; Store it for printing.
+09E6            LD   (DFCA),BC           ; Store it for printing.
 09EA            LD   HL,($3DD8)          ; Add it to total number of sectors used
 09ED            ADD  HL,BC
 09EE            LD   ($3DD8),HL
@@ -2138,7 +2138,7 @@
 ; With an extended CAT there has to be printed somewhat more.
 
 0A3F EXT_CAT    PUSH DE                  ; Store track and sector number.
-0A40            LD   HL,($3AC3)          ; Fetch length of file in sectors.
+0A40            LD   HL,(DFCA)           ; Fetch length of file in sectors.
 0A43            LD   A,32                ; Print it with leading spaces.
 0A45            CALL PRT_N100      
 0A48            CALL PRT_SPACE           ; Print a trailing space.
@@ -2493,7 +2493,7 @@
 0C37            POP  BC
 0C38            DJNZ $0C33,FRMT_1
 0C3A            CALL TRACK_0             ; Then position the head above track 0.
-0C3D            LD   IX,$3AC3            ; IX points to the DFCA.
+0C3D            LD   IX,DFCA
 0C41 FRMT_TRK   CALL MK_TRK_DD           ; Build up a double density track.
 0C44            LD   C,%11110000         ; Write track, disable spin-up sequence,
                                          ; no delay, enable precompensation.
@@ -2535,7 +2535,7 @@
 ; it is supposed to copy another disk to this one, or to verify the disk.
 
 0C79 FRMT_DONE  CALL REST                ; Reset drive head.
-0C7C            LD   A,($3E1A)
+0C7C            LD   A,(UFIA2)
 0C7F            CP   $FF
 0C81            JR   Z,FRMT_CHK          ; Jump if UFIA2 is empty.
 
@@ -2545,7 +2545,7 @@
 0C83 FRMT_COPY  LD   HL,49152            ; Address of track buffer.
 0C86            LD   ($3AC5),HL          ; Store load address.
 0C89            LD   ($3AC8),HL          ; Store save address.
-0C8C            LD   A,($3E1A)           ; Fetch source drive number from UFIA2.
+0C8C            LD   A,(UFIA2)           ; Fetch source drive number from UFIA2.
 0C8F            CALL TEST_DRV1           ; Check and set drive.
 0C92 FRMT_C1    CALL RSAD                ; Load a sector.
 0C95            PUSH DE                  ; Store track and sector number.
@@ -2559,7 +2559,7 @@
 0CA7            CALL NEXT_SEC            ; Compute next sector number.
 0CAA            JR   NZ,FRMT_C1          ; Jump if there is still a sector on this
                                          ; track.
-0CAC            LD   A,($3E01)           ; Fetch destination drive from UFIA1.
+0CAC            LD   A,(UFIA1)           ; Fetch destination drive from UFIA1.
 0CAF            CALL TEST_DRV1           ; Check and set drive.
 0CB2 FRMT_C2    PUSH DE                  ; Store track and sector number.
 0CB3            LD   HL,($3AC8)          ; Fetch save address.
@@ -2949,7 +2949,7 @@
 0E6A            LD   D,(HL)              ; Fetch first track and sector.
 0E6B            INC  HL
 0E6C            LD   E,(HL)
-0E6D            LD   IX,$3AC3            ; Point to the DRAM channel.
+0E6D            LD   IX,DFCA
 0E71            CALL RSAD                ; Read the first sector.
 0E74            POP  IX                  ; Restore channel pointer (in 'main'
 0E76            PUSH IX                  ; RAM).
@@ -2958,7 +2958,7 @@
                                          ; each.
 0E7B OP_T_1     PUSH IX                  ; Store data buffer pointer (in 'main'
                                          ; RAM).
-0E7D            LD   IX,$3AC3            ; Point to the DRAM channel again.
+0E7D            LD   IX,DFCA
 0E81            CALL LBYT                ; Fetch a byte.
 0E84            POP  IX                  ; Restore data buffer pointer.
 0E86            LD   (IX+55),A           ; Loading starts with the data block
@@ -3000,7 +3000,7 @@
 0ECE OP_T_6     LD   (HL),0
 0ED0            INC  HL
 0ED1            DJNZ $0ECE,OP_T_6
-0ED3            LD   IX,$3AC3
+0ED3            LD   IX,DFCA 
 0ED7            CALL MK_ALLOC            ; Allocate the first free sector.
 0EDA            LD   ($3AD4),DE          ; Store the track and sector number.
 0EDE            LD   IX,$3AD6            ; Store them also into the CATalogue
@@ -3344,7 +3344,7 @@
 1096            LD   DE,540              ; Microdrive file records have 540 bytes
                                          ; each.
 1099 GET_R2     PUSH IX                  ; Store data buffer pointer.
-109B            LD   IX,$3AC3            ; Point to the DRAM channel.
+109B            LD   IX,DFCA
 109F            CALL LBYT                ; Fetch a byte.
 10A2            POP  IX                  ; Restore data buffer pointer.
 10A4            LD   (IX+55),A           ; Loading starts with the data block
@@ -3386,7 +3386,7 @@
 10D6            LD   D,(HL)              ; Fetch first track and sector.
 10D7            INC  HL
 10D8            LD   E,(HL)
-10D9            LD   IX,$3AC3            ; Point to the DRAM channel.
+10D9            LD   IX,DFCA
 10DD            CALL RSAD                ; Read the first sector.
 10E0            POP  BC                  ; Restore registers.
 10E1            POP  IX
@@ -3431,7 +3431,7 @@
 1108            SET  1,(IX+67)           ; Otherwise signal 'EOF record',
 110C            CALL WR_RECD             ; and save it on disk.
 110F            PUSH IX                  ; Save channel pointer.
-1111            LD   IX,$3AC3            ; Point to the DRAM channel.
+1111            LD   IX,DFCA
 1115            CALL CFSM                ; Close the File Sector Map.
 1118            POP  IX                  ; Restore channel pointer.
 111A CLOSE_M1   CALL DEL_M_BUF           ; Reclaim the channel.
@@ -3459,7 +3459,7 @@
                                          ; (i.e. 0 for first, 256 for second).
 1134            LD   (HL),0              ; Signal 'ERASEd file'.
 1136            PUSH IX                  ; Store channel pointer.
-1138            LD   IX,$3AC3            ; Point to the DRAM channel.
+1138            LD   IX,DFCA
 113C            CALL WSAD                ; Write sector DE.
 113F            POP  IX                  ; Restore channel pointer.
 1141 ERASE_1    CALL DEL_M_BUF           ; Reclaim the channel.
@@ -3475,7 +3475,7 @@
 1146 FIND_FILE  CALL REST                ; Reset drive to track 0.
 1149            LD   ($3ACA),IX          ; Store the pointer to filename
                                          ; requested.
-114D FIND_F1    LD   IX,$3AC3            ; Point to the DRAM channel.
+114D FIND_F1    LD   IX,DFCA
 1151            CALL RSAD                ; Load a sector to the disk buffer.
 1154            LD   BC,0                ; First entry's offset.
 1157 FIND_F2    LD   HL,$3BD6            ; Point to the start of the disk buffer.
@@ -3660,7 +3660,7 @@
 124D            LD   DE,55               ; byte to SAVE, i.e. the data block
 1250            ADD  HL,DE               ; preamble (offset 55).
 1251            LD   DE,540              ; Length of the record to be written.
-1254            LD   IX,$3AC3            ; Point to the DRAM channel.
+1254            LD   IX,DFCA
 1258 SAVE_REC1  LD   A,(HL)              ; Fetch a byte.
 1259            CALL SBYT                ; Save it to disk.
 125C            INC  HL
@@ -5219,7 +5219,7 @@
 20B3            OR   C
 20B4            JR   NZ,RESET_VARS      
 20B6            LD   ($3ACF),A           ; Clear FLAGS3.
-20B9            LD   IX,$3AC3            ; Point to +D system variables.
+20B9            LD   IX,DFCA
 20BD            POP  AF                  ; Fetch the command.
 20BE            LD   ($3DFF),A           ; Store it.
 20C1            CP   207                 ; Is the command 'CAT' ?
@@ -5711,9 +5711,9 @@
 ; they are the messages "Insert SOURCE disc - press SPACE" and "Insert TARGET
 ; disc - press SPACE" are printed in turn.
 
-23CB TO_MSG     LD   A,($3E01)           ; Fetch source drive.
+23CB TO_MSG     LD   A,(UFIA1)           ; Fetch source drive.
 23CE            LD   B,A
-23CF            LD   A,($3E1A)           ; Fetch destination drive.
+23CF            LD   A,(UFIA2)           ; Fetch destination drive.
 23D2            CP   B
 23D3            RET  NZ                  ; Return if they aren't equal.
 23D4            RST  CALBAS              ; Otherwise clear lower screen area.
@@ -5816,7 +5816,7 @@
 
 ; This routine checks that the command is in the form CAT <#s;>d<<;>n$> .
 
-245B CAT        LD   IX,$3AC3            ; Point to the +D workspace.
+245B CAT        LD   IX,DFCA
 245F            LD   HL,$3E06            ; "*" is the default name of the files
 2462            LD   (HL),42,"*"         ; being CATted.
 2464            LD   HL,$3E03            ; Just like #2 is the default output
@@ -6086,7 +6086,7 @@
 25E9            CALL EXPT_NUM            ; Get the program number.
 25EC            RET  Z                   ; Return if syntax checking.
 25ED            PUSH AF
-25EE            LD   A,($3E01)           ; Store program number.
+25EE            LD   A,(UFIA1)           ; Store program number.
 25F1            LD   ($3E02),A
 25F4            CALL LAST_DRV            ; Drive is last drive.
 25F7            POP  AF
@@ -6111,7 +6111,7 @@
 2607            AND  $01                 ; Keep only drive select.
 2609            ADD  A,$01               ; A holds 1 for drive 2, 2 for drive 1.
 260B            XOR  $03                 ; 1 becomes 2, 2 becomes 1.
-260D            LD   ($3E01),A           ; Store drive number.
+260D            LD   (UFIA1),A           ; Store drive number.
 2610            RET
 
 ; ----------------------------------------------
@@ -6128,7 +6128,7 @@
 2617            RST  CALBAS              ; Fetch the value from the calculator
 2618            DEFW FIND_INT2           ; stack.
 261A            LD   A,C
-261B            LD   ($3E01),A           ; Store it in UFIA1.
+261B            LD   (UFIA1),A           ; Store it in UFIA1.
 261E            POP  AF
 261F            RET
 
@@ -6153,8 +6153,8 @@
 2628            PUSH DE
 2629            PUSH HL
 262A            LD   B,24                ; An UFIA is 24 bytes long.
-262C            LD   DE,$3E01            ; Start of UFIA1.
-262F            LD   HL,$3E1A            ; Start of UFIA2.
+262C            LD   DE,UFIA1            ; Start of UFIA1.
+262F            LD   HL,UFIA2            ; Start of UFIA2.
 2632 SWAP_LOOP  LD   A,(DE)              ; Exchange the contents.
 2633            LD   C,(HL)
 2634            EX   DE,HL
@@ -6543,7 +6543,7 @@
 
 ; This routine checks that the SAVE command has the appropriate syntax.
 
-288B SAVE       LD   IX,$3AC3            ; Pointer to the DFCA.
+288B SAVE       LD   IX,DFCA
 288F            CALL SIGN_5              ; Signal 'SAVEing'.
 2892            CALL EXPT_PARMS          ; Evaluate & store all parameters.
 2895            CALL TEST_DRV            ; See if the drive is defined.
@@ -6552,7 +6552,7 @@
 289D            JR   NZ,SAVE_RUN         ; Jump if the command wasn't 'SAVE @'.
 289F            LD   IX,($3E15)          ; Get address where sector is to be saved
 28A3            CALL GET_TR      &SE     ; from. Get track and sector number.
-28A6            LD   A,($3E01)           ; Get drive number.
+28A6            LD   A,(UFIA1)           ; Get drive number.
 28A9            CALL HWSAD               ; Write the sector.
 28AC            JP   END                 ; Finished.
 
@@ -6618,7 +6618,7 @@
 ; This routine checks the syntax of the LOAD, VERIFY and MERGE commands and
 ; executes it.
 
-28E7 LD_VF_MR   LD   IX,$3AC3            ; Pointer to DFCA.
+28E7 LD_VF_MR   LD   IX,DFCA
 28EB            CALL EXPT_PARMS          ; Evaluate & store all parameters.
 28EE LD_VF_MR1  CALL TEST_DRV            ; See if the drive is defined.
 28F1            LD   A,($3E04)
@@ -6626,7 +6626,7 @@
 28F6            JR   NZ,LD_ETC_RUN       ; Jump if it wasn't a '@' command.
 28F8            LD   IX,($3E15)          ; Get address where sector is to be
 28FC            CALL GET_TR      &SE     ; loaded. Get track and sector number.
-28FF            LD   A,($3E01)           ; Get drive number.
+28FF            LD   A,(UFIA1)           ; Get drive number.
 2902            CALL HRSAD               ; Load the sector.
 2905            JP   END                 ; Finished.
 
@@ -6995,7 +6995,7 @@
 2B2C            CALL SWAP_UFIAS          ; Exchange the UFIA's.
 2B2F            LD   A,223,"OUT"         ; This is the keyword 'OUT'.
 2B31            LD   ($3E02),A           ; Signal 'WRITE channel'.
-2B34            LD   IX,$3AC3            ; Pointer to DFCA.
+2B34            LD   IX,DFCA
 2B38            CALL OP_MOVE             ; Open the destination channel/stream.
 2B3B            JR   NC,MOVE_RUN1        ; Jump if opening was successfull. I.e.
                                          ; file was 'new' or 'old' file was
@@ -7298,7 +7298,7 @@
 2CF2            AND  $5F                 ; Clear bit 7 and make capital.
 2CF4            CP   68,"D"
 2CF6            JR   NZ,OP_TEMP3         ; Jump if this isn't a "D" channel.
-2CF8            LD   A,($3E01)           ; Fetch drive number.
+2CF8            LD   A,(UFIA1)           ; Fetch drive number.
 2CFB            CP   (IX+11)             ; Jump if this channel uses a different
 2CFE            JR   NZ,OP_TEMP3         ; drive.
 2D00            PUSH IX
@@ -7780,10 +7780,10 @@
 
 2F8B HXFER      PUSH IX
 2F8D            POP  HL
-2F8E            LD   DE,$3E01            ; Start of 'UFIA1'.
+2F8E            LD   DE,UFIA1            ; Start of 'UFIA1'.
 2F91            LD   BC,24
 2F94            LDIR                     ; Transfer the UFIA to 'UFIA1'.
-2F96            LD   IX,$3AC3            ; IX points to the DFCA.
+2F96            LD   IX,DFCA
 2F9A            CALL TEST_DRV            ; Check if the specified drive is
 2F9D            RET                      ; defined.
 
@@ -7874,7 +7874,7 @@
 2FCC            PUSH BC
 2FCD            POP  DE
 2FCE            POP  HL
-2FCF            LD   IX,$3AC3
+2FCF            LD   IX,DFCA 
 2FD3            RET
 
 ; ----------------------------------------------
@@ -7885,7 +7885,7 @@
 
 2FD4 HRSAD      PUSH BC
 2FD5            PUSH IX
-2FD7            LD   IX,$3AC3
+2FD7            LD   IX,DFCA 
 2FDB            CALL TEST_DRV            ; See if the drive held in the A register
                                          ; is defined.
 2FDE            CALL RSAD                ; Load the sector into the disk buffer.
@@ -7910,7 +7910,7 @@
 2FF2 HWSAD      PUSH BC
 2FF3            PUSH IX
 2FF5            POP  HL
-2FF6            LD   IX,$3AC3
+2FF6            LD   IX,DFCA 
 2FFA            CALL TEST_DRV            ; See if the drive held in the A register
 2FFD            PUSH DE                  ; is defined.
 2FFE            LD   DE,$3BD6
@@ -7929,7 +7929,7 @@
 ; This routine is called using command code 63 ($3F), it loads sector DE from
 ; the current drive into the disk buffer.
 
-300F JRSAD      LD   IX,$3AC3
+300F JRSAD      LD   IX,DFCA 
 3013            JP   RSAD                ; Load the sector.
 
 ; ----------------------------------------------
@@ -7938,7 +7938,7 @@
 ; This is called using command code 62 ($3E), it saves the contents of the
 ; disk buffer into sector DE on the current drive.
 
-3016 JWSAD      LD   IX,$3AC3
+3016 JWSAD      LD   IX,DFCA 
 301A            JP   WSAD                ; Save the sector.
 
 
@@ -8090,7 +8090,7 @@
 
 3148 ST_END_RAM LD   IX,$000C
 314C            CALL ST_END      
-314F            LD   IX,$3AC3
+314F            LD   IX,DFCA 
 3153            RET
 
 ; ----------------------------------------------
@@ -8104,5 +8104,47 @@
 315A            JP   CAT_RUN             ; Do the CAT.
 
 ; 315D - 39FF Unused locations (all set to $00).
+
+      
+; ----------------------------------------------
+; Disk File Channel Area (DFCA)
+
+                ORG $3AC3
+
+      DFCA
+                DEFW 0  ; length of file in sectors
+                DEFW 0  ; bytes left to load or save
+                DEFB 0  ; some flags
+                DEFW 0  ; load/save address
+                DEFB 0  ; drive
+                DEFB 0  ; operation flag
+                        ; bit 7 : verify
+                        ; bit 6 : merge
+                        ; bit 5 : save
+                        ; bit 4 : load
+                        ; bit 0 : other
+                DEFW 0
+                DEFW 0
+                DEFB 0  ; current track
+                DEFB 0  ; current sector
+
+
+                ORG $3DD8
+
+        SECTORS_USED ; XXX TODO -- 
+
+; ----------------------------------------------
+; UFIA1
+
+                ORG $3E01
+
+        UFIA1   ; XXX TODO --
+
+; ----------------------------------------------
+; UFIA2
+
+                ORG $3E1A
+    
+        UFIA2   ; XXX TODO --
 
 ; vim: filetype=z80

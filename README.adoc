@@ -20,3 +20,7 @@ suitable for studying and editing it with the Vim editor.
 - Added semicolon to line code comments.
 - Removed hex numbers used in the HTML links, leave just the labels.
 - Renamed some labels which used illegal characters.
+
+2016-03-06::
+
+- Added DFCA, UFIA1 and UFIA2.
