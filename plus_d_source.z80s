@@ -9,7 +9,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-03.
 
-; Last modified: 201702091800
+; Last modified: 201702091807
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -1077,7 +1077,7 @@ st_end1:
 ; The control is returned to the BASIC interpreter for interpretation of the
 ; next statement.
 
-end:
+the_end:
   ld   sp,(23613)          ;047C; Clear machine stack. (ERR_SP)
   ld   (iy+0),$FF          ;0480; Clear error code. (ERR_NR)
   ld   hl,stmt_next        ;0484; Return address to 'main' ROM is
@@ -1157,10 +1157,10 @@ poke_fetch
   ld   (hl),c              ;04E5; POKE address,low byte.
   ld   a,b                 ;04E6;
   and  a                   ;04E7;
-  jp   z,end               ;04E8; Exit if 8 bit value.
+  jp   z,the_end           ;04E8; Exit if 8 bit value.
   inc  hl                  ;04EB; Otherwise POKE address+1,high byte
   ld   (hl),b              ;04EC; before exiting.
-  jp   end                 ;04ED;
+  jp   the_end             ;04ED;
 
 ; ----------------------------------------------
 ; THE 'SPECTRUM ERROR' ROUTINE
@@ -5400,7 +5400,7 @@ d_error1:
   defw set_min             ;186B; calculator stack.
   ld   a,(23728)           ;186D;
   and  a                   ;1870; Exit via 'END' if error messages are
-  jp   nz,end              ;1871; to be supressed.
+  jp   nz,the_end          ;1871; to be supressed.
   res  5,(iy+55)           ;1874; Signal 'EDIT mode' FLAGX.
   rst  calbas              ;1878; Clear the lower screen.
   defw cls_lower           ;1879;
@@ -5808,7 +5808,7 @@ reset_vars:
   ld   a,($3DFF)           ;210C; Fetch command which has to be examined
   rst  calbas              ;210F; by user-routine (BASIC extensions).
   defw $0000               ;2110; CALL the extend BASIC routine(s).
-  jp   end                 ;2112; Test end of command and exit.
+  jp   the_end             ;2112; Test end of command and exit.
 
 ; ----------------------------------------------
 ; THE 'SNAPSHOT ROUTINE' CONTINUED
@@ -6457,7 +6457,7 @@ do_cat:
   ld   a,%00000100         ;24A2; Signal extended CAT.
 do_cat1:
   call cat_run             ;24A4; Give the CAT.
-  jp   end                 ;24A7; Finished.
+  jp   the_end             ;24A7; Finished.
 
 ; ----------------------------------------------
 ; THE 'CAT' COMMAND ROUTINE
@@ -6570,7 +6570,7 @@ erase_exit:
   ld   a,($3E04)           ;254E;
   cp   "D"                 ;2551; If the device descriptor was a
   call z,cat_1             ;2553; (capital) "D", then give a CATalogue.
-  jp   end                 ;2556; Finished.
+  jp   the_end             ;2556; Finished.
 
 ; ----------------------------------------------
 ; THE 'FIND A FILE' SUBROUTINE
@@ -7222,7 +7222,7 @@ save:
   call get_tr      &se     ;28A3; from. Get track and sector number.
   ld   a,(ufia1)           ;28A6; Get drive number.
   call hwsad               ;28A9; Write the sector.
-  jp   end                 ;28AC; Finished.
+  jp   the_end             ;28AC; Finished.
 
 ; ----------------------------------------------
 ; THE 'SAVE A FILE' ROUTINE
@@ -7304,7 +7304,7 @@ ld_vf_mr1:
   call get_tr      &se     ;28FC; loaded. Get track and sector number.
   ld   a,(ufia1)           ;28FF; Get drive number.
   call hrsad               ;2902; Load the sector.
-  jp   end                 ;2905; Finished.
+  jp   the_end             ;2905; Finished.
 
 ; The routine continues here when a file is to be LOADed from disk.
 
@@ -7346,7 +7346,7 @@ ld_etc_r3:
   cp   11                  ;294A;
   jr   nz,ld_etc_r4        ;294C; Jump if it isn't a 'Execute' file.
   call $3BD6               ;294E; Execute (this is the address of the
-  jp   end                 ;2951; disk buffer). Finished.
+  jp   the_end             ;2951; disk buffer). Finished.
 
 ld_etc_r4:
   call load_head2          ;2954; Load the header into UFIA2.
@@ -7400,12 +7400,12 @@ ld_etc_r7:
 ld_etc_r8:
   call lv_any              ;29A5; Load the file.
   call test_7              ;29A8;
-  jp   nz,end              ;29AB; Exit when 'VERIFYing'.
+  jp   nz,the_end          ;29AB; Exit when 'VERIFYing'.
   ld   hl,($3E17)          ;29AE; Fetch execute address.
   call exec_code           ;29B1; Use it if it was specified.
   ld   hl,($3E30)          ;29B4; Otherwise use the files execute
   call exec_code           ;29B7; address.
-  jp   end                 ;29BA; But if it hasn't one either, exit here.
+  jp   the_end             ;29BA; But if it hasn't one either, exit here.
 
 ; ----------------------------------------------
 ; THE 'EXECUTE CODE FILE' SUBROUTINE
@@ -7456,7 +7456,7 @@ merge_ctrl:
   ld   de,(23635)          ;29F1; Fetch 'start' of old program (PROG).
   rst  calbas              ;29F5; Do the MERGEing by calling the 'main'
   defw me_new_lp           ;29F6; ROM 'MERGE' routine.
-  jp   end                 ;29F8; Finished.
+  jp   the_end             ;29F8; Finished.
 
 ; ----------------------------------------------
 ; THE 'LOAD CONTROL' ROUTINE
@@ -7539,7 +7539,7 @@ load_c4:
   ld   (hl),d              ;2A4F;
   inc  hl                  ;2A50;
   call lv_any              ;2A51; Load the file.
-  jp   end                 ;2A54; Finished.
+  jp   the_end             ;2A54; Finished.
 
 ; Now deal with the LOADing of a BASIC program and its variables.
 
@@ -7574,7 +7574,7 @@ ld_prog1:
   ld   (23639),hl          ;2A90; beginning of the program.
   inc  hl                  ;2A93; Balance the 'DEC HL'.
   call lv_any              ;2A94; Load the file.
-  jp   end                 ;2A97; Finished.
+  jp   the_end             ;2A97; Finished.
 
 ; ----------------------------------------------
 ; THE 'LOAD OR VERIFY' SUBROUTINE
@@ -7635,9 +7635,9 @@ format_1:
                                          ; cleared'.
   call mesg_2              ;2AE0; Print 'Are you SURE ? (y/n)' message.
   call test_y              ;2AE3; Wait for a key, Zero set means 'Y'
-  jp   nz,end              ;2AE6; pressed. Finished when not sure.
+  jp   nz,the_end          ;2AE6; pressed. Finished when not sure.
   call format_run          ;2AE9; Otherwise FORMAT the disk.
-  jp   end                 ;2AEC; Finished.
+  jp   the_end             ;2AEC; Finished.
 
 
 ; ===============================================================
@@ -7710,7 +7710,7 @@ move:
   call recl_chan           ;2B41; wasn't opened so nothing to reclaim).
   pop  hl                  ;2B44; Drop (CHANS) address.
   pop  hl                  ;2B45; ?? Drop what?
-  jp   end                 ;2B46; Finished.
+  jp   the_end             ;2B46; Finished.
 
 move_run1:
   call swap_ufias          ;2B49; Exchange UFIA's again.
@@ -7773,7 +7773,7 @@ move_run5:
   ld   ($3E05),hl          ;2B92; And store it.
   call cl_move             ;2B95; Close the source channel.
   call recl_temp           ;2B98; Reclaim temporary channels.
-  jp   end                 ;2B9B; Finished.
+  jp   the_end             ;2B9B; Finished.
 
 ; ----------------------------------------------
 ; THE 'RECLAIM CHANNEL' SUBROUTINE
@@ -7974,7 +7974,7 @@ open_3:
   ld   a,$0A               ;2CA8; Signal 'OPENTYPE file'.
   ld   ($3E05),a           ;2CAA;
   call open_chan           ;2CAD; Open the channel.
-  jp   end                 ;2CB0; Finished.
+  jp   the_end             ;2CB0; Finished.
 
 ; ----------------------------------------------
 ; THE 'OPEN "D" CHANNEL' SUBROUTINE
@@ -8238,7 +8238,7 @@ close:
                                          ; syntax checking.
   ld   a,($3E03)           ;2E2B; Fetch stream number.
   call close_strm          ;2E2E; Close the stream.
-  jp   end                 ;2E31; Finished.
+  jp   the_end             ;2E31; Finished.
 
 close_all:
   call st_end_ram          ;2E34; Confirm end of statement and exit if
@@ -8274,7 +8274,7 @@ clear_2:
   xor  a                   ;2E54;
   ld   ($3DEF),a           ;2E55; Clear 'MAP_USED' (=POKE @7663,0).
   ld   ($3ACF),a           ;2E58; Clear FLAGS3.
-  jp   end                 ;2E5B; Finished.
+  jp   the_end             ;2E5B; Finished.
 
 ; ----------------------------------------------
 ; THE 'CLOSE A STREAM' SUBROUTINE
@@ -8380,7 +8380,7 @@ cls:
   out  (254),a             ;2ED4;
   rst  calbas              ;2ED6; Call 'main' ROM 'CLS' routine.
   defw cls                 ;2ED7;
-  jp   end                 ;2ED9; Finished.
+  jp   the_end             ;2ED9; Finished.
 
 ; ----------------------------------------------
 ; THE '"D" CHANNEL INPUT' ROUTINE
@@ -8755,7 +8755,7 @@ copy_2:
   call z,cops              ;3040; 'SCREEN$'.
   cp   "2"                 ;3043; Grey scale in case of a '2'.
   call z,cops2             ;3045; Ignore other values.
-  jp   end                 ;3048; Finished.
+  jp   the_end             ;3048; Finished.
 
 
 ; ===============================================================
