@@ -2,14 +2,14 @@
 
 ; The Z80 source of the Plus D ZX Spectrum interface, ROM and RAM.
 
-; Original +D disassembly by:
-; JRB, 2005-11,
-; http://www.biehold.nl/rudy/plusd/plusd.htm.
+; Original disassembly by:
+; JRB, 2005-11
+; http://www.biehold.nl/rudy/plusd/plusd.htm
 ;
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-03.
 
-; Last modified: 201603062010
+; Last modified: 201604110120
 
 ; ===============================================================
 ; Values
@@ -31,8 +31,10 @@ POWER_UP
   NOP                      ;0000;
   LD   BC,$0101            ;0001;
   NOP                      ;0004;
-  JP   POWER_UP2           ;0005; Sump to main routine.
-  ; XXX FIXME -- why error `power_up2` is not defined?
+  JP   POWER_UP2           ;0005; Jump to main routine.
+
+  ; XXX FIXME -- Pasmo assembler error: why error `power_up2` is not defined?
+  ; It seems the same happens with all of the labels.
 
 ; ----------------------------------------------
 ; THE 'USE G+DOS' RESTART
@@ -8706,7 +8708,7 @@ JWSAD
 
 
 ; ===============================================================
-; Miscalleneous routines III
+; Miscellaneous routines III
 
 ; ----------------------------------------------
 ; THE 'COPY SCREEN' ROUTINE
