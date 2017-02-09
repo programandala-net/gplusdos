@@ -9,14 +9,21 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-03.
 
-; Last modified: 201702091741
+; Last modified: 201702091800
 
 ; ===============================================================
 ; ZX Spectrum symbols 
 
-then_keyword  equ 203
-poke_keyword  equ 244
-run_keyword   equ 247
+screen_dollar_keyword  equ 170
+code_keyword           equ 175
+in_keyword             equ 191
+line_keyword           equ 202
+then_keyword           equ 203
+to_keyword             equ 204
+out_keyword            equ 223
+data_keyword           equ 228
+poke_keyword           equ 244
+run_keyword            equ 247
 
 ; ===============================================================
 ; The restart routines
@@ -2581,7 +2588,7 @@ test_y1:
   jr   nc,test_y1          ;0B69; Repeat scanning and testing until a
                                          ; key has been pressed.
   and  $DF                 ;0B6B; Capitalize.
-  cp   "y"                 ;0B6D; Set the Zero flag if it was the
+  cp   "Y"                 ;0B6D; Set the Zero flag if it was the
   push af                  ;0B6F; 'Y'-key.
   rst  calbas              ;0B70; Again the 'main' ROM is called, this
   defw cls_lower           ;0B71; time for clearing the lower screen.
@@ -2668,7 +2675,7 @@ cfsm_entry:
 hgfle_2:
   ld   a,($3E04)           ;0BCF; Fetch device description from UFIA1.
   and  $DF                 ;0BD2; Capitalize.
-  cp   "p"                 ;0BD4;
+  cp   "P"                 ;0BD4;
   jr   nz,hgfl_nonum       ;0BD6; Jump if no program number specified.
   ld   a,%00000001         ;0BD8; Search for the specified program
   call scan_cat            ;0BDA; number.
@@ -3323,7 +3330,7 @@ set_t_1:
   ld   a,(ix+4)            ;0F04; Fetch the channel specifier.
   and  $7F                 ;0F07; Clear bit 7 (drop temporary/permanent
                                          ; flag).
-  cp   "m"                 ;0F09;
+  cp   "M"                 ;0F09;
   jr   nz,set_t_2          ;0F0B; Jump if not a "M" channel.
   ld   a,(23766)           ;0F0D; Fetch drive number (D_STR1).
   cp   (ix+25)             ;0F10; Compare it with (CHDRIV).
@@ -4653,8 +4660,8 @@ p_esc:
 ; unprintable character code.
 
 p_quest:
-  ld   a,63,"?"            ;14E5; The character '?'.
-  jr   p_noctrl            ;14E7; Send it to the printer.
+  ld   a,"?"            ;14E5; The character '?'.
+  jr   p_noctrl         ;14E7; Send it to the printer.
 
 ; Now deal with the TAB control code.
 
@@ -5411,7 +5418,7 @@ d_error1:
   push de                  ;1892;
   xor  a                   ;1893; Print the track number, no leading
   call num_100             ;1894; characters.
-  ld   a,58,":"            ;1897; Print a colon.
+  ld   a,":"               ;1897; Print a colon.
   call prt_a               ;1899;
   pop  de                  ;189C;
   ld   h,0                 ;189D;
@@ -6180,7 +6187,7 @@ to:
   call swap_ufias          ;230F; Swap the UFIAS.
   rst  next_c              ;2312;
   and  $DF                 ;2313; Drop lower case bit.
-  cp   "d"                 ;2315;
+  cp   "D"                 ;2315;
   jp   nz,rep_0            ;2317; Jump if 2nd device isn't "D".
   ld   ($3E04),a           ;231A; Store it in DEV_TYPE1.
   call expt_devn           ;231D; Evaluate drive num., store it in UFIA1.
@@ -6414,7 +6421,7 @@ to_copy3:
 cat:
   ld   ix,dfca             ;245B;
   ld   hl,$3E06            ;245F; "*" is the default name of the files
-  ld   (hl),42,"*"         ;2462; being CATted.
+  ld   (hl),"*"            ;2462; being CATted.
   ld   hl,$3E03            ;2464; Just like #2 is the default output
   ld   (hl),2              ;2467; stream.
   rst  next_c              ;2469; Get next character.
@@ -6460,7 +6467,7 @@ do_cat1:
 
 cat_1:
   ld   hl,$3E06            ;24AA; Point to name.
-  ld   (hl),42,"*"         ;24AD; All files.
+  ld   (hl),"*"            ;24AD; All files.
   ld   hl,$3E03            ;24AF; Point to stream number.
   ld   a,2                 ;24B2; Make it stream 2.
   ld   (hl),a              ;24B4;
@@ -6527,15 +6534,15 @@ erase:
   call separator           ;2518; Test for a separator.
   jp   nz,rep_0            ;251B; Give error if none found.
   call expt_fname          ;251E; Evaluate filename.
-  cp   204,"to"            ;2521; Is the filename followed by "TO"?
+  cp   to_keyword          ;2521; Is the filename followed by "TO"?
   jr   z,rename            ;2523; Jump if so, rename is wanted.
   call st_end_ram          ;2525; Confirm end of statement and exit
                                          ; during syntax checking.
   ld   a,($3E04)           ;2528; Fetch device descriptor.
   and  $DF                 ;252B; Drop lower case bit.
-  cp   "d"                 ;252D;
+  cp   "D"                 ;252D;
   jr   z,erase_run         ;252F; Jump if it was "D".
-  cp   "m"                 ;2531;
+  cp   "M"                 ;2531;
   jp   nz,rep_10           ;2533; Give error if it wasn't "M".
 
 ; ----------------------------------------------
@@ -6561,7 +6568,7 @@ not_found:
   jp   z,rep_26            ;254B; one file ERASEd.
 erase_exit:
   ld   a,($3E04)           ;254E;
-  cp   "d"                 ;2551; If the device descriptor was a
+  cp   "D"                 ;2551; If the device descriptor was a
   call z,cat_1             ;2553; (capital) "D", then give a CATalogue.
   jp   end                 ;2556; Finished.
 
@@ -6595,9 +6602,9 @@ rename:
                                          ; syntax checking.
   ld   a,($3E04)           ;256E; Fetch device descriptor.
   and  $DF                 ;2571; Drop lower case bit.
-  cp   "d"                 ;2573;
+  cp   "D"                 ;2573;
   jr   z,rename_run        ;2575; Jump if it was a "D".
-  cp   "m"                 ;2577;
+  cp   "M"                 ;2577;
   jp   nz,rep_10           ;2579; Give error if it wasn't a "M".
 rename_run:
   call test_drv            ;257C; See if the drive is defined.
@@ -6699,7 +6706,7 @@ md_syn2:
 
 expt_devn:
   and  $DF                 ;25E2; Make upper case.
-  cp   "p"                 ;25E4;
+  cp   "P"                 ;25E4;
   jr   nz,expt_devn1       ;25E6; Jump if the device wasn't "P".
   rst  next_c              ;25E8; Next character.
   call expt_num            ;25E9; Get the program number.
@@ -6836,11 +6843,11 @@ expt_parms:
   rst  next_c              ;2665; Get next character from BASIC line.
   cp   " "                 ;2666; Give an error with character codes
   jp   c,rep_0             ;2668; below 32, i.e. colour codes, etc.
-  cp   170,"screen$"       ;266B;
-  jp   z,dump_scr      $   ;266D; Jump with 'SCREEN$'.
+  cp   screen_dollar_keyword ;266B; 'SCREEN$'
+  jp   z,dump_scr          ;266D; Jump with 'SCREEN$'.
   ld   ($3E04),a           ;2670; Otherwise store it in DEV_TYPE1.
   cp   "@"                 ;2673;
-  jr   nz,not_      @      ;2675; Jump if not a '@'.
+  jr   nz,not_at_sign      ;2675; Jump if not a '@'.
 
 ; Now deal with @.
 
@@ -6870,8 +6877,8 @@ expt_parms:
   ld   ($3E11),bc          ;26A9; Store it in LENGTH1_1
   ret                      ;26AD; Exit.
 
-not_:
-  @      cp   "*"                 ;26AE; Call 'MD_SYNTAX' if it was a "*".
+not_at_sign:
+  cp   "*"                 ;26AE; Call 'MD_SYNTAX' if it was a "*".
   call z,md_syntax         ;26B0;
   call expt_devn           ;26B3; Fetch device or program number.
   call separator           ;26B6; Test for a separator.
@@ -6880,15 +6887,15 @@ not_:
   jr   z,filename          ;26BB; Jump if syntax checking.
   ld   a,($3E04)           ;26BD; Fetch device descriptor.
   and  $DF                 ;26C0; Only capitals.
-  cp   "d"                 ;26C2;
-  jr   z,not_      @1      ;26C4; Jump if device is disk.
-  cp   "m"                 ;26C6;
-  jr   z,not_      @1      ;26C8; Or disk with Microdrive syntax.
-  cp   "p"                 ;26CA;
+  cp   "D"                 ;26C2;
+  jr   z,not_at_sign1      ;26C4; Jump if device is disk.
+  cp   "M"                 ;26C6;
+  jr   z,not_at_sign1      ;26C8; Or disk with Microdrive syntax.
+  cp   "P"                 ;26CA;
   jr   z,params            ;26CC; Jump with program.
   jp   nz,rep_10           ;26CE; Give error with unknown device.
-not_:
-  @1     pop  af                  ;26D1; Give error if no separator or quote
+not_at_sign1:
+  pop  af                  ;26D1; Give error if no separator or quote
   jp   nz,rep_0            ;26D2; found with devices "D" and "M".
   push af                  ;26D5; Balance 'POP AF' below.
 filename:
@@ -6901,18 +6908,18 @@ params:
   jp   z,no_params         ;26DE; Jump with ENTER.
   cp   ":"                 ;26E1;
   jp   z,no_params         ;26E3; Jump with colon.
-  cp   204,"to"            ;26E6;
+  cp   to_keyword         ;26E6;
   jp   z,to                ;26E8; Jump with 'TO'.
-  cp   170,"screen$"       ;26EB;
+  cp   screen_dollar_keyword ;26EB;
   jp   z,screen      $     ;26ED; Jump with 'SCREEN$'.
-  cp   175,"code"          ;26F0;
+  cp   code_keyword        ;26F0;
   jp   z,code              ;26F2; Jump with 'CODE'.
-  cp   228,"data"          ;26F5;
+  cp   data_keyword       ;26F5;
   jp   z,data              ;26F7; Jump with 'DATA'.
-  cp   202,"line"          ;26FA;
+  cp   line_keyword        ;26FA;
   jp   z,line              ;26FC; Jump with 'LINE'.
   and  $DF                 ;26FF; Only capitals.
-  cp   "s"                 ;2701;
+  cp   "S"                 ;2701;
   jr   nz,not_s            ;2703; Jump with other than 'S'.
   rst  next_c              ;2705; Next character.
   call st_end_ram          ;2706; Confirm end of statement and exit
@@ -6922,7 +6929,7 @@ params:
   ret                      ;270E; Finished.
 
 not_s:
-  cp   "k"                 ;270F;
+  cp   "K"                 ;270F;
   jr   nz,not_k            ;2711; Jump with other than 'K'.
   rst  next_c              ;2713; Next character.
   call st_end_ram          ;2714; Confirm end of statement and exit
@@ -6932,7 +6939,7 @@ not_s:
   ret                      ;271C; Finished.
 
 not_k:
-  cp   "x"                 ;271D;
+  cp   "X"                 ;271D;
   jp   nz,rep_0            ;271F; Give error with other than 'X'.
   rst  next_c              ;2722; Next character.
   call separator           ;2723; Jump if a separator found, there is
@@ -6992,7 +6999,7 @@ no_params:
 prog:
   ld   a,($3E04)           ;2772;
   and  $DF                 ;2775; Only capitals.
-  cp   "p"                 ;2777; Jump if the device wasn't "P", i.e. no
+  cp   "P"                 ;2777; Jump if the device wasn't "P", i.e. no
   jr   nz,prog_1           ;2779; program number was specified.
   call test_5              ;277B; 'SAVE pn' is not supported, so give an
   ret  z                   ;277E; error if saving, otherwise return.
@@ -7608,11 +7615,11 @@ lv_any3:
 format:
   rst  next_c              ;2AB9; Advance CH_ADD to next character.
   and  $DF                 ;2ABA; Only capitals.
-  cp   "d"                 ;2ABC;
+  cp   "D"                 ;2ABC;
   jp   nz,rep_0            ;2ABE; Give an error if not a "D".
   rst  next_c              ;2AC1; Next character.
   call expt_devn2          ;2AC2; Evaluate the drive number.
-  cp   204,"to"            ;2AC5; Jump if the current character isn't
+  cp   to_keyword          ;2AC5; Jump if the current character isn't
   jr   nz,format_1         ;2AC7; 'TO'.
   call swap_ufias          ;2AC9; Exchange UFIA1 and UFIA2.
   rst  next_c              ;2ACC; Update CH_ADD.
@@ -7666,7 +7673,7 @@ expt_:
 
 move:
   call expt_exp1           ;2B03; Evaluate stream or channel expression.
-  cp   204,"to"            ;2B06; The keyword 'TO' must be present,
+  cp   to_keyword          ;2B06; The keyword 'TO' must be present,
   jp   nz,rep_0            ;2B08; give an error if 'TO' is missing.
   call swap_ufias          ;2B0B; Exchange the UFIA's.
   call expt_exp1           ;2B0E; Evaluate second stream or channel
@@ -7682,7 +7689,7 @@ move:
 ; isn't to be generated.
 
   call sign_2              ;2B17; See above.
-  ld   a,191,"in"          ;2B1A; This is the keyword 'IN', it is used to
+  ld   a,in_keyword        ;2B1A; This is the keyword 'IN', it is used to
   ld   ($3E02),a           ;2B1C; signal 'READ channel'.
   call op_move             ;2B1F; Open the source channel/stream.
   ld   hl,(23631)          ;2B22; Save (CHANS).
@@ -7690,7 +7697,7 @@ move:
   ld   a,($3E02)           ;2B26; Save 'DIR_DESCR1' into 'DIR_DESCR2'.
   ld   ($3E1E),a           ;2B29;
   call swap_ufias          ;2B2C; Exchange the UFIA's.
-  ld   a,223,"out"         ;2B2F; This is the keyword 'OUT'.
+  ld   a,out_keyword       ;2B2F; This is the keyword 'OUT'.
   ld   ($3E02),a           ;2B31; Signal 'WRITE channel'.
   ld   ix,dfca             ;2B34;
   call op_move             ;2B38; Open the destination channel/stream.
@@ -7798,7 +7805,7 @@ expt_exp1:
 expt_exp2:
   ld   ($3E04),a           ;2BB3; Otherwise store device letter.
   and  $DF                 ;2BB6; Only capitals.
-  cp   "d"                 ;2BB8; If device letter isn't "D" then
+  cp   "D"                 ;2BB8; If device letter isn't "D" then
   call nz,md_syn1          ;2BBA; evaluate microdrive syntax.
   call expt_devn           ;2BBD; Evaluate device number.
   call separator           ;2BC0; If there is a separator exit via
@@ -7808,9 +7815,9 @@ expt_exp2:
   push af                  ;2BC8;
   ld   a,($3E04)           ;2BC9; Fetch device letter.
   and  $DF                 ;2BCC; Only capitals.
-  cp   "d"                 ;2BCE; If the device is "D" or "M" then there
+  cp   "D"                 ;2BCE; If the device is "D" or "M" then there
   jp   z,rep_2             ;2BD0; must be a name present. Give an error
-  cp   "m"                 ;2BD3; if no name specified.
+  cp   "M"                 ;2BD3; if no name specified.
   jp   z,rep_2             ;2BD5;
   pop  af                  ;2BD8;
   ret                      ;2BD9;
@@ -7836,9 +7843,9 @@ op_move:
 op_move1:
   ld   a,($3E04)           ;2BEB; Fetch device letter.
   and  $DF                 ;2BEE; Capitals only.
-  cp   "m"                 ;2BF0;
+  cp   "M"                 ;2BF0;
   jr   z,op_move2          ;2BF2; Jump if it's a "M".
-  cp   "d"                 ;2BF4;
+  cp   "D"                 ;2BF4;
   jr   nz,op_move3         ;2BF6; Jump if it isn't a "D".
 op_move2:
   call test_drv            ;2BF8; Check if the drive is defined.
@@ -7849,7 +7856,7 @@ op_move2:
   ret                      ;2C08;
 
 op_move3:
-  cp   "n"                 ;2C09;
+  cp   "N"                 ;2C09;
   jp   nz,rep_0            ;2C0B; Give an error if device isn't "N".
   call sign_3              ;2C0E; Otherwise signal 'using network'.
   ret                      ;2C11;
@@ -7867,7 +7874,7 @@ cl_move:
   ret  nz                  ;2C16; Return if a stream has been used.
   ld   a,($3E04)           ;2C17; Otherwise fetch device letter.
   and  $DF                 ;2C1A; Only capitals.
-  cp   "n"                 ;2C1C;
+  cp   "N"                 ;2C1C;
   jr   z,cl_move1          ;2C1E; Jump if it was "N".
   ld   ix,($3E05)          ;2C20; Fetch channel address.
   jp   close_chan          ;2C24; Close the channel and exit.
@@ -7889,7 +7896,7 @@ recl_t1:
   cp   128                 ;2C34; Return if the end marker was found,
   ret  z                   ;2C36; i.e. there are no more channels.
   ld   a,(ix+4)            ;2C37; Fetch channel specifier.
-  cp   196,"d"+128         ;2C3A;
+  cp   "D"+128             ;2C3A;
   jr   nz,recl_t2          ;2C3C; Jump if not a temporary "D" channel.
   call close_chan          ;2C3E;
   jr   recl_temp           ;2C41;
@@ -7938,9 +7945,9 @@ open:
   call expt_exp2           ;2C71; Evaluate channel specifier.
   cp   13                  ;2C74;
   jr   z,open_2            ;2C76; Jump if no more parameters.
-  cp   191,"in"            ;2C78;
+  cp   in_keyword         ;2C78;
   jr   z,open_1            ;2C7A; Jump if 'IN' specified.
-  cp   223,"out"           ;2C7C;
+  cp   out_keyword         ;2C7C;
   jp   nz,rep_2            ;2C7E; Give error if no 'OUT' specified.
 open_1:
   ld   ($3E02),a           ;2C81; Store the channel type (IN or OUT) in
@@ -7958,9 +7965,9 @@ open_2:
   jp   c,rep_30            ;2C94; already used by the +D.
   ld   a,($3E04)           ;2C97; Fetch channel specifier.
   and  $DF                 ;2C9A; Only capitals.
-  cp   "d"                 ;2C9C;
+  cp   "D"                 ;2C9C;
   jr   z,open_3            ;2C9E; Jump if opening a "D" channel.
-  cp   "m"                 ;2CA0; Give an error if not opening a "M"
+  cp   "M"                 ;2CA0; Give an error if not opening a "M"
   jp   nz,rep_0            ;2CA2; channel.
 open_3:
   call test_drv            ;2CA5; See if the drive is defined.
@@ -8021,7 +8028,7 @@ op_temp1:
   jr   z,op_temp4          ;2CED; Jump if end of CHANS area is reached.
   ld   a,(ix+4)            ;2CEF; Otherwise fetch channel specifier.
   and  $5F                 ;2CF2; Clear bit 7 and make capital.
-  cp   "d"                 ;2CF4;
+  cp   "D"                 ;2CF4;
   jr   nz,op_temp3         ;2CF6; Jump if this isn't a "D" channel.
   ld   a,(ufia1)           ;2CF8; Fetch drive number.
   cp   (ix+11)             ;2CFB; Jump if this channel uses a different
@@ -8057,7 +8064,7 @@ op_temp4:
   call scan_cat            ;2D28; filename.
   ld   a,($3E02)           ;2D2B; Get channel type (read/write).
   jp   nz,op_temp5         ;2D2E; Jump if file not found.
-  cp   223,"out"           ;2D31;
+  cp   out_keyword         ;2D31;
   jp   z,op_t_patch        ;2D33; Jump if OUTput channel.
   ld   bc,551              ;2D36; Length of INput channel.
   call chan_spc            ;2D39; Create the room for the channel.
@@ -8106,7 +8113,7 @@ op_temp4:
 ; The file was not found, so if the channel isn't for OUTput give an error.
 
 op_temp5:
-  cp   191,"in"            ;2D8A;
+  cp   in_keyword          ;2D8A;
   jp   z,rep_26            ;2D8C; Give error if it is an INput channel.
 op_temp6:
   ld   bc,787              ;2D8F; Length of OUTput channel.
@@ -8306,7 +8313,7 @@ close_strm:
   ld   a,(ix+4)            ;2E77; Fetch channel specifier.
   and  $5F                 ;2E7A; Clear bit 7 (temporary) and make
                                          ; capital.
-  cp   "d"                 ;2E7C;
+  cp   "D"                 ;2E7C;
   jr   nz,close_1          ;2E7E; Jump if it isn't a "D" channel.
 close_0:
   bit  0,(ix+12)           ;2E80;
@@ -8722,16 +8729,16 @@ jwsad:
 ; following the 'SCREEN$', the normal or the grey scale screen dump is used.
 
 dump_scr:
-  $  pop  hl                  ;301D; Drop the return address (within the
+  pop  hl                  ;301D; Drop the return address (within the
                                          ; routine which called 'EXPT_PARMS').
   jr   copy_1              ;301E; Jump forward.
 
 copy:
   rst  next_c              ;3020; Advance CH_ADD.
-  cp   170,"screen$"       ;3021; Give 'Nonsense in G+DOS' error if
+  cp   screen_dollar_keyword  ;3021; Give 'Nonsense in G+DOS' error if
   jp   nz,rep_0            ;3023; command isn't followed by 'SCREEN$'.
 copy_1:
-  ld   a,49,"1"            ;3026; Default is '1' for 'normal' dump.
+  ld   a,"1"               ;3026; Default is '1' for 'normal' dump.
   ld   ($3E00),a           ;3028;
   rst  next_c              ;302B; Advance CH_ADD
   cp   13                  ;302C;
