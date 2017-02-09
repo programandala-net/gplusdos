@@ -9,10 +9,10 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-03.
 
-; Last modified: 201604110120
+; Last modified: 201702091709
 
 ; ===============================================================
-; Values
+; ZX Spectrum symbols 
 
 then_keyword  equ 203
 poke_keyword  equ 244
@@ -26,6 +26,8 @@ run_keyword   equ 247
 
 ; When the Spectrum is turned on or the reset button is pressed, the +D ROM is
 ; paged in at address 0, i.e. the routine listed here is executed.
+
+  org $0000
 
 POWER_UP
   NOP                      ;0000;
@@ -705,36 +707,36 @@ CLR_RAM
 ; default variables and system tables, addresses $02F2-$0359, are copied to
 ; $2000 if there is no system file loaded.
 
-RBCC
+default_RBCC
   DEFB $00       ;02F2; @0        No flashing borders.
-TRAKS1
+default_TRAKS1
   DEFB 80+128    ;02F3; @1        Drive 1 80 tracks double sided.
-TRAKS2
+default_TRAKS2
   DEFB 80+128    ;02F4; @2        Drive 2 80 tracks double sided.
-STPRAT
+default_STPRAT
   DEFB 12        ;02F5; @3        "Steprate" 0 msec.
-NSTAT
+default_NSTAT
   DEFB 1         ;02F6; @4        Network off.
-WIDTH
+default_WIDTH
   DEFB 80        ;02F7; @5        Printer right margin.
-PCODE
+default_PCODE
   DEFB 0         ;02F8; @6        Expand tokens, etc. before printing.
-LSPCE
+default_LSPCE
   DEFB 12        ;02F9; @7        Line spacing 12/72 inch.
-LFEED
+default_LFEED
   DEFB 0         ;02FA; @8        Number of line feeds after CR 1.
-LMARG
+default_LMARG
   DEFB 0         ;02FB; @9        Left margin at 0.
-GRAPH
+default_GRAPH
   DEFB 1         ;02FC; @10       Print graphic images of some chars.
-ZXPNT
+default_ZXPNT
   DEFB 1         ;02FD; @11       +D printer port not used.
-RESERVED
+default_RESERVED
   DEFW $0000     ;02FE; @12
-ONERR
+default_ONERR
   DEFW $0000     ;0301; @14       Address of routine called after an
                                ;           error has occurred.
-EVERY_INT
+default_EVERY_INT
   DEFW $0000     ;0303; @16       Address of routine called at every
                                ;           interrupt.
 
@@ -743,19 +745,19 @@ EVERY_INT
 
 ; Here the default printer control codes are stored.
 
-INIT_PRT
+default_INIT_PRT
   DEFB 13,$80,$80,$80      ;0304;
   DEFB $80,$80,$80,$80     ;0308;
-CHAR_PITCH
+default_CHAR_PITCH
   DEFB 27,"M",$80,$80      ;030C;
   DEFB $80,$80,$80,$80     ;0310;
-N_per_72_LSPC
+default_N_per_72_LSPC
   DEFB 27,"A",$80,$80      ;0314;
   DEFB $80,$80,$80,$80     ;0318;
-GRAPH_DPI
+default_GRAPH_DPI
   DEFB 27,"*",5,$80        ;031C;
   DEFB $80,$80,$80,$80     ;0320;
-INIT_PRT2
+default_INIT_PRT2
   DEFB $80,$80,$80,$80     ;0324;
   DEFB $80,$80,$80,$80     ;0328;
 
@@ -769,7 +771,7 @@ INIT_PRT2
 ; XXX TODO -- check why these data seems unused; there's an identical table at
 ; $203A
 
-pound_sign_unused
+default_pound_sign
   DEFB %00011000           ;032C;
   DEFB %00100000           ;032D;
   DEFB %00100000           ;032E;
@@ -779,7 +781,7 @@ pound_sign_unused
   DEFB %01111100           ;0332;
   DEFB %00000000           ;0333;
 
-hash_sign_unused
+default_hash_sign
   DEFB %00000000           ;0334;
   DEFB %00100100           ;0335;
   DEFB %01111110           ;0336;
@@ -789,7 +791,7 @@ hash_sign_unused
   DEFB %00100100           ;033A;
   DEFB %00000000           ;033B;
 
-copyright_sign_unused
+default_copyright_sign
   DEFB %01111110           ;033C;
   DEFB %10000001           ;033D;
   DEFB %10111101           ;033E;
@@ -804,6 +806,7 @@ copyright_sign_unused
 
 ; This code is outputted to the printer if a 'SCREEN$ 2' screendump is wanted.
 
+default_GREY_BITIM
   DEFB 27,"*",5,64         ;0344;
   DEFB 2,$80,$80,$80       ;0348;
 
@@ -830,6 +833,7 @@ copyright_sign_unused
 ;                      colour
 ;                     76543210
 
+default_GREYSCALE
   DEFB %00101011           ;034C;
   DEFB %00011111           ;034D; first row
   DEFB %00000001           ;034E;
@@ -5643,11 +5647,10 @@ GREY_BITIM
 ; from the second and third three bytes respectively.  The following eight 3x3
 ; matrices are produced:
 
- W
-  hite  Yellow  Cyan  Green Magenta  Red    Blue  Black
-  000    000    100    000    100    010    110    111
-  000    010    010    101    111    111    111    111
-  000    000    001    000    001    010    011    111
+ ; White  Yellow  Cyan  Green Magenta  Red    Blue  Black
+ ;  000    000    100    000    100    010    110    111
+ ;  000    010    010    101    111    111    111    111
+ ;  000    000    001    000    001    010    011    111
 
 ; Note that some greytones aren't right. E.g. cyan is darker than green, which
 ; isn't so on the screen.
@@ -8894,7 +8897,7 @@ PCAT
 
   ORG $3AC3
 
-  DFCA
+DFCA
   DEFW 0  ; length of file in sectors
   DEFW 0  ; bytes left to load or save
   DEFB 0  ; some flags
@@ -8929,5 +8932,7 @@ PCAT
   ORG $3E1A
 
   UFIA2   ; XXX TODO --
+
+  end
 
 ; vim: filetype=z80
