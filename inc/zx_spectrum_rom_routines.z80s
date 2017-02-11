@@ -21,8 +21,10 @@
 ; upper case. Rename `draw` to `draw_line_24BA; use `draw` for
 ; the official routine.
 
-; 2016-09-02: Rename the entry point of ADD-CHAR at 0F85 with a
-; descriptive name.
+; 2016-09-02: Rename the entry point of ADD-CHAR at 0F85 with a descriptive
+; name.
+;
+; 2017-02-09: Add two additional entry points, and two 128K routines.
 
 ; ==============================================================
 
