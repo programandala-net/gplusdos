@@ -9,7 +9,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-03.
 
-; Last modified: 201702092051
+; Last modified: 201702112333
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -8914,6 +8914,7 @@ pcat:
 
 ; $315D..$39FF Unused locations (all set to $00).
 
+  org $3A00
 
 ; ----------------------------------------------
 ; Disk File Channel Area (DFCA)
@@ -8937,20 +8938,28 @@ dfca:
   defb 0  ; current track
   defb 0  ; current sector
 
+; ----------------------------------------------
+; Buffer for EXECUTE (type 11) files
+
+  org $3DB6
+
+  defs 510
+
+; ----------------------------------------------
 
   org $3DD8
 
 sectors_used: ; XXX TODO --
 
 ; ----------------------------------------------
-; UFIA1
+; UFIA1 (User File Information Area 1)
 
   org $3E01
 
 ufia1:   ; XXX TODO --
 
 ; ----------------------------------------------
-; UFIA2
+; UFIA2 (User File Information Area 2)
 
   org $3E1A
 
