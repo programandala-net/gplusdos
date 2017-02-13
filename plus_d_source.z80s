@@ -8,7 +8,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-2017.
 
-; Last modified: 201702131402
+; Last modified: 201702131652
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -682,8 +682,8 @@ clr_ram:
   jr   nz,clr_ram          ;02C6;
   out  (239),a             ;02C8; Clear control port.
   out  (247),a             ;02CA; Clear printer port.
-  ld   hl,$02F2            ;02CC; Copy the default system variables and
-  ld   de,$2000            ;02CF; settings to RAM.
+  ld   hl,default_system_variables ;02CC; Copy the default system variables and
+  ld   de,system_variables ;02CF; settings to RAM.
   ld   bc,104              ;02D2;
   ldir                     ;02D5;
   ld   a,$58               ;02D7; Signal 'minimal' system
@@ -712,29 +712,31 @@ clr_ram:
 ; default variables and system tables, addresses $02F2-$0359, are copied to
 ; $2000 if there is no system file loaded.
 
-default_RBCC
+default_system_variables:
+
+default_RBCC:
   defb $00       ;02F2; @0        No flashing borders.
-default_TRAKS1
+default_TRAKS1:
   defb 80+128    ;02F3; @1        Drive 1 80 tracks double sided.
-default_TRAKS2
+default_TRAKS2:
   defb 80+128    ;02F4; @2        Drive 2 80 tracks double sided.
-default_STPRAT
+default_STPRAT:
   defb 12        ;02F5; @3        "Steprate" 0 msec.
-default_NSTAT
+default_NSTAT:
   defb 1         ;02F6; @4        Network off.
-default_WIDTH
+default_WIDTH:
   defb 80        ;02F7; @5        Printer right margin.
-default_PCODE
+default_PCODE:
   defb 0         ;02F8; @6        Expand tokens, etc. before printing.
-default_LSPCE
+default_LSPCE:
   defb 12        ;02F9; @7        Line spacing 12/72 inch.
-default_LFEED
+default_LFEED:
   defb 0         ;02FA; @8        Number of line feeds after CR 1.
-default_LMARG
+default_LMARG:
   defb 0         ;02FB; @9        Left margin at 0.
-default_GRAPH
+default_GRAPH:
   defb 1         ;02FC; @10       Print graphic images of some chars.
-default_ZXPNT
+default_ZXPNT:
   defb 1         ;02FD; @11       +D printer port not used.
 default_RESERVED
   defw $0000     ;02FE; @12
@@ -1562,7 +1564,7 @@ set_trk2:
 ; being waited can be altered.
 
 step_delay:
-  ld   a,($2003)           ;0692; Fetch (STPRAT).
+  ld   a,(stprat)          ;0692; Fetch (STPRAT).
   and  a                   ;0695;
 step_d1:
   ret  z                   ;0696; Exit if 'msec-counter' reaches zero.
@@ -1590,13 +1592,13 @@ wait_1m1:
 ; drive.
 
 track_0:
-  ld   a,($2003)           ;06A4;
+  ld   a,(stprat)          ;06A4;
   rlca                     ;06A7; Double (STPRAT).
-  ld   ($2003),a           ;06A8;
+  ld   (stprat),a          ;06A8;
   call rest                ;06AB; Move head to track 0.
-  ld   a,($2003)           ;06AE;
+  ld   a,(stprat)          ;06AE;
   rrca                     ;06B1; Restore original (STPRAT) value.
-  ld   ($2003),a           ;06B2;
+  ld   (stprat),a          ;06B2;
   ret                      ;06B5;
 
 rest:
@@ -1693,7 +1695,7 @@ test_drv1:
   jr   z,test_drv2         ;0707; Jump if drive one is to be used.
   cp   2                   ;0709; Otherwise give 'Wrong DRIVE' error if
   jp   nz,rep_22           ;070B; drive isn't drive two.
-  ld   a,($2002)           ;070E; Fetch (TRAKS2) system variable.
+  ld   a,(traks2)          ;070E; Fetch (TRAKS2) system variable.
   cp   0                   ;0711;
   jp   z,rep_22            ;0713; Give error if drive isn't defined.
   ld   a,2                 ;0716; Select drive two.
@@ -2219,7 +2221,7 @@ mk_all6:
 
 drv_cap:
   push hl                  ;0985;
-  ld   hl,$2001            ;0986; This is TRAKS1, drive 1's capacity.
+  ld   hl,traks1           ;0986; This is TRAKS1, drive 1's capacity.
   ld   a,($3DDA)           ;0989; Fetch current control port state.
   bit  0,a                 ;098C;
   jr   nz,drv_cap1         ;098E; Jump if drive 1 selected.
@@ -4508,7 +4510,7 @@ pchan_out:
 ; done by altering the 'output' routine address.
 
 p_all:
-  ld   hl,$2005            ;1429; This is 'WIDTH'.
+  ld   hl,width            ;1429; This is 'WIDTH'.
   cp   32                  ;142C;
   jp   nc,p_noctrl         ;142E; Jump if not a control code (>=32).
   cp   6                   ;1431; This is the "PRINT comma" code.
@@ -4670,7 +4672,7 @@ p_quest:
 ; Now deal with the TAB control code.
 
 p_tab:
-  ld   a,($2005)           ;14E9; Fetch (WIDTH), that is the line length
+  ld   a,(width)           ;14E9; Fetch (WIDTH), that is the line length
   ld   b,a                 ;14EC;
   ld   a,h                 ;14ED; Fetch the position where to TAB
   sub  b                   ;14EE; (or AT) to.
@@ -4722,7 +4724,7 @@ p_noctrl:
                                 ; form; i.e. MEMBOT.
   jr   p_graph             ;1526; Jump to print the graphic character.
 
-p_tokens_and_udg  
+p_tokens_and_udg:
   sub  token.rnd           ;1528; This is the RND token.
   jr   c,p_udgs            ;152A; Jump with UDG's (< 165).
   ld   hl,rom_po_tokens    ;152C; The routine indirectly jumps to the
@@ -4817,7 +4819,7 @@ p_up_pos:
   ld   a,($3E4E)           ;15B4; Update the current position.
   inc  a                   ;15B7;
   ld   ($3E4E),a           ;15B8;
-  ld   hl,$2005            ;15BB; HL points to WIDTH.
+  ld   hl,width            ;15BB; HL points to WIDTH.
   sub  (hl)                ;15BE;
   ret  c                   ;15BF; Return if the line isn't full yet.
   call p_newline           ;15C0; Otherwise someone has forgotten that
@@ -5552,6 +5554,8 @@ err_msgs:
 ; at address $2000 can be accessed from BASIC with POKE @p,n. Where p is 0 for
 ; RBCC at $2000.
 
+system_variables:
+
 rbcc:
   defb $07                 ;2000; Flashing borders.
 traks1:
@@ -5615,7 +5619,7 @@ init_prt2:
 ; The 'GRAPH' system variable (@10) determines whether the normal code or the
 ; graphic representation is outputted to the printer.
 
-pound_sign
+pound_sign:
   defb %00011000           ;203A;
   defb %00100000           ;203B;
   defb %00100000           ;203C;
@@ -5625,7 +5629,7 @@ pound_sign
   defb %01111100           ;2040;
   defb %00000000           ;2041;
 
-hash_sign
+hash_sign:
   defb %00000000           ;2042;
   defb %00100100           ;2043;
   defb %01111110           ;2044;
@@ -5635,7 +5639,7 @@ hash_sign
   defb %00100100           ;2048;
   defb %00000000           ;2049;
 
-copyright_sign
+copyright_sign:
   defb %01111110           ;204A;
   defb %10000001           ;204B;
   defb %10111101           ;204C;
