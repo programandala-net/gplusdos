@@ -8,7 +8,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-2017.
 
-; Last modified: 201702132337
+; Last modified: 201702140002
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -671,8 +671,8 @@ keysc_2:
                                 ; channel.
 
 nosys:
-  ld   hl,$2000            ;02BA;
-  ld   bc,8192             ;02BD; Clear the 8K RAM.
+  ld   hl,plus_d_ram       ;02BA;
+  ld   bc,plus_d_ram_size  ;02BD; Clear the 8K RAM.
 clr_ram:
   ld   (hl),0              ;02C0;
   inc  hl                  ;02C2;
@@ -705,7 +705,7 @@ clr_ram:
   ret                      ;02F1;
 
 ; ----------------------------------------------
-; THE 'SYSTEM VARIABLES'
+; THE DEFAULT 'SYSTEM VARIABLES'
 
 ; These variables hold various default settings for drives etc. They can be
 ; accessed from BASIC with POKE @p,n. Where p is 0 for RBCC at $2000. The
@@ -714,36 +714,36 @@ clr_ram:
 
 default_system_variables:
 
-default_RBCC:
+default_rbcc:
   defb $00       ;02F2; @0        No flashing borders.
-default_TRAKS1:
+default_traks1:
   defb 80+128    ;02F3; @1        Drive 1 80 tracks double sided.
-default_TRAKS2:
+default_traks2:
   defb 80+128    ;02F4; @2        Drive 2 80 tracks double sided.
-default_STPRAT:
+default_stprat:
   defb 12        ;02F5; @3        "Steprate" 0 msec.
-default_NSTAT:
+default_nstat:
   defb 1         ;02F6; @4        Network off.
-default_WIDTH:
+default_width:
   defb 80        ;02F7; @5        Printer right margin.
-default_PCODE:
+default_pcode:
   defb 0         ;02F8; @6        Expand tokens, etc. before printing.
-default_LSPCE:
+default_lspce:
   defb 12        ;02F9; @7        Line spacing 12/72 inch.
-default_LFEED:
+default_lfeed:
   defb 0         ;02FA; @8        Number of line feeds after CR 1.
-default_LMARG:
+default_lmarg:
   defb 0         ;02FB; @9        Left margin at 0.
-default_GRAPH:
+default_graph:
   defb 1         ;02FC; @10       Print graphic images of some chars.
-default_ZXPNT:
+default_zxpnt:
   defb 1         ;02FD; @11       +D printer port not used.
-default_RESERVED
+default_reserved
   defw $0000     ;02FE; @12
-default_ONERR
+default_onerr
   defw $0000     ;0301; @14       Address of routine called after an
                                ;           error has occurred.
-default_EVERY_INT
+default_every_int
   defw $0000     ;0303; @16       Address of routine called at every
                                ;           interrupt.
 
@@ -752,19 +752,19 @@ default_EVERY_INT
 
 ; Here the default printer control codes are stored.
 
-default_INIT_PRT
+default_init_prt
   defb 13,$80,$80,$80      ;0304;
   defb $80,$80,$80,$80     ;0308;
-default_CHAR_PITCH
+default_char_pitch
   defb 27,"M",$80,$80      ;030C;
   defb $80,$80,$80,$80     ;0310;
-default_N_per_72_LSPC
+default_n_per_72_lspc
   defb 27,"A",$80,$80      ;0314;
   defb $80,$80,$80,$80     ;0318;
-default_GRAPH_DPI
+default_graph_dpi
   defb 27,"*",5,$80        ;031C;
   defb $80,$80,$80,$80     ;0320;
-default_INIT_PRT2
+default_init_prt2
   defb $80,$80,$80,$80     ;0324;
   defb $80,$80,$80,$80     ;0328;
 
@@ -813,7 +813,7 @@ default_copyright_sign
 
 ; This code is outputted to the printer if a 'SCREEN$ 2' screendump is wanted.
 
-default_GREY_BITIM
+default_grey_bitim
   defb 27,"*",5,64         ;0344;
   defb 2,$80,$80,$80       ;0348;
 
@@ -840,7 +840,7 @@ default_GREY_BITIM
 ;                      colour
 ;                     76543210
 
-default_GREYSCALE
+default_greyscale
   defb %00101011           ;034C;
   defb %00011111           ;034D; first row
   defb %00000001           ;034E;
@@ -853,13 +853,12 @@ default_GREYSCALE
   defb %00011111           ;0353; third
   defb %00101011           ;0354;
 
-ram2063:
+default_output_p_routine:
   defw p_all               ;0355; Address of 'output' routine for "P".
 default_enter_flag:
   defb $00                 ;0357; The 'ENTER' flag.
 default_d_err_sp:
   defw $0000               ;0358; D_ERR_SP
-
 
 ; ===============================================================
 ; The initialise system routine
@@ -929,7 +928,7 @@ run:
   ldir                     ;03B7;
   ld   (ix+13),9           ;03B9; Update the buffer pointer.
   ld   de,($3E2A)          ;03BD; Fetch the systemfile's length.
-  ld   hl,$2000            ;03C1; Loadaddress is $2000.
+  ld   hl,plus_d_ram       ;03C1; Loadaddress is $2000.
   call load_file           ;03C4; Load the system.
   ld   a,system_status.loaded ;03C7; Load the system.
   ld   (system_status),a   ;03C9; Signal 'System loaded'.
@@ -987,7 +986,7 @@ p_channel:
 take_prtr:
   call system_z            ;040C;
   call z,jprtr             ;040F;
-  ld   a,($200B)           ;0412; (ZXPNT)
+  ld   a,(zxpnt)           ;0412; (ZXPNT)
   bit  0,a                 ;0415;
   ret  nz                  ;0417; Return if the printer isn't to be
   and  a                   ;0418; handled by the +D.
@@ -1009,12 +1008,12 @@ take_prtr:
 ; setting codes as mentioned in the 'Setup' program.
 
 init_prtr:
-  ld   a,($200B)           ;042D;
+  ld   a,(zxpnt)           ;042D;
   bit  0,a                 ;0430; Exit if printer not to be handled
   ret  nz                  ;0432; by +D.
 init_prt1:
   xor  a                   ;0433;
-  ld   ($200B),a           ;0434;
+  ld   (zxpnt),a           ;0434;
   in   a,(247)             ;0437;
   bit  7,a                 ;0439;
   ret  nz                  ;043B; Exit if the printer is busy.
@@ -1022,9 +1021,9 @@ init_prt1:
   call po_esc_seq          ;043F;
   ld   de,char_pitch       ;0442; Set character pitch.
   call po_esc_seq          ;0445;
-  ld   de,n_per_72_lspc    ;0448; Set line spacing to ($2007)/72 inch.
+  ld   de,n_per_72_lspc    ;0448; Set line spacing to (lspce)/72 inch.
   call po_esc_seq          ;044B;
-  ld   a,($2007)           ;044E;
+  ld   a,(lspce)           ;044E;
   call pntp                ;0451;
   ld   de,init_prt2        ;0454; Set other permanent printer settings.
   jp   po_esc_seq          ;0457;
@@ -1133,7 +1132,7 @@ calbas_2:
 
 ; The POKE @ command allows a value between 0 and 255 to be stored in the +D
 ; system variables. But if the value is between 256 and 65535 the POKE @
-; behaves as a DPOKE.  Because the +D system vars have a offset of $2000 (or
+; behaves as a DPOKE.  Because the +D system vars have an offset of $2000 (or
 ; 8192) this value has to be subtracted if the POKE @ is to be made directly
 ; to the given address. So POKE @60000-8192,1000 to DPOKE 60000,1000.
 
@@ -1151,7 +1150,7 @@ poke_fetch
   push bc                  ;04DC;
   rst  calbas              ;04DD;
   defw rom_find_int2       ;04DE; Fetch POKE address.
-  ld   hl,$2000            ;04E0; Offset for +D system variables.
+  ld   hl,system_variables ;04E0; Offset for +D system variables.
   add  hl,bc               ;04E3;
   pop  bc                  ;04E4;
   ld   (hl),c              ;04E5; POKE address,low byte.
@@ -4290,7 +4289,7 @@ c1_adddot:
 adv_paper:
   ld   a,13                ;132E; Send a CR to the printer.
   call pntp                ;1330;
-  ld   a,($2008)           ;1333; This is 'LFEED'.
+  ld   a,(lfeed)           ;1333; This is 'LFEED'.
   and  a                   ;1336;
   ret  z                   ;1337; Return if no LF has to be printed.
   ld   a,10                ;1338; Otherwise send a LF.
@@ -4415,7 +4414,7 @@ c2_advpap:
 dump_exit:
   ld   de,n_per_72_lspc    ;13D7; Print the escape sequence for n/72 inch
   call po_esc_seq          ;13DA; line feeds.
-  ld   a,($2007)           ;13DD; Make it (LSPCE)/72.
+  ld   a,(lspce)           ;13DD; Make it (lspce)/72.
   jp   pntp                ;13E0; Exit via 'PNTP'.
 
 ; ----------------------------------------------
@@ -4502,7 +4501,7 @@ pchan_out:
   jp   nz,pntp             ;1422; printer, send it right away if
                                 ; (PCODE)=1, i.e. when the +D
                                 ; mustn't interfere.
-  ld   hl,($2063)          ;1425; Jump to the appropriate 'output'
+  ld   hl,(output_p_routine) ;1425; Jump to the appropriate 'output'
   jp   (hl)                ;1428; routine.
 
 ; This is the normal 'output' routine, but a few (control) characters are
@@ -4556,7 +4555,7 @@ p_newline:
   res  1,(hl)              ;146A;
   ld   hl,$3E4E            ;146C;
   ld   (hl),0              ;146F; Set current position to 0.
-  ld   a,($2008)           ;1471; Fetch (LFEED), the number of line
+  ld   a,(lfeed)           ;1471; Fetch (LFEED), the number of line
   and  a                   ;1474; feeds needed after a carriage return.
   jr   z,p_carret          ;1475; Jump if it is 0.
   ld   b,a                 ;1477; Otherwise send the line feeds.
@@ -4567,7 +4566,7 @@ p_lfeed:
 p_carret:
   ld   a,13                ;147F; Now send the carriage return.
   call pntp                ;1481;
-  ld   a,($2009)           ;1484; Fetch (LMARG), that is the left margin
+  ld   a,(lmarg)           ;1484; Fetch (LMARG), that is the left margin
   and  a                   ;1487;
   ret  z                   ;1488; Return if it is 0.
   ld   b,a                 ;1489; Otherwise send (LMARG) spaces.
@@ -4603,7 +4602,7 @@ p_tv_1:
 ; The current 'output' routine address is changed temporarily.
 
 p_change:
-  ld   hl,$2063            ;14A5; HL points to the 'output' routine
+  ld   hl,output_p_routine ;14A5; HL points to the 'output' routine
   ld   (hl),e              ;14A8; address. Enter the new 'output'
   inc  hl                  ;14A9; routine address and thereby force the
   ld   (hl),d              ;14AA; next character to be considered as an
@@ -4787,7 +4786,7 @@ p_ascii:
   ld   hl,enter_flag       ;1582;
   res  1,(hl)              ;1585; Reset 'newline already send' flag.
   ld   ($3E4F),a           ;1587;
-  ld   a,($200A)           ;158A; Fetch (GRAPH), when it's 1 the +D
+  ld   a,(graph)           ;158A; Fetch (GRAPH), when it's 1 the +D
   and  a                   ;158D; has to generate the graphic
   ld   a,($3E4F)           ;158E; representation of some characters.
   jr   z,p_others          ;1591; Jump if the normal code has to be send
@@ -5088,7 +5087,7 @@ rep_31:
 ; register (holds sectornumber) with RBCC.
 
 flash_bord:
-  ld   a,($2000)           ;1684; Fetch RBCC.
+  ld   a,(rbcc)            ;1684; Fetch RBCC.
   and  e                   ;1687; Incorporate sectornumber.
   ret  z                   ;1688; Return if 'no flashing'.
   and  $07                 ;1689; Keep border colour only.
@@ -5543,6 +5542,10 @@ err_msgs:
 
   org $2000
 
+plus_d_ram:
+
+plus_d_ram_size: equ 8192
+
 
 ; ===============================================================
 ; The +D system variables and tables
@@ -5586,7 +5589,7 @@ onerr:
   defw $0000               ;200E; Address of routine called after an
                                 ; error has occurred.
 every_int:
-  defw $208F               ;2010; Address of routine called at every
+  defw jjiffy              ;2010; Address of routine called at every
                                 ; interrupt.
 
 ; ----------------------------------------------
@@ -5694,6 +5697,7 @@ greyscale:
   defb %00011111           ;2061; third row
   defb %00101011           ;2062;
 
+output_p_routine:
   defw p_all               ;2063; Address of 'output' routine for "P".
 enter_flag:
   defb $00                 ;2065; The 'ENTER' flag.
@@ -5817,7 +5821,7 @@ reset_vars:
   jp   z,clear             ;20FA;
   cp   255                 ;20FD; ...'COPY',...
   jp   z,copy              ;20FF;
-  ld   hl,($200E)          ;2102; Fetch ONERR address.
+  ld   hl,(onerr)          ;2102; Fetch ONERR address.
   ld   a,h                 ;2105;
   or   l                   ;2106;
   ret  z                   ;2107; Return if no ON ERROR address.
@@ -6021,8 +6025,8 @@ rampage_a:
 ; $028E. It can be used to executed a routine with every interrupt.
 
 jiffy:
-  ld   hl,($2010)          ;2245; Call routine which has to be called
-  jp   (hl)                ;2248; every 'interrupt'. (Normal $208F)
+  ld   hl,(every_int)      ;2245; Call routine which has to be called
+  jp   (hl)                ;2248; every 'interrupt'. Normal: `jjiffy` ($208F)
 
 
 ; ----------------------------------------------
