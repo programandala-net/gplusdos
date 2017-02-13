@@ -8,22 +8,12 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-2017.
 
-; Last modified: 201702131357
+; Last modified: 201702131402
 
 ; ===============================================================
 ; ZX Spectrum symbols 
 
-code_keyword:           equ 175
-data_keyword:           equ 228
-in_keyword:             equ 191
-line_keyword:           equ 202
-out_keyword:            equ 223
-poke_keyword:           equ 244
-run_keyword:            equ 247
-screen_dollar_keyword:  equ 170
-then_keyword:           equ 203
-to_keyword:             equ 204
-
+include inc/zx_spectrum_char_codes.z80s
 include inc/zx_spectrum_rom_routines.z80s
 
 ; ===============================================================
@@ -474,7 +464,7 @@ start_5:
   jr   z,start_6           ;01A3; indicates line is not in editing area.
   ld   hl,(23641)          ;01A5; Fetch the command from the editing area
   ld   a,(hl)              ;01A8;
-  cp   run_keyword         ;01A9; 'RUN' command?
+  cp   token.run           ;01A9; 'RUN' command?
   jp   z,run               ;01AB; Load the system file if the command is 'RUN'.
 start_6:
   jp   rep_20              ;01AE;
@@ -568,7 +558,7 @@ each_st:
 chkend:
   cp   ":"                 ;022C;
   jr   z,chkeven           ;022E; A colon or the 'THEN' keyword
-  cp   then_keyword        ;0230; mark the beginning of a new statement, but
+  cp   token.then          ;0230; mark the beginning of a new statement, but
   jr   nz,chkend_l         ;0232; only if they occur out of a string.
 chkeven:
   bit  0,c                 ;0234; I.e. the number of quotes found must
@@ -626,7 +616,7 @@ cl_work:
   rst  calbas              ;027A; Clear Spectrum work areas by calling
   defw rom_set_work        ;027B; 'SET_WORK' in 'main' ROM.
   rst  next_c              ;027D;
-  cp   poke_keyword        ;027E; 'POKE' keyword?
+  cp   token.poke          ;027E; 'POKE' keyword?
   jp   z,poke_fetch        ;0280; Jump with 'POKE' command.
   call system_z            ;0283; The system routine is called when
   call z,jctrl             ;0286; present.
@@ -4733,7 +4723,7 @@ p_noctrl:
   jr   p_graph             ;1526; Jump to print the graphic character.
 
 p_tokens_and_udg  
-  sub  165                 ;1528; This is the RND token.
+  sub  token.rnd           ;1528; This is the RND token.
   jr   c,p_udgs            ;152A; Jump with UDG's (< 165).
   ld   hl,rom_po_tokens    ;152C; The routine indirectly jumps to the
   ex   (sp),hl             ;152F; 'PO_TOKENS' routine in the 'main' ROM
@@ -6556,7 +6546,7 @@ erase_250C:
   call separator           ;2518; Test for a separator.
   jp   nz,rep_0            ;251B; Give error if none found.
   call expt_fname          ;251E; Evaluate filename.
-  cp   to_keyword          ;2521; Is the filename followed by "TO"?
+  cp   token.to            ;2521; Is the filename followed by "TO"?
   jr   z,rename            ;2523; Jump if so, rename is wanted.
   call st_end_ram          ;2525; Confirm end of statement and exit
                                 ; during syntax checking.
@@ -6866,7 +6856,7 @@ expt_parms:
   rst  next_c              ;2665; Get next character from BASIC line.
   cp   " "                 ;2666; Give an error with character codes
   jp   c,rep_0             ;2668; below 32, i.e. colour codes, etc.
-  cp   screen_dollar_keyword ;266B; 'SCREEN$'
+  cp   token.screen_dollar ;266B; 'SCREEN$'
   jp   z,dump_scr          ;266D; Jump with 'SCREEN$'.
   ld   ($3E04),a           ;2670; Otherwise store it in DEV_TYPE1.
   cp   "@"                 ;2673;
@@ -6932,15 +6922,15 @@ params:
   jp   z,no_params         ;26DE; Jump with ENTER.
   cp   ":"                 ;26E1;
   jp   z,no_params         ;26E3; Jump with colon.
-  cp   to_keyword         ;26E6;
+  cp   token.to            ;26E6;
   jp   z,to                ;26E8; Jump with 'TO'.
-  cp   screen_dollar_keyword ;26EB;
+  cp   token.screen_dollar ;26EB;
   jp   z,screen_dollar     ;26ED; Jump with 'SCREEN$'.
-  cp   code_keyword        ;26F0;
+  cp   token.code          ;26F0;
   jp   z,code              ;26F2; Jump with 'CODE'.
-  cp   data_keyword       ;26F5;
+  cp   token.data          ;26F5;
   jp   z,data              ;26F7; Jump with 'DATA'.
-  cp   line_keyword        ;26FA;
+  cp   token.line          ;26FA;
   jp   z,line              ;26FC; Jump with 'LINE'.
   and  $DF                 ;26FF; Only capitals.
   cp   "S"                 ;2701;
@@ -7641,7 +7631,7 @@ format:
   jp   nz,rep_0            ;2ABE; Give an error if not a "D".
   rst  next_c              ;2AC1; Next character.
   call expt_devn2          ;2AC2; Evaluate the drive number.
-  cp   to_keyword          ;2AC5; Jump if the current character isn't
+  cp   token.to            ;2AC5; Jump if the current character isn't
   jr   nz,format_1         ;2AC7; 'TO'.
   call swap_ufias          ;2AC9; Exchange UFIA1 and UFIA2.
   rst  next_c              ;2ACC; Update CH_ADD.
@@ -7695,7 +7685,7 @@ expt_stream_nr1:
 
 move:
   call expt_exp1           ;2B03; Evaluate stream or channel expression.
-  cp   to_keyword          ;2B06; The keyword 'TO' must be present,
+  cp   token.to            ;2B06; The keyword 'TO' must be present,
   jp   nz,rep_0            ;2B08; give an error if 'TO' is missing.
   call swap_ufias          ;2B0B; Exchange the UFIA's.
   call expt_exp1           ;2B0E; Evaluate second stream or channel
@@ -7711,7 +7701,7 @@ move:
 ; isn't to be generated.
 
   call sign_2              ;2B17; See above.
-  ld   a,in_keyword        ;2B1A; This is the keyword 'IN', it is used to
+  ld   a,token.in          ;2B1A; This is the keyword 'IN', it is used to
   ld   ($3E02),a           ;2B1C; signal 'READ channel'.
   call op_move             ;2B1F; Open the source channel/stream.
   ld   hl,(23631)          ;2B22; Save (CHANS).
@@ -7719,7 +7709,7 @@ move:
   ld   a,($3E02)           ;2B26; Save 'DIR_DESCR1' into 'DIR_DESCR2'.
   ld   ($3E1E),a           ;2B29;
   call swap_ufias          ;2B2C; Exchange the UFIA's.
-  ld   a,out_keyword       ;2B2F; This is the keyword 'OUT'.
+  ld   a,token.out         ;2B2F; This is the keyword 'OUT'.
   ld   ($3E02),a           ;2B31; Signal 'WRITE channel'.
   ld   ix,dfca             ;2B34;
   call op_move             ;2B38; Open the destination channel/stream.
@@ -7966,9 +7956,9 @@ open:
   call expt_exp2           ;2C71; Evaluate channel specifier.
   cp   13                  ;2C74;
   jr   z,open_2            ;2C76; Jump if no more parameters.
-  cp   in_keyword         ;2C78;
+  cp   token.in            ;2C78;
   jr   z,open_1            ;2C7A; Jump if 'IN' specified.
-  cp   out_keyword         ;2C7C;
+  cp   token.out           ;2C7C;
   jp   nz,rep_2            ;2C7E; Give error if no 'OUT' specified.
 open_1:
   ld   ($3E02),a           ;2C81; Store the channel type (IN or OUT) in
@@ -8085,7 +8075,7 @@ op_temp4:
   call scan_cat            ;2D28; filename.
   ld   a,($3E02)           ;2D2B; Get channel type (read/write).
   jp   nz,op_temp5         ;2D2E; Jump if file not found.
-  cp   out_keyword         ;2D31;
+  cp   token.out           ;2D31;
   jp   z,op_t_patch        ;2D33; Jump if OUTput channel.
   ld   bc,551              ;2D36; Length of INput channel.
   call chan_spc            ;2D39; Create the room for the channel.
@@ -8134,7 +8124,7 @@ op_temp4:
 ; The file was not found, so if the channel isn't for OUTput give an error.
 
 op_temp5:
-  cp   in_keyword          ;2D8A;
+  cp   token.in            ;2D8A;
   jp   z,rep_26            ;2D8C; Give error if it is an INput channel.
 op_temp6:
   ld   bc,787              ;2D8F; Length of OUTput channel.
@@ -8757,7 +8747,7 @@ dump_scr:
 
 copy:
   rst  next_c              ;3020; Advance CH_ADD.
-  cp   screen_dollar_keyword  ;3021; Give 'Nonsense in G+DOS' error if
+  cp   token.screen_dollar ;3021; Give 'Nonsense in G+DOS' error if
   jp   nz,rep_0            ;3023; command isn't followed by 'SCREEN$'.
 copy_1:
   ld   a,"1"               ;3026; Default is '1' for 'normal' dump.
