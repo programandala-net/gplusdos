@@ -8,7 +8,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-2017.
 
-; Last modified: 201702131827
+; Last modified: 201702131834
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -191,11 +191,11 @@ unpage_1:
 ; from a CALBAS was made.
 
 nmi_1:
-  ld   a,($3DE5)           ;0053;
+  ld   a,(calbas_flag)     ;0053;
   cp   $47                 ;0056; Check if returning from a CALBAS.
   jr   nz,nmi_2            ;0058; Jump if not returning from a CALBAS.
   xor  a                   ;005A;
-  ld   ($3DE5),a           ;005B; Clear CALBAS executing.
+  ld   (calbas_flag),a     ;005B; Clear CALBAS executing.
   pop  af                  ;005E; Restore A register and return to the
   ret                      ;005F; calling routine.
 nmi_2:
@@ -358,7 +358,7 @@ d_rombank:
   ld   bc,10               ;012E;
   ldir                     ;0131;
   ld   a,$47               ;0133; Signal 'CALBAS executing' (the NMI
-  ld   ($3DE5),a           ;0135; routine returns immediately).
+  ld   (calbas_flag),a     ;0135; routine returns immediately).
   jp   det_rom_copy        ;0138; Exit via DET_ROM.
 
 
@@ -427,7 +427,7 @@ start_3:
 ; zero, the error is reported to the routine which executed a CALBAS.
 
 start_4:
-  ld   a,($3DE5)           ;0168; Check if the +D CALLed a Spectrum
+  ld   a,(calbas_flag)     ;0168; Check if the +D CALLed a Spectrum
   cp   $47                 ;016B; ROM routine.
   jr   nz,start_5          ;016D; Jump if it didn't.
   xor  a                   ;016F;
@@ -658,7 +658,7 @@ keysc_1:
   ret                      ;02A1;
 
 keysc_2:
-  ld   a,($3DE5)           ;02A2;
+  ld   a,(calbas_flag)     ;02A2;
   cp   $47                 ;02A5; If a CALBAS was under execution return
   ret  z                   ;02A7; immediately to 'main' ROM 'KEY-SCAN'.
   ld   a,($3DE4)           ;02A8;
@@ -1119,7 +1119,7 @@ calbas_2:
   ld   d,(hl)              ;04B0;
   inc  hl                  ;04B1;
   push hl                  ;04B2; Restack return address.
-  ld   hl,$3DE5            ;04B3;
+  ld   hl,calbas_flag      ;04B3;
   ld   (hl),$47            ;04B6; Signal 'CALBAS executing'.
   ld   hl,$0066            ;04B8; Return address to +D system is
   push hl                  ;04BB; 'NMI_RAM'.
@@ -8935,7 +8935,7 @@ dfca:
                         ; bit 0 : other
   defw 0
 flags3:
-  defb 0                ; FLAGS3 ($3ACF): CALBAS executing?
+  defb 0                ; FLAGS3 ($3ACF)
   defb 0
   defb 0  ; current track
   defb 0  ; current sector
@@ -8952,6 +8952,12 @@ flags3:
   org $3DD8
 
 sectors_used: ; XXX TODO --
+
+; ----------------------------------------------
+
+  org $3DE5
+calbas_flag:
+  db 0 ; 'G' ($47) = CALBAS executing; zero otherwise
 
 ; ----------------------------------------------
 ; UFIA1 (User File Information Area 1)
