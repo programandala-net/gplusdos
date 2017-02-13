@@ -8,7 +8,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-2017.
 
-; Last modified: 201702131907
+; Last modified: 201702132320
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -2134,7 +2134,7 @@ sa_last:
 mk_alloc:
   push hl                  ;0925;
   push bc                  ;0926;
-  ld   hl,$3A00            ;0927; Address where disk bitmap is located.
+  ld   hl,disk_bitmap      ;0927; Address where disk bitmap is located.
   ld   de,$0401            ;092A; Start with track 4, sector 1.
   ld   c,0                 ;092D; Clear bitmap offset.
 mk_all1:
@@ -2394,8 +2394,8 @@ scan_5:
   push ix                  ;0A6B;
   ld   (ix+13),15          ;0A6D; RPT points to the start of file bitmap
   call rpt_hl1             ;0A71; Make HL hold RPT.
-  ld   ix,$3A00            ;0A74; Start of disk bitmap.
-  ld   b,195               ;0A78; There are 1560 bits in the bitmap.
+  ld   ix,disk_bitmap      ;0A74;
+  ld   b,disk_bitmap_size  ;0A78;
 scan_map:
   ld   a,(ix+0)            ;0A7A; Fetch a disk map byte.
   or   (hl)                ;0A7D; Incorporate the corresponding file map
@@ -2490,8 +2490,8 @@ ofsm_2:
   ld   a,%00010000         ;0AE0; Scan catalogue for specified filename.
   jr   nz,ofsm_scan        ;0AE2; Jump if (@7663)<>0, the disk bitmap
                                 ; isn't to be rebuild.
-  ld   hl,$3A00            ;0AE4; Otherwise clear the disk bitmap.
-  ld   b,195               ;0AE7;
+  ld   hl,disk_bitmap      ;0AE4; Otherwise clear the disk bitmap.
+  ld   b,disk_bitmap_size  ;0AE7;
 ofsm_clr_1:
   ld   (hl),0              ;0AE9;
   inc  hl                  ;0AEB;
@@ -3268,8 +3268,8 @@ op_t_1:
   ret                      ;0E97; Finished.
 
 op_t_2:
-  ld   hl,$3A00            ;0E98; Clear the disk bitmap.
-  ld   b,195               ;0E9B;
+  ld   hl,disk_bitmap      ;0E98; Clear the disk bitmap.
+  ld   b,disk_bitmap_size  ;0E9B;
 op_t_3:
   ld   (hl),0              ;0E9D;
   inc  hl                  ;0E9F;
@@ -8914,7 +8914,14 @@ pcat:
 
   defs $39FF-$315D+1 ; $315D..$39FF Unused locations (all set to $00).
 
+; ----------------------------------------------
+; Disk bitmap
+
+disk_bitmap_size: equ 1560/8 ; 1560 bits, 195 bytes
+
   org $3A00
+disk_bitmap:
+  ds disk_bitmap_size
 
 ; ----------------------------------------------
 ; Disk File Channel Area (DFCA)
