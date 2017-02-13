@@ -8,7 +8,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-2017.
 
-; Last modified: 201702131353
+; Last modified: 201702131357
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -74,7 +74,7 @@ calbas:
 
 start2:
   jp   start_3             ;0013; Continue with the +D systems main
-                                         ; entry routine.
+                                ; entry routine.
   defb $00,$00             ;0016; Unused locations.
 
 ; ----------------------------------------------
@@ -175,7 +175,7 @@ unpage_bc:
 unpage_0:
   out  (231),a             ;0047; Page out +D system.
   ret                      ;0049; ? This statement is not reached from
-                                         ; above.
+                                ; above.
   defb $00,$00,$00,$00,$00 ;004A; Unused locations.
 
 ; ----------------------------------------------
@@ -399,9 +399,9 @@ start_3:
 
   and  a                   ;0144;
   ld   de,$15FE            ;0145; If a channel has been requested, this
-                                         ; is the RETurn address stored by the
-                                         ; CALL $162C in the 'CALL-SUB' subroutine
-                                         ; in the Spectrum ROM.
+                                ; is the RETurn address stored by the
+                                ; CALL $162C in the 'CALL-SUB' subroutine
+                                ; in the Spectrum ROM.
   sbc  hl,de               ;0148;
   pop  de                  ;014A;
   jr   nz,start_4          ;014B; Jump if no channels have been requested
@@ -422,14 +422,14 @@ start_3:
   pop  bc                  ;015B;
   jp   z,pchan_out         ;015C; Jump if +D "P" channel was used.
   ld   hl,4                ;015F; DE holds address of routine pointer-4.
-                                         ; See $15EF in 'main' ROM.
+                                ; See $15EF in 'main' ROM.
   add  hl,de               ;0162; HL now holds address of routine pointer
   ld   e,(hl)              ;0163;
   inc  hl                  ;0164; Fetch routine address.
   ld   d,(hl)              ;0165;
   ex   de,hl               ;0166; HL now points to the routine.
   jp   (hl)                ;0167; Jump to the appropriate 'input' or
-                                         ; 'output' routine.
+                                ; 'output' routine.
 
 ; At this point, the +D has been paged-in by an error in the 'main' ROM or by
 ; a hook/command code. When an error occurred during a CALBAS and D_ERR_SP
@@ -461,7 +461,7 @@ start_4:
 
 start_5:
   pop  hl                  ;018C; Fetch address of error or hook/command
-                                         ; code (the byte after RST $08).
+                                ; code (the byte after RST $08).
   rst  calbas              ;018D; Fetch the byte.
   defw $007B               ;018E;
   ld   (23610),a           ;0190; Store it in ERR_NR.
@@ -522,8 +522,8 @@ runtime:
   push bc                  ;01F5; Save counters.
   rst  calbas              ;01F6; Call main ROM 'E-LINE-NO' (it fetches
   defw rom_e_line_no       ;01F7; the number of the line in the editing
-                                         ; area, but is actually used to update
-                                         ; CH-ADD to the 1st char.in the line).
+                                ; area, but is actually used to update
+                                ; CH-ADD to the 1st char.in the line).
   pop  bc                  ;01F9; Restore counters.
   rst  calbas              ;01FA; Update HL to the first character in
   defw rom_get_char        ;01FB; the line.
@@ -577,7 +577,7 @@ chkend_l:
   cp   13                  ;0238;
   jr   nz,each_st          ;023A; Repeat until 'end of line'.
   jp   rep_0               ;023C; An uneven number of quotes is
-                                         ; unacceptable.
+                                ; unacceptable.
 s_stat:
   djnz each_st             ;023F; Loop for every statement in the line.
   dec  hl                  ;0241; Update CH_ADD to the address of
@@ -678,7 +678,7 @@ keysc_2:
   jr   nz,nosys            ;02B2; is no system file loaded.
   call jkscan              ;02B4; Otherwise call the appropriate system
   jp   take_prtr           ;02B7; routine and exit refreshing the 'P'
-                                         ; channel.
+                                ; channel.
 
 nosys:
   ld   hl,$2000            ;02BA;
@@ -907,7 +907,7 @@ auto_ufia:
 
 run:
   set  7,(iy+10)           ;037B; Clear the 'jump' signal set by using
-                                         ; the 'RUN' command.
+                                ; the 'RUN' command.
   ld   ix,dfca             ;037F;
   ld   a,1                 ;0383; Signal 'drive 1 is being used'.
   ld   (ix+11),a           ;0385;
@@ -920,17 +920,17 @@ run:
   ld   bc,11               ;0398;
   ldir                     ;039B;
   ld   a,%00001000         ;039D; Signal 'matching name and directory
-                                         ; description have to be found'.
+                                ; description have to be found'.
   call scan_cat            ;039F; Search for the file.
   jp   nz,rep_7            ;03A2; Give 'No "SYSTEM" file' error when file
-                                         ; not found.
+                                ; not found.
   rst  calbas              ;03A5; Clear the whole screen.
   defw rom_cl_all          ;03A6;
   call mesg_0              ;03A8; Print the 'SYSTEM LOADING' message.
   call load_1st            ;03AB; Copy the file description (directory
-                                         ; description and filename) to UFIA2 and
-                                         ; load the first sector of the file into
-                                         ; the disk buffer.
+                                ; description and filename) to UFIA2 and
+                                ; load the first sector of the file into
+                                ; the disk buffer.
   ld   hl,$3BD6            ;03AE; Copy the file header (the 9 bytes
   ld   de,$3E29            ;03B1; consisting of filetype, length, etc.)
   ld   bc,9                ;03B4; to UFIA2.
@@ -1254,7 +1254,7 @@ power_up2:
   nop                      ;0542;
   ld   hl,$7FFF            ;0543; The stackpointer has to point into RAM,
   ld   sp,hl               ;0546; otherwise: trouble (for the
-                                         ; UNPAGE_HL routine).
+                                ; UNPAGE_HL routine).
   im   1                   ;0547; Set interrupt mode 1.
   xor  a                   ;0549; Restore registers for 'main' ROM
   ld   de,$FFFF            ;054A; 'START/NEW'.
@@ -1289,7 +1289,7 @@ store_iff:
   push af                  ;0556; of the IFF2.
   di                       ;0557;
   ex   (sp),hl             ;0558; Get the Flag register in L while saving
-                                         ; HL.
+                                ; HL.
   ld   ($3E50),hl          ;0559; Store it. (IFF)
   pop  hl                  ;055C; Restore HL and AF.
   pop  af                  ;055D;
@@ -1307,7 +1307,7 @@ rest_iff:
   ld   hl,($3E50)          ;0561; Fetch the previous IFF state.
   ex   (sp),hl             ;0564; Restore HL and store IFF state.
   pop  af                  ;0565; The IFF state is now contained in the
-                                         ; P/V flag.
+                                ; P/V flag.
   jp   po,rest_iff1        ;0566; Jump if interrupts were disabled.
   ei                       ;0569; Otherwise enable interrupts.
 rest_iff1:
@@ -1324,8 +1324,8 @@ rest_iff1:
 
 precomp:
   ld   c,%10100010         ;056C; Write a single sector, enable spin-up
-                                         ; sequence, no settling delay, disable
-                                         ; precompensation, normal data mark.
+                                ; sequence, no settling delay, disable
+                                ; precompensation, normal data mark.
 precomp1:
   ld   b,64                ;056E; Start write precomp. at track 64.
   call drv_cap             ;0570; Get drive capacity in A.
@@ -1338,7 +1338,7 @@ prec_1:
   and  b                   ;057C;
   jr   z,prec_2            ;057D; Jump if not at tracks above 63 or 31.
   res  1,c                 ;057F; Otherwise enable write precompensation
-                                         ; (reset bit 1 of the command).
+                                ; (reset bit 1 of the command).
 prec_2:
   jp   ld_com_reg          ;0581; Give the command to the FDC.
 
@@ -1353,14 +1353,14 @@ wsad:
   ld   ($3DDB),a           ;0585;
 wsad_1:
   call set_trksec          ;0588; Select drive, side, density and sector
-                                         ; and position the head above the correct
-                                         ; track.
+                                ; and position the head above the correct
+                                ; track.
   call precomp             ;058B; Enable precompensation when neccesary
-                                         ; and give the command to the FDC.
+                                ; and give the command to the FDC.
   call hl_buffer           ;058E; Make HL point to the data buffer.
   call wr_op               ;0591; Write the sector.
   call sector_err          ;0594; Check if there was an error, report it
-                                         ; if retried often enough. Otherwise exit
+                                ; if retried often enough. Otherwise exit
   jr   wsad_1              ;0597; Try again if no succes.
 
 ; ----------------------------------------------
@@ -1372,14 +1372,14 @@ wsad_1:
 
 wr_op:
   call store_iff           ;0599; Store maskable interrupt state and
-                                         ; disable maskable interrupts.
+                                ; disable maskable interrupts.
   ld   bc,251              ;059C; BC holds the I/O port address of the
-                                         ; data register of the FDC.
+                                ; data register of the FDC.
   jr   wr_tst_drq          ;059F; Jump into the save loop.
 
 wr_loop:
   outi                     ;05A1; Send a byte to the FDC (port BC) then
-                                         ; increment HL (and decrement B).
+                                ; increment HL (and decrement B).
   nop                      ;05A3; Waste some time.
 wr_tst_drq:
   in   a,(227)             ;05A4; Fetch FDC status.
@@ -1400,9 +1400,9 @@ wr_tst_drq:
   bit  6,a                 ;05C3; Test Write Protected bit.
   ret  z                   ;05C5; Return if not write protected.
   call dec_mapuse          ;05C6; Decrease (MAPUSED), the number of files
-                                         ; using the disk bitmap.
+                                ; using the disk bitmap.
   jp   rep_23              ;05C9; Otherwise give 'Disc WRITE protected'
-                                         ; error.
+                                ; error.
 
 ; ----------------------------------------------
 ; THE 'READ SECTOR' SUBROUTINE
@@ -1415,15 +1415,15 @@ rsad:
   ld   ($3DDB),a           ;05CD;
 rsad_1:
   call set_trksec          ;05D0; Set drive, side, density, sector and
-                                         ; position the head above the correct
-                                         ; track.
+                                ; position the head above the correct
+                                ; track.
   ld   c,%10000000         ;05D3; Read a single sector, enable spin-up
-                                         ; sequence, no settling delay.
+                                ; sequence, no settling delay.
   call ld_com_reg          ;05D5; Give the command to the FDC.
   call hl_buffer           ;05D8; Make HL point to the data buffer.
   call rd_op               ;05DB; Read the sector.
   call sector_err          ;05DE; Check if there was an error, report it
-                                         ; if retried often enough. Otherwise exit
+                                ; if retried often enough. Otherwise exit
   jr   rsad_1              ;05E1; Try again if no succes.
 
 ; ----------------------------------------------
@@ -1435,7 +1435,7 @@ rsad_1:
 
 rd_op:
   call store_iff           ;05E3; Store the maskable interrupt state and
-                                         ; disable interrupts.
+                                ; disable interrupts.
   ld   bc,251              ;05E6; I/O address of the FDCs data register.
   jr   rd_tst_drq          ;05E9; Jump into the load loop.
 
@@ -1443,7 +1443,7 @@ rd_op:
 
 rd_loop:
   ini                      ;05EB; Get a byte from the FDC and increment
-                                         ; HL (and decrement B).
+                                ; HL (and decrement B).
   nop                      ;05ED; Wait for a moment.
 rd_tst_drq:
   in   a,(227)             ;05EE; Fetch FDC status.
@@ -1476,7 +1476,7 @@ sector_err:
   and  %00011100           ;060D; Mask the non error bits.
   jr   nz,sec_err1         ;060F; Jump with an error.
   call res_rpt             ;0611; Otherwise reset the data buffer pointer
-                                         ; (RPT).
+                                ; (RPT).
   pop  hl                  ;0614; Drop return address and exit with
   jp   hl_buffer           ;0615; HL pointing to the data buffer.
 
@@ -1506,7 +1506,7 @@ sec_err2:
   call ld_com_reg          ;0638; Execute the command.
   ld   hl,$3DDC            ;063B; Address where the ID Field is loaded.
   call rd_op               ;063E; Get the six byte ID Field of the first
-                                         ; sector encountered.
+                                ; sector encountered.
   and  %00011100           ;0641;
   jr   nz,sec_err3         ;0643; Jump if there was an error.
   ld   a,($3DDC)           ;0645; Otherwise store the current track
@@ -1560,7 +1560,7 @@ set_trk2:
   cp   b                   ;0688; Compare against required track.
   ret  z                   ;0689; Exit if already on right track.
   call nc,step_out         ;068A; Step out if required track lies
-                                         ; outwards (more towards track 0).
+                                ; outwards (more towards track 0).
   call c,step_in           ;068D; Otherwise step in.
   jr   set_trk2            ;0690; Continue until on the right track.
 
@@ -1579,8 +1579,8 @@ step_d1:
 wait_1msec:
   push af                  ;0697;
   ld   bc,135              ;0698; With this value the following loop
-                                         ; takes 3505 T states (about 1msec) to
-                                         ; complete.
+                                ; takes 3505 T states (about 1msec) to
+                                ; complete.
 wait_1m1:
   dec  bc                  ;069B;
   ld   a,b                 ;069C;
@@ -1626,7 +1626,7 @@ rest_1:
 ; pulse.
 
   ld   hl,0                ;06C5; The INDEX signal has to become low
-                                         ; and high again within about 1.4 sec.
+                                ; and high again within about 1.4 sec.
 rest_2:
   in   a,(227)             ;06C8; Fetch FDC status.
   bit  1,a                 ;06CA;
@@ -1806,8 +1806,8 @@ sbyt:
   ld   (hl),e              ;076F;
   ex   de,hl               ;0770;
   call get_sector          ;0771; Fetch track and sector number of the
-                                         ; current sector into DE, store the next
-                                         ; track and sector number.
+                                ; current sector into DE, store the next
+                                ; track and sector number.
   call wsad                ;0774; Write the sector to disk.
 sbyt_1:
   pop  af                  ;0777;
@@ -1867,9 +1867,9 @@ load_file:
 ld_buf1:
   call sect_end_z          ;07A4; The data buffer has to be empty before
   jr   nz,ld_buf           ;07A7; sectors can be loaded directly into
-                                         ; memory. Jump if data buffer not empty.
+                                ; memory. Jump if data buffer not empty.
   ld   ($3AC5),de          ;07A9; Store the number of bytes left to load
-                                         ; into (BYTESLEFT).
+                                ; into (BYTESLEFT).
   ld   d,(hl)              ;07AD; Fetch next track and sector.
   inc  hl                  ;07AE;
   ld   e,(hl)              ;07AF;
@@ -1878,29 +1878,29 @@ ld_op:
   call last_sec_c          ;07B3; Check if this sector is the last one.
   jp   c,ld_last           ;07B6; Jump if last sector.
   inc  hl                  ;07B9; Balance the Carry flag subtracted in
-                                         ; 'LAST_SEC_C'.
+                                ; 'LAST_SEC_C'.
   ld   ($3AC5),hl          ;07BA; Store number of bytes left after this
-                                         ; sector has been loaded.
+                                ; sector has been loaded.
   xor  a                   ;07BD; Clear retry counter.
   ld   ($3DDB),a           ;07BE;
   call store_sec           ;07C1; Store track and sector.
 ld_again:
   call set_trksec          ;07C4; Set drive, side, density, sector and
-                                         ; track.
+                                ; track.
   ld   c,%10000000         ;07C7; Read a single sector, enable spin-up,
-                                         ; no settling delay.
+                                ; no settling delay.
   call ld_com_reg          ;07C9; Execute the FDC command.
   call store_iff           ;07CC; Store interrupt state and disable.
   exx                      ;07CF; HL' has to be rescued because the
   push hl                  ;07D0; 'main' ROM needs it.
   ld   bc,251              ;07D1; I/O address of FDC's data register.
   ld   de,2                ;07D4; DE' holds the length of the next sector
-                                         ; address in each sector.
+                                ; address in each sector.
   call hl_buffer           ;07D7; HL' points to the data buffer.
   exx                      ;07DA;
   ld   bc,251              ;07DB; I/O address of FDC's data register.
   ld   de,($3ACA)          ;07DE; DE holds length of data buffer. DE +
-                                         ; DE' hold the length of a sector.
+                                ; DE' hold the length of a sector.
   ld   hl,($3AC8)          ;07E2; HL holds the load address.
   jr   ld_tst_drq          ;07E5; Jump into the load loop.
 
@@ -1929,7 +1929,7 @@ ld_tst_drq:
   exx                      ;080B; When the FDC is ready, DE and DE' both
   pop  hl                  ;080C; are 0, and the 'EXX' at $07EE has been
   exx                      ;080D; executed twice, so to restore HL'
-                                         ; a 'EXX' has to be executed first.
+                                ; a 'EXX' has to be executed first.
   call rest_iff            ;080E; Restore interrupt state.
   and  %00011100           ;0811; Mask non error bits of FDC status.
   jr   z,ld_ok             ;0813; Jump with no errors.
@@ -1973,11 +1973,11 @@ sto_buflen:
 
 last_sec_c:
   ld   hl,($3AC5)          ;083B; Fetch the number of bytes left to be
-                                         ; loaded from (BYTESLEFT).
+                                ; loaded from (BYTESLEFT).
   ld   bc,($3ACA)          ;083E; Fetch the data buffer length from
-                                         ; (BUFLEN).
+                                ; (BUFLEN).
   scf                      ;0842; Set the Carry flag, now the Carry flag
-                                         ; will be set after the 'SBC' if HL=BC.
+                                ; will be set after the 'SBC' if HL=BC.
   sbc  hl,bc               ;0843; Exit with Carry set signalling 'last
   ret                      ;0845; sector to be loaded'.
 
@@ -2009,7 +2009,7 @@ hsvbk_2:
   ld   ($3AC8),hl          ;0855; Store save address into (FILEADDR).
   call sect_end_z          ;0858; The data buffer has to be full before
   jr   nz,sa_buf           ;085B; the sector can be saved. Jump if data
-                                         ; buffer isn't full.
+                                ; buffer isn't full.
   pop  de                  ;085D; Fetch number of bytes left to save and
   ld   ($3AC5),de          ;085E; store it into (BYTESLEFT).
   call mk_alloc            ;0862; Allocate the first free sector.
@@ -2018,8 +2018,8 @@ hsvbk_2:
   ld   (hl),e              ;0867;
   ex   de,hl               ;0868;
   call get_sector          ;0869; Fetch track and sector number of the
-                                         ; current sector in DE, store the next
-                                         ; track and sector number.
+                                ; current sector in DE, store the next
+                                ; track and sector number.
   call wsad                ;086C; Write the sector to disk.
   xor  a                   ;086F; Clear sector counter.
   ld   ($3DEA),a           ;0870;
@@ -2036,7 +2036,7 @@ sa_alloc:
   jr   c,sa_op             ;0886; Jump if all but last sector allocated.
   inc  de                  ;0888; Balance the Carry subtracted in
   ld   ($3AC5),de          ;0889; 'LAST_SEC_C' before storing the number
-                                         ; of bytes left into (BYTESLEFT).
+                                ; of bytes left into (BYTESLEFT).
   call mk_alloc            ;088D; Allocate a sector.
   ld   (hl),d              ;0890; Store its track and sector number into
   inc  hl                  ;0891; the data buffer.
@@ -2046,8 +2046,8 @@ sa_alloc:
   inc  a                   ;0897;
   ld   ($3DEA),a           ;0898;
   jr   nz,sa_alloc         ;089B; Repeat until all sectors have been
-                                         ; allocated or the sector counter
-                                         ; overflows.
+                                ; allocated or the sector counter
+                                ; overflows.
 sa_op:
   xor  a                   ;089D; Reset retry counter.
   ld   ($3DDB),a           ;089E;
@@ -2055,21 +2055,21 @@ sa_op:
 sa_again:
   call set_trksec          ;08A4; Set drive, side, etc.
   call precomp             ;08A7; Enable precompensation when neccesary
-                                         ; and execute the write sector command.
+                                ; and execute the write sector command.
   call store_iff           ;08AA; Store interrupt state and disable.
   exx                      ;08AD; HL' has to be stored because the
   push hl                  ;08AE; 'main' ROM needs it.
   call rpt_hl1             ;08AF; HL' points to the sector address
-                                         ; table, build up in the data buffer.
+                                ; table, build up in the data buffer.
   ld   de,2                ;08B2; DE' holds the length of the next
-                                         ; sector address in each sector.
+                                ; sector address in each sector.
   ld   bc,251              ;08B5; BC' holds the I/O address of the FDC's
-                                         ; data register.
+                                ; data register.
   exx                      ;08B8;
   ld   hl,($3AC8)          ;08B9; HL holds the save address.
   ld   de,($3ACA)          ;08BC; DE holds the length of the data space
-                                         ; inside a sector. DE+DE' hold the
-                                         ; length of a complete sector.
+                                ; inside a sector. DE+DE' hold the
+                                ; length of a complete sector.
   ld   bc,251              ;08C0; BC holds the same as BC'.
   jr   sa_tst_drq          ;08C3; Jump into the save loop.
 
@@ -2118,7 +2118,7 @@ sa_ok:
   call inc_rpt             ;0903; Update RPT.
   call inc_rpt             ;0906;
   call store_sec           ;0909; Store the next sector's track and
-                                         ; sector number.
+                                ; sector number.
   pop  hl                  ;090C; Restore HL'.
   exx                      ;090D;
   ld   a,($3DEA)           ;090E; Decrease sector counter.
@@ -2130,7 +2130,7 @@ sa_last:
   ld   de,($3AC5)          ;091B; into the data buffer again. Fetch the
   ld   hl,($3AC8)          ;091F; number of bytes left and the save
   jp   hsvbk_2             ;0922; address. Then save the bytes into the
-                                         ; data buffer.
+                                ; data buffer.
 
 ; ----------------------------------------------
 ; THE 'ALLOCATE SECTOR' SUBROUTINE
@@ -2187,7 +2187,7 @@ mk_all4:
 next_track:
   inc  d                   ;0956; Increase track.
   call drv_cap             ;0957; Get number of tracks on current drive
-                                         ; in the A register.
+                                ; in the A register.
   cp   d                   ;095A; Decrement 'number of files using the
   call z,dec_mapuse        ;095B; disk bitmap' and give an error if
   jp   z,rep_24            ;095E; drive capacity is exceeded.
@@ -2247,7 +2247,7 @@ drv_cap1:
 
 prt_name:
   ld   (ix+13),1           ;0994; Point to the first character of the
-                                         ; name.
+                                ; name.
   call rpt_hl1             ;0998; Make HL point to it.
   ld   b,10                ;099B; A name has 10 characters.
 prt_nam1:
@@ -2458,9 +2458,9 @@ match_name:
   ld   b,11                ;0AB5; Length of file description.
   bit  3,(ix+4)            ;0AB7;
   ld   ix,$3E05            ;0ABB; IX points to the file description in
-                                         ; UFIA1.
+                                ; UFIA1.
   jr   z,match_n2          ;0ABF; Jump if directory description doesn't
-                                         ; need to match.
+                                ; need to match.
 match_n1:
   ld   a,(ix+0)            ;0AC1; Fetch character of search string.
   cp   "*"                 ;0AC4; Jump if it's a '*', then all other
@@ -2477,7 +2477,7 @@ match_n2:
 match_n3:
   pop  ix                  ;0AD6; Restore disk channel pointer.
   ret                      ;0AD8; Return with Zero set signalling
-                                         ; 'match'.
+                                ; 'match'.
 
 ; ----------------------------------------------
 ; THE 'OPEN A FILE FOR SAVE' SUBROUTINE
@@ -2492,12 +2492,12 @@ match_n3:
 ofsm_2:
   push ix                  ;0AD9; Store disk channel pointer.
   ld   a,($3DEF)           ;0ADB; This is (MAPUSED), the (in)famous
-                                         ; @7663. It holds the number of files
-                                         ; which are using the disk bitmap.
+                                ; @7663. It holds the number of files
+                                ; which are using the disk bitmap.
   cp   0                   ;0ADE;
   ld   a,%00010000         ;0AE0; Scan catalogue for specified filename.
   jr   nz,ofsm_scan        ;0AE2; Jump if (@7663)<>0, the disk bitmap
-                                         ; isn't to be rebuild.
+                                ; isn't to be rebuild.
   ld   hl,$3A00            ;0AE4; Otherwise clear the disk bitmap.
   ld   b,195               ;0AE7;
 ofsm_clr_1:
@@ -2505,7 +2505,7 @@ ofsm_clr_1:
   inc  hl                  ;0AEB;
   djnz ofsm_clr_1          ;0AEC;
   ld   a,%00110000         ;0AEE; Scan catalogue for specified filename
-                                         ; and produce a disk bitmap.
+                                ; and produce a disk bitmap.
 ofsm_scan:
   call scan_cat            ;0AF0;
   jr   nz,ofsm_free        ;0AF3; Jump if filename not used.
@@ -2513,7 +2513,7 @@ ofsm_scan:
   rst  calbas              ;0AF6; Clear the lower part of the screen by
   defw rom_cls_lower       ;0AF7; calling 'CLS_LOWER' in 'main' ROM.
   set  5,(iy+2)            ;0AF9; Signal 'lower screen has to be
-                                         ; cleared'. (TV_FLAG)
+                                ; cleared'. (TV_FLAG)
   call mesg_1              ;0AFD; Print 'OVERWRITE' message.
   call prt_name            ;0B00; Print filename.
   call mesg_3              ;0B03; Print 'Y/N' message.
@@ -2529,7 +2529,7 @@ ofsm_scan:
 ofsm_erase:
   pop  de                  ;0B0F; Restore track and sector number.
   call rpt_hl              ;0B10; Make HL point to the entry to be
-                                         ; overwritten.
+                                ; overwritten.
   ld   (hl),0              ;0B13; ERASE this file.
   call wsad                ;0B15; Write the entry back to disk.
   pop  ix                  ;0B18; Restore disk channel pointer.
@@ -2548,7 +2548,7 @@ ofsm_clr_2:
   pop  ix                  ;0B2A; Restore disk channel pointer.
   push ix                  ;0B2C;
   ld   hl,$3E05            ;0B2E; HL points to the file descriptor in
-                                         ; UFIA1.
+                                ; UFIA1.
   ld   b,11                ;0B31; Length of file descriptor.
 ofsm_fdesc:
   ld   a,(hl)              ;0B33; Copy file descriptor to the file entry
@@ -2597,7 +2597,7 @@ test_y1:
   rst  calbas              ;0B66; It is also called to determine if a
   defw rom_key_test        ;0B67; key was pressed.
   jr   nc,test_y1          ;0B69; Repeat scanning and testing until a
-                                         ; key has been pressed.
+                                ; key has been pressed.
   and  $DF                 ;0B6B; Capitalize.
   cp   "Y"                 ;0B6D; Set the Zero flag if it was the
   push af                  ;0B6F; 'Y'-key.
@@ -2635,7 +2635,7 @@ beep:
 
 cfsm:
   call rpt_hl1             ;0B89; HL points to the first unused position
-                                         ; in the data buffer.
+                                ; in the data buffer.
   ld   a,c                 ;0B8C; C holds buffer offset-lo.
   and  a                   ;0B8D;
   jr   nz,cfsm_fill        ;0B8E; Jump if buffer isn't full yet.
@@ -2660,9 +2660,9 @@ cfsm_save:
   jp   nz,rep_25           ;0BAC; If none found report 'Directory FULL'.
   call rpt_hl              ;0BAF; HL points to the entry.
   ld   ($3ACA),ix          ;0BB2; Store disk channel pointer 2, this one
-                                         ; points to the DFCA.
+                                ; points to the DFCA.
   pop  ix                  ;0BB6; Restore disk channel pointer 1, this
-                                         ; one can point to 'main' RAM (OPENTYPE)
+                                ; one can point to 'main' RAM (OPENTYPE)
   push ix                  ;0BB8; Store it again.
   ld   b,0                 ;0BBA; Copy the file entry to the CAT entry
 cfsm_entry:
@@ -2691,13 +2691,13 @@ hgfle_2:
   ld   a,%00000001         ;0BD8; Search for the specified program
   call scan_cat            ;0BDA; number.
   jp   nz,rep_26           ;0BDD; If file isn't found report 'File NOT
-                                         ; FOUND'.
+                                ; FOUND'.
   call rpt_hl              ;0BE0; HL points to the entry.
   ld   de,$3E05            ;0BE3; Copy the 11 byte file descriptor to
   ld   bc,11               ;0BE6; UFIA1.
   ldir                     ;0BE9;
   ld   (ix+13),211         ;0BEB; RPT points to the file header of the
-                                         ; file.
+                                ; file.
   call rpt_hl1             ;0BEF; Make HL point to it.
   ld   de,$3E10            ;0BF2; Copy the 9 byte file header to UFIA1.
   ld   bc,9                ;0BF5;
@@ -2710,9 +2710,9 @@ hgfl_nonum:
   ld   a,%00010000         ;0BFC; Search for the specified filename.
   call scan_cat            ;0BFE; If file isn't found report 'File NOT
   jp   nz,rep_26           ;0C01; FOUND'.
-                                         ; Otherwise the first sector is loaded
-                                         ; by entering the 'LOAD FIRST SECTOR'
-                                         ; subroutine below.
+                                ; Otherwise the first sector is loaded
+                                ; by entering the 'LOAD FIRST SECTOR'
+                                ; subroutine below.
 
 ; ----------------------------------------------
 ; THE 'LOAD FIRST SECTOR' SUBROUTINE
@@ -2728,7 +2728,7 @@ load_1st:
   ld   bc,11               ;0C0A; UFIA2.
   ldir                     ;0C0D;
   ld   (ix+13),220         ;0C0F; RPT points to the SNAPSHOT registers,
-                                         ; that is when they are present.
+                                ; that is when they are present.
   call rpt_hl1             ;0C13; Make HL point to it.
   ld   de,$3FEA            ;0C16; Copy the 22 SNAPSHOT values to the
   ld   bc,22               ;0C19; internal stack bottom.
@@ -2739,7 +2739,7 @@ load_1st:
   inc  hl                  ;0C26;
   ld   e,(hl)              ;0C27;
   jp   rsad                ;0C28; And exit while loading the first
-                                         ; sector.
+                                ; sector.
 
 ; ----------------------------------------------
 ; THE 'FORMAT A DISK' ROUTINE
@@ -2763,11 +2763,11 @@ frmt_1:
 frmt_trk:
   call mk_trk_dd           ;0C41; Build up a double density track.
   ld   c,%11110000         ;0C44; Write track, disable spin-up sequence,
-                                         ; no delay, enable precompensation.
+                                ; no delay, enable precompensation.
   call precomp1            ;0C46; Why call this routine? The precomp.
-                                         ; has already been enabled.
+                                ; has already been enabled.
   ld   hl,49152            ;0C49; HL points to the track build up in
-                                         ; 'main' memory.
+                                ; 'main' memory.
   call wr_op               ;0C4C; Write the track.
   call step_delay          ;0C4F; Wait a moment.
   inc  d                   ;0C52; Next track.
@@ -2826,12 +2826,12 @@ frmt_c1:
   ld   de,($3AC5)          ;0C99; Fetch load address.
   ld   bc,512              ;0C9D; BC holds sector length.
   ldir                     ;0CA0; Copy the contents of the buffer to
-                                         ; 'main' RAM.
+                                ; 'main' RAM.
   ld   ($3AC5),de          ;0CA2; Store new load address.
   pop  de                  ;0CA6; Restore track and sector number.
   call next_sec            ;0CA7; Compute next sector number.
   jr   nz,frmt_c1          ;0CAA; Jump if there is still a sector on this
-                                         ; track.
+                                ; track.
   ld   a,(ufia1)           ;0CAC; Fetch destination drive from UFIA1.
   call test_drv1           ;0CAF; Check and set drive.
 frmt_c2:
@@ -2845,10 +2845,10 @@ frmt_c2:
   call wsad                ;0CC2; Save the sector.
   call next_sec            ;0CC5; Compute next sector number.
   jr   nz,frmt_c2          ;0CC8; Jump if not all sectors on this track
-                                         ; have been written.
+                                ; have been written.
   call nxt_trk             ;0CCA; Compute next track number.
   jr   nz,frmt_copy        ;0CCD; Jump if not all tracks have been
-                                         ; copied.
+                                ; copied.
   ei                       ;0CCF; Enable interrupts and exit via
   jp   rest                ;0CD0; 'REST'.
 
@@ -2860,10 +2860,10 @@ frmt_chk:
   call rsad                ;0CD3; Load a sector.
   call next_sec            ;0CD6; Compute next sector number.
   jr   nz,frmt_chk         ;0CD9; Jump if not all sectors on one track
-                                         ; have been loaded.
+                                ; have been loaded.
   call nxt_trk             ;0CDB; Compute next track number.
   jr   nz,frmt_chk         ;0CDE; Jump if not all tracks on the disk have
-                                         ; been verified.
+                                ; been verified.
   ei                       ;0CE0; Enable interrupts and exit via
   jp   rest                ;0CE1; 'REST'.
 
@@ -2880,11 +2880,11 @@ nxt_trk:
   call drv_cap             ;0CE5; Get drive capacity in A.
   cp   d                   ;0CE8;
   ret  z                   ;0CE9; Return with Zero set if last track
-                                         ; reached.
+                                ; reached.
   and  $7F                 ;0CEA; Mask off side bit.
   cp   d                   ;0CEC;
   ret  nz                  ;0CED; Return with Zero reset if last track
-                                         ; on side0 hasn't been reached.
+                                ; on side0 hasn't been reached.
   call rest                ;0CEE; Reset drive head.
   ld   d,128               ;0CF1; Track 0, side 1.
   cp   d                   ;0CF3; Reset Zero flag.
@@ -2974,10 +2974,10 @@ next_sec:
   ld   a,e                 ;0D7F;
   cp   11                  ;0D80;
   ret  nz                  ;0D82; Return with Zero reset signalling
-                                         ; 'same track'.
+                                ; 'same track'.
   ld   e,1                 ;0D83; Otherwise start with sector 1 again.
   ret                      ;0D85; Return with Zero set signalling 'next
-                                         ; track'.
+                                ; track'.
 
 ; ----------------------------------------------
 ; THE 'MAKE HL POINT TO BUFFER' SUBROUTINE
@@ -3009,7 +3009,7 @@ rpt_hl1:
   ld   b,(ix+14)           ;0D9A; Fetch RPT offset into BC.
   ld   c,(ix+13)           ;0D9D;
   add  hl,bc               ;0DA0; Add the offset to the start of the
-                                         ; data buffer.
+                                ; data buffer.
   ret                      ;0DA1; Finished.
 
 ; ----------------------------------------------
@@ -3075,15 +3075,15 @@ get_sector:
 step_out:
   ld   c,%01111000         ;0DCB; Step-out, update track register,
   jr   step                ;0DCD; disable spin-up sequence, no verify,
-                                         ; step rate 6 ms.
+                                ; step rate 6 ms.
 step_in:
   ld   c,%01011000         ;0DCF; Step-in, update track register,
-                                         ; disable spin-up sequence, no verify,
-                                         ; step rate 6 ms.
+                                ; disable spin-up sequence, no verify,
+                                ; step rate 6 ms.
 step:
   call ld_com_reg          ;0DD1; Execute the command, move one track.
   jp   step_delay          ;0DD4; Wait for the number of msec's
-                                         ; specified by (STPRAT).
+                                ; specified by (STPRAT).
 
 
 ; ===============================================================
@@ -3161,7 +3161,7 @@ wtkey:
 cons_out:
   push af                  ;0E1B;
   ld   a,254               ;0E1C; Use stream '-2' (attached to "S" the
-                                         ; channel).
+                                ; channel).
 out_code:
   ld   hl,23692            ;0E1E; This is SCR_CT.
   ld   (hl),$FF            ;0E21; Set scroll counter.
@@ -3192,7 +3192,7 @@ prt_out:
 
 kbd_test:
   xor  a                   ;0E30; Clear A, allowing for the whole
-                                         ; keyboard to be examined.
+                                ; keyboard to be examined.
   in   a,(254)             ;0E31; Read the keyboard.
   and  $1F                 ;0E33; Keep only the keyboard bits.
   sub  $1F                 ;0E35; Return with sign negative and Zero
@@ -3257,16 +3257,16 @@ op_temp_m:
   pop  ix                  ;0E74; Restore channel pointer (in 'main'
   push ix                  ;0E76; RAM).
   ld   de,540              ;0E78; Microdrive type files consist of
-                                         ; records with a length of 540 bytes
-                                         ; each.
+                                ; records with a length of 540 bytes
+                                ; each.
 op_t_1:
   push ix                  ;0E7B; Store data buffer pointer (in 'main'
-                                         ; RAM).
+                                ; RAM).
   ld   ix,dfca             ;0E7D;
   call lbyt                ;0E81; Fetch a byte.
   pop  ix                  ;0E84; Restore data buffer pointer.
   ld   (ix+55),a           ;0E86; Loading starts with the data block
-                                         ; preamble (offset 55).
+                                ; preamble (offset 55).
   inc  ix                  ;0E89;
   call dec_de              ;0E8B; Decrement DE.
   jr   nz,op_t_1           ;0E8E; Repeat until DE=0.
@@ -3332,7 +3332,7 @@ op_t_6:
 
 set_t_mch:
   ld   ix,(23631)          ;0EF4; Fetch (CHANS), the start of the
-                                         ; channel area.
+                                ; channel area.
   ld   de,20               ;0EF8; Make IX point to the start of the
   add  ix,de               ;0EFB; 'new' channels.
 set_t_1:
@@ -3341,22 +3341,22 @@ set_t_1:
   jr   z,set_t_3           ;0F02; Jump if the CHANS area is finished.
   ld   a,(ix+4)            ;0F04; Fetch the channel specifier.
   and  $7F                 ;0F07; Clear bit 7 (drop temporary/permanent
-                                         ; flag).
+                                ; flag).
   cp   "M"                 ;0F09;
   jr   nz,set_t_2          ;0F0B; Jump if not a "M" channel.
   ld   a,(23766)           ;0F0D; Fetch drive number (D_STR1).
   cp   (ix+25)             ;0F10; Compare it with (CHDRIV).
   jr   nz,set_t_2          ;0F13; Jump if this channel uses a different
-                                         ; drive.
+                                ; drive.
   ld   bc,(23770)          ;0F15; Fetch length of filename (NSTR_1).
   ld   hl,(23772)          ;0F19; And its startaddress (NSTR_1+2).
   call chk_name            ;0F1C; Check name against 'CHNAME' of this
-                                         ; channel.
+                                ; channel.
   jr   nz,set_t_2          ;0F1F; Jump if not the same file.
   bit  0,(ix+24)           ;0F21;
   jr   z,set_t_2           ;0F25; Jump if it's a 'read file'.
   jp   md_error            ;0F27; Exit if the file is already opened for
-                                         ; writing.
+                                ; writing.
 set_t_2:
   ld   e,(ix+9)            ;0F2A; Fetch the length of the channel.
   ld   d,(ix+10)           ;0F2D;
@@ -3383,10 +3383,10 @@ set_t_3:
   push ix                  ;0F52; Make HL point to the start of the
   pop  hl                  ;0F54; channel.
   call rest_f_ad           ;0F55; Restore 'start of filename' possibly
-                                         ; moved during the 'insertion' of the
-                                         ; channel.
+                                ; moved during the 'insertion' of the
+                                ; channel.
   ex   de,hl               ;0F58; The start address of the filename goes
-                                         ; to HL.
+                                ; to HL.
   ld   bc,(23770)          ;0F59; Fetch length of filename (N_STR1).
   bit  7,b                 ;0F5D; Jump if the name doesn't exist
   jr   nz,set_t_5          ;0F5F; (N_STR1 = $FFFF).
@@ -3532,7 +3532,7 @@ chk_name3:
 
 call_inp:
   res  3,(iy+2)            ;0FEF; Signal 'the mode is to be considered
-                                         ; as being unchanged'.
+                                ; as being unchanged'.
   push hl                  ;0FF3; Store address of service routine.
   ld   hl,(23613)          ;0FF4; HL points to error address (ERR_SP).
   ld   e,(hl)              ;0FF7; Fetch the error address.
@@ -3565,7 +3565,7 @@ input_end:
   jr   z,no_read           ;1015; Jump with no data read.
 input_err:
   jp   md_error            ;1017; Otherwise jump to the 'hook code'
-                                         ; error routine.
+                                ; error routine.
 no_read:
   pop  hl                  ;101A; Restore address of service routine and
   jr   in_again            ;101B; try again.
@@ -3577,7 +3577,7 @@ acc_code:
   jr   z,end_input         ;101F; Jump if the code is ENTER.
   rst  calbas              ;1021; Otherwise the byte is to be added to
   defw rom_add_char_keeping_current_mode ;1022; the INPUT line. This is done by call-
-                                         ; ing into the 'ADD_CHAR' subroutine.
+                                ; ing into the 'ADD_CHAR' subroutine.
   pop  hl                  ;1024; Restore address of the service routine
   jr   in_again            ;1025; and read the next byte.
 
@@ -3599,7 +3599,7 @@ inkey_dollar_end:
   ret  z                   ;1032; with no byte read.
   bit  4,(iy+124)          ;1033; Otherwise EOF was reached, so jump to
   jr   z,input_err         ;1037; the error routine except when
-                                         ; executing a 'MOVE' command.
+                                ; executing a 'MOVE' command.
   or   1                   ;1039; Then return with Zero and Carry flags
   ret                      ;103B; both reset.
 
@@ -3634,13 +3634,13 @@ test_m_buf:
   sbc  hl,de               ;105A;
   jr   c,chk_m_eof         ;105C; Jump if all bytes have been read.
   inc  de                  ;105E; Include byte to be read in the byte
-                                         ; counter.
+                                ; counter.
   ld   (ix+11),e           ;105F; And store it.
   ld   (ix+12),d           ;1062;
   dec  de                  ;1065; Position of character to be read.
   push ix                  ;1066; Save start address of channel.
   add  ix,de               ;1068; IX now points to 'byte to be
-                                         ; read - 82'.
+                                ; read - 82'.
   ld   a,(ix+82)           ;106A; Fetch the byte.
   pop  ix                  ;106D; Restore start of channel.
   scf                      ;106F; Signal 'acceptable code'.
@@ -3653,7 +3653,7 @@ chk_m_eof:
   bit  1,(ix+67)           ;1071; Jump if (RECFLG) indicates 'not the
   jr   z,new_buff          ;1075; End Of File' block.
   xor  a                   ;1077; Otherwise Zero and Carry flag are
-                                         ; reset to signal 'EOF'.
+                                ; reset to signal 'EOF'.
   add  a,13                ;1078; Returned byte is CHR$ 13, i.e. ENTER.
   ret                      ;107A; Finished.
 
@@ -3674,21 +3674,21 @@ new_buff:
 
 get_recd:
   ld   c,3                 ;108C; Three retries will be made before the
-                                         ; routine is exitted when an error
-                                         ; occurs.
+                                ; routine is exitted when an error
+                                ; occurs.
   bit  1,(ix+67)           ;108E;
   jr   nz,get_r3           ;1092; Jump if (RECFLG) indicates 'EOF' block
 get_r1:
   push ix                  ;1094; Store channel pointer (in 'main' RAM).
   ld   de,540              ;1096; Microdrive file records have 540 bytes
-                                         ; each.
+                                ; each.
 get_r2:
   push ix                  ;1099; Store data buffer pointer.
   ld   ix,dfca             ;109B;
   call lbyt                ;109F; Fetch a byte.
   pop  ix                  ;10A2; Restore data buffer pointer.
   ld   (ix+55),a           ;10A4; Loading starts with the data block
-                                         ; preamble (offset 55).
+                                ; preamble (offset 55).
   inc  ix                  ;10A7;
   call dec_de              ;10A9; Decrement DE.
   jr   nz,get_r2           ;10AC; Repeat until DE=0.
@@ -3698,11 +3698,11 @@ get_r2:
   ret  z                   ;10B6; (CHREC), exit if they are equal.
   bit  1,(ix+67)           ;10B7; Jump to load the next record if
   jr   z,get_r1            ;10BB; (RECFLG) indicates that this isn't the
-                                         ; EOF one.
+                                ; EOF one.
 get_r3:
   dec  c                   ;10BD; Decrement retry counter.
   jr   z,md_error1         ;10BE; Exit via the 'hook code' error routine
-                                         ; when three retries have been made.
+                                ; when three retries have been made.
 
 ; Now the routine reloads the first sector of the file. With 'MICRODRIVE'-type
 ; files it is possible to have a 'read' channel attached to a file to which is
@@ -3802,7 +3802,7 @@ erase_111E:
   jr   nz,erase_1          ;112E; Jump if the file wasn't found.
   ld   hl,$3BD6            ;1130; Point to the start of the disk buffer.
   add  hl,bc               ;1133; BC holds the directory entries offset
-                                         ; (i.e. 0 for first, 256 for second).
+                                ; (i.e. 0 for first, 256 for second).
   ld   (hl),0              ;1134; Signal 'ERASEd file'.
   push ix                  ;1136; Store channel pointer.
   ld   ix,dfca             ;1138;
@@ -3823,7 +3823,7 @@ find_file_1146:
   ; XXX FIXME -- the original HTML defines `find_file` twice
   call rest                ;1146; Reset drive to track 0.
   ld   ($3ACA),ix          ;1149; Store the pointer to filename
-                                         ; requested.
+                                ; requested.
 find_f1:
   ld   ix,dfca             ;114D;
   call rsad                ;1151; Load a sector to the disk buffer.
@@ -3850,7 +3850,7 @@ find_f3:
   ld   ($3DF3),a           ;1179;
   jr   nz,find_f3          ;117C; Repeat for all characters in the name.
   ret                      ;117E; Return with Zero set to indicate 'file
-                                         ; found'.
+                                ; found'.
 
 ; The requested filename wasn't found yet, so examine the next file.
 
@@ -3892,10 +3892,10 @@ read_seq:
   bit  1,(ix+67)           ;11A1; Jump if (RECFLG) indicates that the
   jr   z,increc            ;11A5; current record isn't the EOF one.
   jp   md_error            ;11A7; Otherwise exit via the 'hook code'
-                                         ; error routine.
+                                ; error routine.
 increc:
   inc  (ix+13)             ;11AA; Increment the record number (CHREC)
-                                         ; and continue into 'RD_RANDOM'.
+                                ; and continue into 'RD_RANDOM'.
 
 ; ----------------------------------------------
 ; THE 'READ RANDOM' SUBROUTINE
@@ -3927,7 +3927,7 @@ mchan_out:
   ld   d,(ix+12)           ;11CB;
   push ix                  ;11CE; Save start address of channel.
   add  ix,de               ;11D0; Point to 'first free byte in
-                                         ; buffer'-82.
+                                ; buffer'-82.
   ld   (ix+82),a           ;11D2; Store the byte into the buffer.
   pop  ix                  ;11D5; Restore start of channel.
   inc  de                  ;11D7; Update (CHBYTE).
@@ -4149,15 +4149,15 @@ hook_31:
   ld   hl,(23631)          ;127A; Fetch start of channel area (CHANS).
   ld   de,$A349            ;127D; This is -23735.
   add  hl,de               ;1280; The Carry flag is now set if the CHANS
-                                         ; area starts after address 23734, i.e.
-                                         ; the 'new' variables exist already.
+                                ; area starts after address 23734, i.e.
+                                ; the 'new' variables exist already.
   jr   c,var_exist         ;1281; Jump if they exist already.
   ld   hl,(23651)          ;1283; Clear the calculator stack by copying
   ld   (23653),hl          ;1286; (STKBOT) into (STKEND).
   ld   hl,23698            ;1289; Set (MEM) with the address of the
   ld   (23656),hl          ;128C; MEMBOT area.
   ld   hl,23733            ;128F; One location before the new space is
-                                         ; needed.
+                                ; needed.
   ld   bc,58               ;1292; There are 58 new variables.
   rst  calbas              ;1295; Use 'main' ROM 'MAKE_ROOM' to create
   defw rom_make_room       ;1296; the space.
@@ -4182,10 +4182,10 @@ var_exist:
 
 if1_vars:
   defb $02                 ;12AE; Default for FLAGS3 (bit 1 is set to
-                                         ; signal that the shadow ROM has been
-                                         ; paged in for the first time).
+                                ; signal that the shadow ROM has been
+                                ; paged in for the first time).
   defw $01F0               ;12AF; Default for VECTOR is the IF1's
-                                         ; 'ERR_6' address (nonsense for +D).
+                                ; 'ERR_6' address (nonsense for +D).
   ld   hl,$0000            ;12B1; This short subroutine is used to call
   call $0000               ;12B4; 'main' ROM routines from the IF1 ROM,
   ld   (23738),hl          ;12B7; it isn't used with the +D.
@@ -4193,7 +4193,7 @@ if1_vars:
   defw $000C               ;12BB; Default for BAUD, i.e. 9600 baud.
   defb $01                 ;12BD; Default for NSTAT.
   defb $00                 ;12BE; Default for IOBORD, the colour during
-                                         ; IF1 I/O (black).
+                                ; IF1 I/O (black).
   defw $0000               ;12BF; Default for SER_FL.
 
 ; ----------------------------------------------
@@ -4269,12 +4269,12 @@ c1_adddot:
   ld   a,h                 ;130A;
   and  $07                 ;130B;
   jr   nz,c1_pixrow        ;130D; Repeat until all eight pixelrows have
-                                         ; been 'scanned'.
+                                ; been 'scanned'.
   ld   a,($3E4F)           ;130F;
   call pntp                ;1312; Print the dot column.
   pop  hl                  ;1315; Repeat until all eight pixels in a byte
   djnz c1_pixel            ;1316; have been printed. One character cell
-                                         ; (64 pixels) has been printed now.
+                                ; (64 pixels) has been printed now.
   inc  l                   ;1318; Next character position.
   ld   a,l                 ;1319;
   and  $1F                 ;131A;
@@ -4286,7 +4286,7 @@ c1_adddot:
   ld   h,a                 ;1325; necessary.
   call n_charrow           ;1326; Calculate the address of the next
   jr   nz,c1_line          ;1329; characterrow and loop until end of
-                                         ; pixel area reached.
+                                ; pixel area reached.
   jp   dump_exit           ;132B; Exit via 'DUMP_EXIT' to reset printer.
 
 ; ----------------------------------------------
@@ -4315,14 +4315,14 @@ cops2:
   call system_z            ;133E; If a system file has been loaded
   call z,jcops2            ;1341; call it's screendump routine.
   ld   hl,$57E0            ;1344; Address of the lowest pixelrow of the
-                                         ; charactersquare in bottom left corner.
+                                ; charactersquare in bottom left corner.
   ld   de,n_per_72_lspc    ;1347; Print the escape sequence for n/72
   call po_esc_seq          ;134A; inch line feeds.
   ld   a,6                 ;134D; Make it 6/72.
   call pntp                ;134F;
   ld   b,128               ;1352; There are 128 2-pixel columns.
   ld   c,8                 ;1354; 8 pixels make one byte. Start with
-                                         ; leftmost bit in a byte.
+                                ; leftmost bit in a byte.
 c2_2pixcol:
   push bc                  ;1356;
   push hl                  ;1357;
@@ -4344,7 +4344,7 @@ c2_clrbuf:
   inc  de                  ;136D;
   djnz c2_clrbuf           ;136E;
   ld   b,2                 ;1370; The dot columns for 2 pixels are build
-                                         ; up each time.
+                                ; up each time.
 c2_2pix:
   push bc                  ;1372;
   push hl                  ;1373;
@@ -4410,10 +4410,10 @@ c2_chrrow:
   dec  c                   ;13C7; Skip the two pixels which have already
   dec  c                   ;13C8; been printed.
   jr   nz,c2_byte          ;13C9; Jump if not all pixels within this
-                                         ; byte have been printed.
+                                ; byte have been printed.
   ld   c,8                 ;13CB; Otherwise reset 'pixels in a byte'
   inc  hl                  ;13CD; counter and point to the next
-                                         ; character position to the right.
+                                ; character position to the right.
 c2_byte:
   djnz c2_2pixcol          ;13CE; Repeat for the 128 2-pixelcolumns.
   ld   b,4                 ;13D0; Advance the paper for four lines.
@@ -4468,7 +4468,7 @@ pixel_col1:
 
 n_charrow:
   ld   a,l                 ;13FE; Update low address byte to next
-                                         ; character row.
+                                ; character row.
   add  a,32                ;13FF; The carry will be reset within display
   ld   l,a                 ;1401; thirds.
   ccf                      ;1402; Invert carry.
@@ -4476,7 +4476,7 @@ n_charrow:
   and  $F8                 ;1404; A will hold $F8 (i.e. -8) within a
   add  a,h                 ;1406; third, but 0 when a new third is
   ld   h,a                 ;1407; reached. Update high byte (which was
-                                         ; already incremented by 8).
+                                ; already incremented by 8).
   cp   $58                 ;1408; Return with the Zero flag set if
   ret                      ;140A; attributes reached.
 
@@ -4508,8 +4508,8 @@ pchan_out:
   and  a                   ;141E;
   ld   a,($3E4F)           ;141F; Fetch the code to be send to the
   jp   nz,pntp             ;1422; printer, send it right away if
-                                         ; (PCODE)=1, i.e. when the +D
-                                         ; mustn't interfere.
+                                ; (PCODE)=1, i.e. when the +D
+                                ; mustn't interfere.
   ld   hl,($2063)          ;1425; Jump to the appropriate 'output'
   jp   (hl)                ;1428; routine.
 
@@ -4528,8 +4528,8 @@ p_all:
   srl  a                   ;1439; line, divide it by two.
   ld   b,a                 ;143B;
   ld   hl,$3E4E            ;143C; $3E4E holds the position on the
-                                         ; current line (i.e. the number of
-                                         ; characters already printed on this
+                                ; current line (i.e. the number of
+                                ; characters already printed on this
   sub  (hl)                ;143F; line).
   jr   c,p_newline         ;1440; Jump if already on 2nd half of line.
   ld   h,b                 ;1442; Otherwise jump with H holding the
@@ -4545,7 +4545,7 @@ p_nocomma:
   ret  z                   ;1452; Return if already on leftmost position
   dec  (hl)                ;1453; Otherwise decrement current position.
   ld   a,127               ;1454; This isn't "BACKSPACE", this is
-                                         ; "DELETE" !
+                                ; "DELETE" !
   jp   pntp                ;1456; Print a "DELETE".
 
 p_noback:
@@ -4558,7 +4558,7 @@ p_noback:
                                 ; full (see $15C0).
   res  1,(hl)              ;1464; Reset the flag.
   ret  nz                  ;1466; Return if this newline has been send
-                                         ; already.
+                                ; already.
 p_newline:
   ld   hl,enter_flag       ;1467; Signal 'newline has been send'.
   res  1,(hl)              ;146A;
@@ -4603,10 +4603,10 @@ p_noenter:
   cp   22                  ;149B; This is "AT control".
   jr   nc,p_2_oper         ;149D; Jump with AT & TAB.
   ld   de,p_cont           ;149F; Otherwise the '"P" channel output'
-                                         ; routine is to be changed to 'P_CONT'.
+                                ; routine is to be changed to 'P_CONT'.
 p_tv_1:
   ld   (23566),a           ;14A2; Store the control character code in
-                                         ; (TVDATA-lo).
+                                ; (TVDATA-lo).
 
 ; The current 'output' routine address is changed temporarily.
 
@@ -4623,8 +4623,8 @@ p_cont:
   ld   de,p_all            ;14AC; Restore the original address for
   call p_change            ;14AF; 'P_ALL'.
   ld   hl,(23566)          ;14B2; Fetch the control code and the first
-                                         ; operand if there are indeed two
-                                         ; operands (TVDATA).
+                                ; operand if there are indeed two
+                                ; operands (TVDATA).
   ld   d,a                 ;14B5; The 'last' operand and the control
   ld   a,l                 ;14B6; code are moved.
   cp   22                  ;14B7;
@@ -4653,7 +4653,7 @@ p_tv_2:
 p_2_oper:
   ld   de,p_tv_2           ;14CD; The control code will be stored in
   jr   p_tv_1              ;14D0; TVDATA-lo and the address of the
-                                         ; 'output' routine changed to 'P_TV_2'.
+                                ; 'output' routine changed to 'P_TV_2'.
 
 p_escape:
   cp   27                  ;14D2;
@@ -4668,7 +4668,7 @@ p_esc:
   ld   de,p_all            ;14DC; Restore the original address for
   call p_change            ;14DF; 'P_ALL'.
   jp   pntp                ;14E2; Send the code following the ESC to the
-                                         ; printer.
+                                ; printer.
 
 ; A question mark is printed whenever an attempt is made to print an
 ; unprintable character code.
@@ -4729,7 +4729,7 @@ p_noctrl:
   rst  calbas              ;1520; calculator's memory area by calling
   defw rom_po_gr_1         ;1521; 'PO_GR_1' in the 'main' ROM.
   ld   hl,23698            ;1523; HL points to the start of the graphic
-                                         ; form; i.e. MEMBOT.
+                                ; form; i.e. MEMBOT.
   jr   p_graph             ;1526; Jump to print the graphic character.
 
 p_tokens_and_udg  
@@ -4739,7 +4739,7 @@ p_tokens_and_udg
   ex   (sp),hl             ;152F; 'PO_TOKENS' routine in the 'main' ROM
   push hl                  ;1530; to expand the token. That routine then
   ret                      ;1531; calls recursively the 'P_ALL' routine
-                                         ; above for each character of the token.
+                                ; above for each character of the token.
 
 p_udgs:
   add  a,21                ;1532; Adjust range, UDG's now from 0..20.
@@ -4863,7 +4863,7 @@ pntp_1:
   and  $BF                 ;15ED; Reset STROBE.
   out  (239),a             ;15EF;
   ld   a,($3E4F)           ;15F1; Return with the A register holding the
-                                         ; outputted byte, 'RET' forgotten?
+                                ; outputted byte, 'RET' forgotten?
 
 
 ; ===============================================================
@@ -5132,7 +5132,7 @@ prt_type:
   ld   hl,type_table       ;169C; Start of messages table.
   ld   bc,85               ;169F; Length of table excluding 'WHAT?'.
   cpir                     ;16A2; Make HL point to right message. HL
-                                         ; points to 'WHAT?' with unknown types.
+                                ; points to 'WHAT?' with unknown types.
   call prt_msg_hl          ;16A4; Print the message.
   pop  af                  ;16A7; Restore file type.
   cp   1                   ;16A8;
@@ -5219,7 +5219,7 @@ type_table:
 
 prt_num:
   ld   a,32                ;1744; Spaces are printed in place of leading
-                                         ; zero's.
+                                ; zero's.
 prt_n10000:
   ld   de,10000            ;1746; Start printing with tens-of-thousands.
   call prt_digit           ;1749;
@@ -5257,7 +5257,7 @@ prt_dig2:
   add  hl,de               ;176C; Restore last subtraction.
   and  a                   ;176D;
   jr   nz,prt_dig3         ;176E; Jump if a non zero value is to be
-                                         ; printed.
+                                ; printed.
   pop  de                  ;1770; Retrieve the leading character into D.
   add  a,d                 ;1771; Add it to zero.
   ret  z                   ;1772; Return if nothing has to be printed.
@@ -5420,9 +5420,9 @@ d_error1:
   rst  calbas              ;1878; Clear the lower screen.
   defw rom_cls_lower       ;1879;
   set  5,(iy+2)            ;187B; Signal 'lower screen will require
-                                         ; clearing'. (TV_FLAG)
+                                ; clearing'. (TV_FLAG)
   res  3,(iy+2)            ;187F; Signal 'mode is to be considered
-                                         ; unchanged'.
+                                ; unchanged'.
   ld   a,(23610)           ;1883;
   cp   4                   ;1886;
   jr   nz,d_error2         ;1888; Jump if error isn't 'SECTOR error'.
@@ -5455,7 +5455,7 @@ d_error2:
   inc  sp                  ;18B1; handler.
   ld   hl,rom_main_5_1349  ;18B2; Print the line and statement number by
   jp   unpage_hl           ;18B5; jumping into the Spectrum error
-                                         ; handler.
+                                ; handler.
 
 ; ----------------------------------------------
 ; THE 'PRINT MESSAGE HL' SUBROUTINE
@@ -5466,7 +5466,7 @@ prt_msg_hl:
   ld   a,(hl)              ;18B8; Fetch a character.
   cp   32                  ;18B9;
   ret  c                   ;18BB; Exit if it isn't printable, message is
-                                         ; finished.
+                                ; finished.
   call prt_a               ;18BC; Print the character.
   inc  hl                  ;18BF;
   jr   prt_msg_hl          ;18C0; Continue until message end is reached.
@@ -5590,10 +5590,10 @@ reserved:
   defw $0000               ;200C;
 onerr:
   defw $0000               ;200E; Address of routine called after an
-                                         ; error has occurred.
+                                ; error has occurred.
 every_int:
   defw $208F               ;2010; Address of routine called at every
-                                         ; interrupt.
+                                ; interrupt.
 
 ; ----------------------------------------------
 ; THE 'PRINTER CODES' TABLE
@@ -6216,13 +6216,13 @@ to:
   call separator           ;2320; Test for a separator, jump if one
   jr   z,to_1              ;2323; found, i.e. a 2nd name is given.
   call sign_4              ;2325; Used here to signal 'use source
-                                         ; filename for destination file'.
+                                ; filename for destination file'.
 to_1:
   call z,expt_fname        ;2328; Evaluate filename if there was a
-                                         ; separator.
+                                ; separator.
   call swap_ufias          ;232B; Swap the UFIAS again.
   call st_end_ram          ;232E; Confirm end of statement and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   ld   hl,$3E1E            ;2331; Copy the second filename and directory
   ld   de,$3E32            ;2334; description.
   ld   bc,11               ;2337;
@@ -6236,9 +6236,9 @@ to_2:
   call to_search           ;234B; Search for a file to be copied.
   jp   nz,to_exit          ;234E; Jump if there are no files left.
   call load_1st            ;2351; Copy file description (directory
-                                         ; description and filename) to UFIA2 and
-                                         ; load the first sector of the file into
-                                         ; the disk buffer.
+                                ; description and filename) to UFIA2 and
+                                ; load the first sector of the file into
+                                ; the disk buffer.
   ld   a,($3E1E)           ;2354; Get directory description.
   cp   5                   ;2357;
   jr   z,to_2              ;2359; Jump with 'Snapshot 48K'.
@@ -6250,24 +6250,24 @@ to_2:
   jr   z,to_2              ;2365; Jump with 'Opentype file'.
   cp   11                  ;2367;
   jr   z,to_2              ;2369; Jump with 'Execute file'.
-                                         ; These five file types can't be copied
-                                         ; with the 'SAVE .. TO ..' command.
+                                ; These five file types can't be copied
+                                ; with the 'SAVE .. TO ..' command.
 
 ; Now the file is going to be copied.  NOTE: The file to be copied will
 ; destroy everything above 'start of BASIC'+256 and no checks are made if the
 ; file fits in memory and if the stack isn't overwritten.
 
   call load_head2          ;236B; Copy the file header (the 9 bytes
-                                         ; consisting of filetype, length, etc.)
-                                         ; to UFIA2.
+                                ; consisting of filetype, length, etc.)
+                                ; to UFIA2.
   ld   hl,(23635)          ;236E; Fetch start of BASIC program (PROG).
   inc  h                   ;2371; Add 256 to it.
   ld   de,($3E2A)          ;2372; Fetch length of file (LENGTH2_1).
   call load_file           ;2376; Load DE bytes, starting at address HL.
   call to_msg              ;2379; Print the message "CHANGE disc ...." if
-                                         ; source drive is destination drive.
+                                ; source drive is destination drive.
   call swap_ufias          ;237C; Swap the UFIA's again. The header of
-                                         ; the loaded file is now held in UFIA1.
+                                ; the loaded file is now held in UFIA1.
   call test_4              ;237F; Used here to test whether a 2nd
   jr   nz,to_5             ;2382; filename was given. Jump if not.
   ld   hl,$3E33            ;2384; Here the 2nd filename was stored.
@@ -6294,7 +6294,7 @@ to_5:
   call test_drv            ;239A;
   call ofsm_2              ;239D; Open the file for SAVEing.
   jr   nz,to_6             ;23A0; Jump if file existed already and the
-                                         ; user didn't want to overwrite it.
+                                ; user didn't want to overwrite it.
   call save_head1          ;23A2; SAVE the 9 header bytes to the file.
   ld   hl,(23635)          ;23A5; Fetch start of BASIC (PROG), and add
   inc  h                   ;23A8; 256 to it. (here the file was loaded)
@@ -6304,10 +6304,10 @@ to_5:
 to_6:
   call swap_ufias          ;23B3; Swap the UFIA's again.
   call sign_0              ;23B6; Signal 'at least one file has been
-                                         ; copied'
+                                ; copied'
   call to_msg              ;23B9; Print message "Input ..." if necessary
   jp   to_2                ;23BC; Repeat until no more files have to be
-                                         ; copied.
+                                ; copied.
 
 to_exit:
   call test_0              ;23BF; Give error if there isn't one file
@@ -6462,7 +6462,7 @@ cat_drv:
   jr   nz,ext_cat_2499     ;248C; catalogue is given.
   rst  next_c              ;248E; Next character.
   call st_end_ram          ;248F; Confirm end of statement and exit when
-                                         ; syntax checking.
+                                ; syntax checking.
   call test_drv            ;2492; See if drive is defined.
   ld   a,%00000010         ;2495; Signal 'small' CAT.
   jr   do_cat1             ;2497;
@@ -6470,7 +6470,7 @@ cat_drv:
 ext_cat_2499:
   ; XXX FIXME -- the original HTML defines `ext_cat` twice
   call st_end_ram          ;2499; Confirm end of statement and exit
-                                         ; during syntax time.
+                                ; during syntax time.
   rst  calbas              ;249C; Clear the screen by calling 'main' ROM
   defw rom_cl_all          ;249D; routine.
 do_cat:
@@ -6515,7 +6515,7 @@ cat_run:
   bit  7,a                 ;24E2;
   jr   z,cat_run1          ;24E4; Jump if drive is single sided.
   add  a,a                 ;24E6; Otherwise double the number of tracks
-                                         ; and get rid of the side bit.
+                                ; and get rid of the side bit.
 cat_run1:
   sub  4                   ;24E7; Subtract number of catalogue tracks.
   ld   hl,0                ;24E9;
@@ -6559,7 +6559,7 @@ erase_250C:
   cp   to_keyword          ;2521; Is the filename followed by "TO"?
   jr   z,rename            ;2523; Jump if so, rename is wanted.
   call st_end_ram          ;2525; Confirm end of statement and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   ld   a,($3E04)           ;2528; Fetch device descriptor.
   and  $DF                 ;252B; Drop lower case bit.
   cp   "D"                 ;252D;
@@ -6607,7 +6607,7 @@ find_file_2559:
   ld   a,%00010000         ;2559; Scan the CATalogue for a matching
   call scan_cat            ;255B; filename.
   jp   rpt_hl              ;255E; Make HL point to the start of the dir.
-                                         ; entry buffer and exit.
+                                ; entry buffer and exit.
 
 ; ----------------------------------------------
 ; THE 'RENAME A FILE' ROUTINE
@@ -6622,7 +6622,7 @@ rename:
   jp   nz,rep_0            ;2565; Give an error if none found.
   call expt_2fnam          ;2568; Evaluate 2nd filename.
   call st_end_ram          ;256B; Confirm end of statement and exit when
-                                         ; syntax checking.
+                                ; syntax checking.
   ld   a,($3E04)           ;256E; Fetch device descriptor.
   and  $DF                 ;2571; Drop lower case bit.
   cp   "D"                 ;2573;
@@ -6796,7 +6796,7 @@ expt_num:
 expt_2fnam:
   call swap_ufias          ;2620; Swap UFIA1 and 2.
   call expt_fname          ;2623; Evaluate filename.
-                                         ; Exit via 'SWAP_UFIAS'.
+                                ; Exit via 'SWAP_UFIAS'.
 ; ----------------------------------------------
 ; THE 'SWAP UFIAS' SUBROUTINE
 
@@ -6888,7 +6888,7 @@ expt_parms:
   rst  calbas              ;2692; Evaluate address.
   defw rom_expt_1num       ;2693;
   call st_end_ram          ;2695; Confirm end of statement, and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   rst  calbas              ;2698; Fetch the address from the calculator
   defw rom_find_int2       ;2699; stack.
   ld   ($3E15),bc          ;269B; Store it in LENGTH1_2
@@ -6947,7 +6947,7 @@ params:
   jr   nz,not_s            ;2703; Jump with other than 'S'.
   rst  next_c              ;2705; Next character.
   call st_end_ram          ;2706; Confirm end of statement and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   ld   a,5                 ;2709; Signal '48K Snapshot'.
   ld   ($3E05),a           ;270B;
   ret                      ;270E; Finished.
@@ -6957,7 +6957,7 @@ not_s:
   jr   nz,not_k            ;2711; Jump with other than 'K'.
   rst  next_c              ;2713; Next character.
   call st_end_ram          ;2714; Confirm end of statement and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   ld   a,9                 ;2717; Signal '128K Snapshot'.
   ld   ($3E05),a           ;2719;
   ret                      ;271C; Finished.
@@ -6971,7 +6971,7 @@ not_k:
   call test_5              ;2728; There must follow a address if SAVEing.
   jp   nz,rep_2            ;272B; Give error if SAVEing.
   call st_end_ram          ;272E; Confirm end of statement and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   ld   bc,$3BD6            ;2731; Load address of execute file.
   jr   xfile_2             ;2734; Jump forward.
 
@@ -6981,7 +6981,7 @@ xfile_1:
   rst  calbas              ;2736; Evaluate address.
   defw rom_expt_1num       ;2737;
   call st_end_ram          ;2739; Confirm end of statement and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   rst  calbas              ;273C; Fetch the address.
   defw rom_find_int2       ;273D;
 xfile_2:
@@ -6991,7 +6991,7 @@ xfile_2:
   and  $04                 ;2749;
   jr   z,xfile_3           ;274B; Jump if double density selected.
   ld   bc,254              ;274D; Otherwise this is the length of the
-                                         ; execute file.
+                                ; execute file.
 xfile_3:
   ld   ($3E11),bc          ;2750; Store length in LENGTH1_1.
   ld   a,3                 ;2754; File type is 'CODE'.
@@ -7008,7 +7008,7 @@ line:
   rst  calbas              ;2760; Evaluate autostart line number by
   defw rom_expt_1num       ;2761; calling 'EXPT_1NUM' in the 'main' ROM.
   call st_end_ram          ;2763; Confirm end of statement, and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   rst  calbas              ;2766; Fetch the autostart line number.
   defw rom_find_int2       ;2767;
   ld   ($3E17),bc          ;2769; Store it in AUTOSTART1.
@@ -7019,7 +7019,7 @@ line:
 
 no_params:
   call st_end_ram          ;276F; Confirm end of statement, exit when
-                                         ; syntax checking.
+                                ; syntax checking.
 prog:
   ld   a,($3E04)           ;2772;
   and  $DF                 ;2775; Only capitals.
@@ -7035,7 +7035,7 @@ prog_1:
   ld   a,1                 ;2786; Signal 'BASIC file'.
   ld   ($3E05),a           ;2788;
   ld   hl,(23641)          ;278B; Fetch (E_LINE), the first location past
-                                         ; the variables area.
+                                ; the variables area.
   ld   de,(23635)          ;278E; Fetch (PROG), the 'start' of the BASIC
   ld   ($3E13),de          ;2792; program and store it in FILE_ADDR1
   scf                      ;2796; Calculate ((E_LINE)-(PROG)-1), i.e.  the
@@ -7043,7 +7043,7 @@ prog_1:
   ld   ($3E11),hl          ;2799; variables. Store it in LENGTH1_1.
   ld   hl,(23627)          ;279C; Fetch (VARS) and calculate
   sbc  hl,de               ;279F; (VARS)-(PROG), i.e. the length of the
-                                         ; program without its variables.
+                                ; program without its variables.
   ld   ($3E15),hl          ;27A1; Store it into LENGTH1_2.
   ret                      ;27A4; Finished.
 
@@ -7053,7 +7053,7 @@ prog_1:
 screen_dollar:
   rst  next_c              ;27A5; Get the next character.
   call st_end_ram          ;27A6; Confirm end of statement and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   ld   hl,6912             ;27A9; The size of the display file is stored
   ld   ($3E11),hl          ;27AC; into LENGTH1_1.
   ld   hl,16384            ;27AF; The startaddress is stored into
@@ -7074,11 +7074,11 @@ code:
   jr   z,code_1            ;27C3; jump to use '0' as default value.
   cp   ":"                 ;27C5; Jump if there are parameters to be
   jr   nz,code_2           ;27C7; evaluated (i.e. the next character is
-                                         ; not a colon).
+                                ; not a colon).
 code_1:
   call test_5              ;27C9; 'SAVE .. CODE' has to be followed by at
   jp   nz,rep_2            ;27CC; least two numbers, so give an error if
-                                         ; none present.
+                                ; none present.
   rst  calbas              ;27CF; A call to the 'main' ROM routine
   defw rom_use_zero        ;27D0; 'USE_ZERO' is made to use a value of
   jr   code_3              ;27D2; zero as default.
@@ -7116,7 +7116,7 @@ code_6:
   defw rom_expt_1num       ;27F5;
 code_7:
   call st_end_ram          ;27F7; Confirm end of statement and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   rst  calbas              ;27FA; Fetch the "autoexecute" address from
   defw rom_find_int2       ;27FB; the calculator stack and store it into
   ld   ($3E17),bc          ;27FD; AUTOSTART1
@@ -7142,12 +7142,12 @@ data:
   defw rom_look_vars       ;2822; name.
   set  7,c                 ;2824;
   jr   nc,data_1           ;2826; Jump if handling an existing array or
-                                         ; if syntax checking.
+                                ; if syntax checking.
   ld   hl,$0000            ;2828; Signal 'using a new array'.
   call test_4              ;282B;
   jr   nz,data_3           ;282E; Jump if LOADing the array.
   jp   rep_11              ;2830; Otherwise give error 'Variable not
-                                         ; found'.
+                                ; found'.
 data_1:
   jp   nz,rep_0            ;2833; Give error if not an array variable.
 
@@ -7181,13 +7181,13 @@ data_4:
   ld   ($3E05),a           ;285D; (A=3) 'String array'.
 data_5:
   ex   de,hl               ;2860; DE holds 'start' of the array (or $0000
-                                         ; with a 'new' array to be LOADed).
+                                ; with a 'new' array to be LOADed).
   rst  next_c              ;2861; Next character.
   cp   ")"                 ;2862; Check that the ')' does exist.
   jp   nz,rep_2            ;2864; Report an error if not.
   rst  next_c              ;2867; Next character.
   call st_end_ram          ;2868; Confirm end of statement and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   ld   ($3E13),de          ;286B; Store "start" of the array into
   ret                      ;286F; FILE_ADDR1 and exit.
 
@@ -7218,7 +7218,7 @@ get_tr_and_se:
 save_head1:
   ld   hl,$3E10            ;2879; Start of header 1.
   ld   de,$3BA9            ;287C; Address of header area of a catalogue
-                                         ; entry
+                                ; entry
   ld   b,9                 ;287F; The headers length.
 save_h11:
   ld   a,(hl)              ;2881;
@@ -7256,7 +7256,7 @@ save:
 save_run:
   call ofsm_2              ;28AF; Open the file for 'SAVE'.
   jp   nz,erase_exit       ;28B2; Exit if the file isn't to be
-                                         ; overwritten.
+                                ; overwritten.
   ld   a,($3E05)           ;28B5;
   cp   11                  ;28B8; Pass the header to the file unless it's
   call nz,save_head1       ;28BA; an 'execute' file.
@@ -7404,7 +7404,7 @@ ld_etc_r5:
   jr   z,ld_etc_r6         ;2983; Jump if length unspecified.
   sbc  hl,de               ;2985; Jump if file to be LOADed is shorter
   jr   nc,ld_etc_r6        ;2987; than or of equal length as the
-                                         ; requested file.
+                                ; requested file.
   call test_4              ;2989;
   jp   z,rep_12            ;298C; 'VERIFY failed' if not LOADing.
   jp   rep_15              ;298F; 'CODE error' otherwise.
@@ -7415,7 +7415,7 @@ ld_etc_r6:
   or   l                   ;2996;
   jr   nz,ld_etc_r7        ;2997; Jump if a start address was specified.
   ld   hl,($3E2C)          ;2999; Otherwise use the start address of the
-                                         ; found file.
+                                ; found file.
 ld_etc_r7:
   ld   a,($3E29)           ;299C; But if the file is a BASIC program the
   and  a                   ;299F; start address is held in (PROG).
@@ -7456,7 +7456,7 @@ exec_c1:
   ld   bc,rom_stack_bc     ;29D8; Return to 'STMT_R_1' via 'STACK_BC'
   push bc                  ;29DB; also in the 'main' ROM.
   jp   unpage_hl           ;29DC; Jump to the execute address while
-                                         ; unpaging the +D.
+                                ; unpaging the +D.
 
 ; ----------------------------------------------
 ; THE 'MERGE CONTROL' ROUTINE
@@ -7511,7 +7511,7 @@ load_ctrl:
 
 load_c1:
   ld   hl,($3E11)          ;2A0D; Fetch 'old' length (i.e. length of
-                                         ; existing program or array) from UFIA1.
+                                ; existing program or array) from UFIA1.
   ex   de,hl               ;2A10; Move 'new' length to HL.
   scf                      ;2A11; Jump if the program or array to be
   sbc  hl,de               ;2A12; loaded isn't longer than the existing
@@ -7614,7 +7614,7 @@ lv_any:
 
 lv_any1:
   cp   (hl)                ;2AA5; The actual VERIFY, i.e. compare the
-                                         ; fetched byte with that held in memory.
+                                ; fetched byte with that held in memory.
   jp   nz,rep_12           ;2AA6; Give an error if they don't match.
 lv_any2:
   inc  hl                  ;2AA9; Next memory address.
@@ -7649,12 +7649,12 @@ format:
   call swap_ufias          ;2AD0; Exchange UFIA's again.
 format_1:
   call st_end_ram          ;2AD3; Confirm end of statement and exit when
-                                         ; syntax checking.
+                                ; syntax checking.
   call test_drv            ;2AD6; Check if the drive is defined.
   rst  calbas              ;2AD9;
   defw rom_cls_lower       ;2ADA; Clear lower screen area.
   set  5,(iy+2)            ;2ADC; Signal 'lower screen has to be
-                                         ; cleared'.
+                                ; cleared'.
   call mesg_2              ;2AE0; Print 'Are you SURE ? (y/n)' message.
   call test_y              ;2AE3; Wait for a key, Zero set means 'Y'
   jp   nz,the_end          ;2AE6; pressed. Finished when not sure.
@@ -7699,10 +7699,10 @@ move:
   jp   nz,rep_0            ;2B08; give an error if 'TO' is missing.
   call swap_ufias          ;2B0B; Exchange the UFIA's.
   call expt_exp1           ;2B0E; Evaluate second stream or channel
-                                         ; expression.
+                                ; expression.
   call swap_ufias          ;2B11; Exchange the UFIA's again.
   call st_end_ram          ;2B14; Confirm end of statement and exit
-                                         ; during syntax check.
+                                ; during syntax check.
 
 ; The actual 'MOVE' command reads a byte from the source channel or stream,
 ; and then writes it to the destination channel or stream. This is repeated
@@ -7724,8 +7724,8 @@ move:
   ld   ix,dfca             ;2B34;
   call op_move             ;2B38; Open the destination channel/stream.
   jr   nc,move_run1        ;2B3B; Jump if opening was successfull. I.e.
-                                         ; file was 'new' or 'old' file was
-                                         ; overwritten.
+                                ; file was 'new' or 'old' file was
+                                ; overwritten.
   ld   ix,($3E1E)          ;2B3D; Otherwise reclaim first channel (Second
   call recl_chan           ;2B41; wasn't opened so nothing to reclaim).
   pop  hl                  ;2B44; Drop (CHANS) address.
@@ -7972,11 +7972,11 @@ open:
   jp   nz,rep_2            ;2C7E; Give error if no 'OUT' specified.
 open_1:
   ld   ($3E02),a           ;2C81; Store the channel type (IN or OUT) in
-                                         ; 'PROG_NUM1'.
+                                ; 'PROG_NUM1'.
   rst  next_c              ;2C84; Advance CH_ADD.
 open_2:
   call st_end_ram          ;2C85; Confirm end of statement and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   ld   a,($3E03)           ;2C88; Fetch stream number.
   rst  calbas              ;2C8B; Call 'main' ROM 'STR_DATA1' routine; on
   defw rom_str_data1       ;2C8C; exit, BC holds 'stream data'.
@@ -8005,7 +8005,7 @@ open_3:
 open_chan:
   ld   a,($3E03)           ;2CB3; Fetch stream number.
   add  a,a                 ;2CB6; The streams area entries are two bytes
-                                         ; each.
+                                ; each.
   ld   hl,23574            ;2CB7; Address of data for stream 0.
   ld   e,a                 ;2CBA;
   ld   d,0                 ;2CBB;
@@ -8027,7 +8027,7 @@ open_chan:
   jp   rep_23              ;2CD3; And give an error.
 make_perm:
   res  7,(ix+4)            ;2CD6; Make the channel permanent by resetting
-                                         ; bit 7 of the channel specifier.
+                                ; bit 7 of the channel specifier.
   ex   de,hl               ;2CDA; DE holds new channel offset.
   ld   (hl),e              ;2CDB; Store it into the STRMS area.
   inc  hl                  ;2CDC;
@@ -8070,7 +8070,7 @@ op_temp2:
   inc  de                  ;2D14;
   djnz op_temp2            ;2D15; Repeat for all 10 characters.
   jp   rep_31              ;2D17; Give an error if the channel already
-                                         ; exists.
+                                ; exists.
 op_temp3:
   ld   e,(ix+9)            ;2D1A; Fetch the length of the channel.
   ld   d,(ix+10)           ;2D1D;
@@ -8204,7 +8204,7 @@ op_temp8:
 
 chan_spc:
   ld   ($2E14),bc          ;2DF3; Store the length of the channel into
-                                         ; the "D" channel data table.
+                                ; the "D" channel data table.
   ld   hl,(23635)          ;2DF7; Fetch the start address of the channel
   dec  hl                  ;2DFA; ((PROG)-1).
   push hl                  ;2DFB;
@@ -8256,7 +8256,7 @@ close:
   jr   z,close_all         ;2E23; Also if statement ended with a ':'.
   call expt_stream_nr1     ;2E25; Evaluate stream number.
   call st_end_ram          ;2E28; Confirm end of statement and exit when
-                                         ; syntax checking.
+                                ; syntax checking.
   ld   a,($3E03)           ;2E2B; Fetch stream number.
   call close_strm          ;2E2E; Close the stream.
   jp   the_end             ;2E31; Finished.
@@ -8264,7 +8264,7 @@ close:
 close_all:
   call st_end_ram          ;2E34; Confirm end of statement and exit if
   jr   clear_1             ;2E37; syntax checking. Jump into the CLEAR#
-                                         ; routine.
+                                ; routine.
 
 ; ----------------------------------------------
 ; THE 'CLEAR #' COMMAND ROUTINE
@@ -8280,7 +8280,7 @@ clear:
   jp   nz,rep_0            ;2E3C; Give an error if it isn't a '#'.
   rst  next_c              ;2E3F;
   call st_end_ram          ;2E40; Confirm end of statement and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   call sign_1              ;2E43; Signal 'CLEAR #'.
 clear_1:
   xor  a                   ;2E46; Start with stream 0.
@@ -8318,10 +8318,10 @@ close_strm:
   dec  hl                  ;2E6C; channel attached to the stream to be
   add  hl,bc               ;2E6D; CLOSEd ((CHANS)+'stream data').
   ex   (sp),hl             ;2E6E; HL now holds the address of the stream
-                                         ; data.
+                                ; data.
   rst  calbas              ;2E6F; A call in the middle of the 'main' ROM
   defw rom_close_0_16EB    ;2E70; 'CLOSE' routine is made to update STRMS
-                                         ; contents.
+                                ; contents.
   pop  ix                  ;2E72; IX points to the start of the channel
   ld   a,b                 ;2E74; to be removed.
   or   c                   ;2E75;
@@ -8333,7 +8333,7 @@ close_strm:
 
   ld   a,(ix+4)            ;2E77; Fetch channel specifier.
   and  $5F                 ;2E7A; Clear bit 7 (temporary) and make
-                                         ; capital.
+                                ; capital.
   cp   "D"                 ;2E7C;
   jr   nz,close_1          ;2E7E; Jump if it isn't a "D" channel.
 close_0:
@@ -8390,12 +8390,12 @@ cls:
   jp   nz,rep_0            ;2EBC; Give error if it isn't a '#'.
   rst  next_c              ;2EBF; Next character.
   call st_end_ram          ;2EC0; Confirm end of statement and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   ld   hl,56               ;2EC3; The 'initial' attribute value.
   ld   (23693),hl          ;2EC6; Store 56 into ATTR_P, clear MASK_P.
   ld   (23695),hl          ;2EC9; Store 56 into ATTR_T, clear MASK_T.
   ld   (iy+14),l           ;2ECC; Store 56 also for lower screen
-                                         ; attribute.
+                                ; attribute.
   ld   (iy+87),h           ;2ECF; Clear P_FLAG.
   ld   a,7                 ;2ED2; Set white border.
   out  (254),a             ;2ED4;
@@ -8414,10 +8414,10 @@ cls:
 
 d_input:
   ld   ix,(23633)          ;2EDC; IX points to the start of the current
-                                         ; channel (CURCHL).
+                                ; channel (CURCHL).
   ld   hl,dchan_in         ;2EE0; Address of "D" input service routine.
   res  3,(iy+2)            ;2EE3; Signal 'the mode is to be considered as
-                                         ; being unchanged'.
+                                ; being unchanged'.
   push hl                  ;2EE7; Store address of service routine.
   ld   hl,(23613)          ;2EE8; HL points to error address (ERR_SP).
   ld   e,(hl)              ;2EEB; Fetch the error address.
@@ -8448,7 +8448,7 @@ d_input1:
 d_inp_end:
   jr   c,d_inp_acc         ;2F07; Jump with acceptable codes.
   jp   nz,rep_27           ;2F09; Give the 'END of file' error when the
-                                         ; Zero flag is reset.
+                                ; Zero flag is reset.
   pop  hl                  ;2F0C; Otherwise restore address of service
   jr   d_input1            ;2F0D; routine and try again.
 
@@ -8457,7 +8457,7 @@ d_inp_acc:
   jr   z,d_input2          ;2F11; Jump if the code is ENTER.
   rst  calbas              ;2F13; Otherwise the byte is to be added to
   defw rom_add_char_keeping_current_mode ;2F14; the INPUT line. This is done by calling
-                                         ; into the 'ADD_CHAR' subroutine.
+                                ; into the 'ADD_CHAR' subroutine.
   pop  hl                  ;2F16; Restore address of service routine and
   jr   d_input1            ;2F17; read the next byte.
 
@@ -8505,8 +8505,8 @@ dchan_in:
   ld   (ix+18),a           ;2F4E;
   jr   nc,dchan_in1        ;2F51; Jump if more bytes left.
   xor  a                   ;2F53; Otherwise EOF has been reached, so
-                                         ; reset Zero and Carry flag to signal
-                                         ; 'End Of File'.
+                                ; reset Zero and Carry flag to signal
+                                ; 'End Of File'.
   add  a,13                ;2F54; The return byte is 13.
   ret                      ;2F56; Finished.
 
@@ -8517,7 +8517,7 @@ dchan_in:
 dchan_in1:
   ; XXX FIXME -- the original HTML has a typo in the label above
   call lbyt                ;2F57; Load one byte, read a new sector from
-                                         ; disk when the buffer is empty.
+                                ; disk when the buffer is empty.
   call bord_rest           ;2F5A; Restore border colour.
   scf                      ;2F5D; Signal 'acceptable code'.
   ret                      ;2F5E;
@@ -8599,7 +8599,7 @@ ofsm:
 
 hofle:
   call ofsm                ;2FA4; Transfer UFIA to DFCA and open the file
-                                         ; sector map.
+                                ; sector map.
   call save_head1          ;2FA7; Transfer the 9 byte file header to the
   ret                      ;2FAA; file and exit.
 
@@ -8625,7 +8625,7 @@ hsvbk:
 hgfle:
   call hxfer               ;2FB1; Transfer the UFIA to the DFCA.
   jp   hgfle_2             ;2FB4; Open the file and load the first sector
-                                         ; in the disk buffer.
+                                ; in the disk buffer.
 
 ; ----------------------------------------------
 ; THE 'LOAD BLOCK FROM DISK' SUBROUTINE
@@ -8650,8 +8650,8 @@ hldbk:
 heraz:
   call hxfer               ;2FBD; Transfer the UFIA to the DFCA.
   call find_file_2559      ;2FC0; Find the file, HL points to the
-                                         ; directory entry of the file (contained
-                                         ; in the disk buffer).
+                                ; directory entry of the file (contained
+                                ; in the disk buffer).
   jp   nz,rep_26           ;2FC3; Give error if file not found.
   ld   (hl),0              ;2FC6; Directory description 0 means ERASEd.
   jp   wsad                ;2FC8; Write sector DE.
@@ -8681,7 +8681,7 @@ hrsad:
   push ix                  ;2FD5;
   ld   ix,dfca             ;2FD7;
   call test_drv            ;2FDB; See if the drive held in the A register
-                                         ; is defined.
+                                ; is defined.
   call rsad                ;2FDE; Load the sector into the disk buffer.
   pop  hl                  ;2FE1;
   push de                  ;2FE2;
@@ -8752,7 +8752,7 @@ jwsad:
 
 dump_scr:
   pop  hl                  ;301D; Drop the return address (within the
-                                         ; routine which called 'EXPT_PARMS').
+                                ; routine which called 'EXPT_PARMS').
   jr   copy_1              ;301E; Jump forward.
 
 copy:
@@ -8771,7 +8771,7 @@ copy_1:
   rst  next_c              ;3037; Update CH_ADD again.
 copy_2:
   call st_end_ram          ;3038; Confirm end of statement and exit
-                                         ; during syntax checking.
+                                ; during syntax checking.
   ld   a,($3E00)           ;303B;
   cp   "1"                 ;303E; Normal screendump if '1' followed the
   call z,cops              ;3040; 'SCREEN$'.
