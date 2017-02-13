@@ -8,7 +8,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-2017.
 
-; Last modified: 201702132328
+; Last modified: 201702132337
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -661,8 +661,8 @@ keysc_2:
   ld   a,(calbas_flag)     ;02A2;
   cp   $47                 ;02A5; If a CALBAS was under execution return
   ret  z                   ;02A7; immediately to 'main' ROM 'KEY-SCAN'.
-  ld   a,($3DE4)           ;02A8;
-  cp   $58                 ;02AB;
+  ld   a,(system_status)   ;02A8;
+  cp   system_status.minimal ;02AB;
   jp   z,take_prtr         ;02AD; Jump if this is a minimal system.
   cp   $44                 ;02B0; Initialize the minimal system if there
   jr   nz,nosys            ;02B2; is no system file loaded.
@@ -686,8 +686,8 @@ clr_ram:
   ld   de,system_variables ;02CF; settings to RAM.
   ld   bc,104              ;02D2;
   ldir                     ;02D5;
-  ld   a,$58               ;02D7; Signal 'minimal' system
-  ld   ($3DE4),a           ;02D9;
+  ld   a,system_status.minimal ;02D7; Signal 'minimal' system
+  ld   (system_status),a   ;02D9;
   ld   hl,275              ;02DC; Disk buffer offset.
   ld   ($3AD2),hl          ;02DF; XXX FIXME -- in DFCA?
   ret                      ;02E2;
@@ -931,8 +931,8 @@ run:
   ld   de,($3E2A)          ;03BD; Fetch the systemfile's length.
   ld   hl,$2000            ;03C1; Loadaddress is $2000.
   call load_file           ;03C4; Load the system.
-  ld   a,$44               ;03C7; Load the system.
-  ld   ($3DE4),a           ;03C9; Signal 'System loaded'.
+  ld   a,system_status.loaded ;03C7; Load the system.
+  ld   (system_status),a   ;03C9; Signal 'System loaded'.
   xor  a                   ;03CC;
   push af                  ;03CD;
   ld   hl,$2080            ;03CE;
@@ -1220,8 +1220,8 @@ det_rom:
 
 system_z:
   ld   ($3DEA),a           ;0527;
-  ld   a,($3DE4)           ;052A;
-  cp   $44                 ;052D;
+  ld   a,(system_status)   ;052A;
+  cp   system_status.loaded ;052D;
   ld   a,($3DEA)           ;052F;
   ret                      ;0532;
 
@@ -8965,9 +8965,17 @@ sectors_used:
 control_port_status:
   db 0                     ;3DDA; control port status (of port 239)
 
-  org $3DE5
+  org $3DE4
+
+system_status.minimal: equ $58 ; 'X'
+system_status.loaded:  equ $44 ; 'D'
+
+system_status:
+  db 0                     ;3DE4; 'X' ($58) = minimal system
+                                ; 'D' ($44) = system loaded
 calbas_flag:
-  db 0 ; 'G' ($47) = CALBAS executing; zero otherwise
+  db 0                     ;3DE5; 'G' ($47) = CALBAS executing;
+                                ; zero otherwise
 
   org $3DEF
 mapused:
