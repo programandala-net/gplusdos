@@ -1,14 +1,12 @@
-; Plus D Source
-
-; The Z80 source of the Plus D ZX Spectrum interface, ROM and RAM.
+; G+DOS Disassambled
 
 ; Original disassembly by Rudy Biesma (JRB), 2005-11:
 ; http://www.biehold.nl/rudy/plusd/plusd.htm
 ;
-; This edited version by:
-; Marcos Cruz (programandala.net), 2016-2017.
+; This edited version in source form by:
+; Marcos Cruz (programandala.net), 2016, 2017.
 
-; Last modified: 201702140002
+; Last modified: 201702140037
 
 ; ===============================================================
 ; ZX Spectrum symbols 

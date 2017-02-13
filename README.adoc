@@ -1,10 +1,10 @@
-= Plus D Source
-:revdate: 2017-02-13
+= G+DOS _Disassembled_
+:revdate: 2017-02-14
 :author: Marcos Cruz (programandala.net)
 
 The goal of this project is to convert the
-http://www.biehold.nl/rudy/plusd/plusd.htm[disassembly of the Plus D
-interface, done by JRB], from HTML to Z80 source file suitable for
+http://www.biehold.nl/rudy/plusd/plusd.htm[disassembly of G+DOS (by
+Rudy Biesma)], from HTML to a complete Z80 source suitable for
 studying, editing and reassembling, in order to improve the G+DOS
 support of http://programandala.net/en.program.solo_forth.html[Solo
 Forth].
