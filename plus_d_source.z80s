@@ -8,7 +8,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-2017.
 
-; Last modified: 201702132320
+; Last modified: 201702132328
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -2483,7 +2483,7 @@ match_n3:
 
 ofsm_2:
   push ix                  ;0AD9; Store disk channel pointer.
-  ld   a,($3DEF)           ;0ADB; This is (MAPUSED), the (in)famous
+  ld   a,(mapused)         ;0ADB; This is (MAPUSED), the (in)famous
                                 ; @7663. It holds the number of files
                                 ; which are using the disk bitmap.
   cp   0                   ;0ADE;
@@ -2554,9 +2554,9 @@ ofsm_fdesc:
   ld   (ix+32),d           ;0B44; Store its sector address also into the
   ld   (ix+33),e           ;0B47; file entry space.
   call res_rpt             ;0B4A; Reset RPT.
-  ld   a,($3DEF)           ;0B4D; Increment (MAPUSED), there is one more
+  ld   a,(mapused)         ;0B4D; Increment (MAPUSED), there is one more
   inc  a                   ;0B50; file which uses the disk bitmap.
-  ld   ($3DEF),a           ;0B51;
+  ld   (mapused),a         ;0B51;
   xor  a                   ;0B54; Return with Zero flag set to signal
   ret                      ;0B55; 'successfull'.
 
@@ -2569,9 +2569,9 @@ ofsm_fdesc:
 
 dec_mapuse:
   push af                  ;0B56;
-  ld   a,($3DEF)           ;0B57; Decrease (MAPUSED), the number of
+  ld   a,(mapused)         ;0B57; Decrease (MAPUSED), the number of
   dec  a                   ;0B5A; files using the disk bitmap.
-  ld   ($3DEF),a           ;0B5B;
+  ld   (mapused),a         ;0B5B;
   pop  af                  ;0B5E;
   ret                      ;0B5F;
 
@@ -5372,7 +5372,7 @@ d_error:
   call bord_rest           ;182D; Restore normal border colour.
   ld   ($3DED),de          ;1830; Track & sector with sector error.
   xor  a                   ;1834;
-  ld   (flags3),a           ;1835; Clear FLAGS3.
+  ld   (flags3),a          ;1835; Clear FLAGS3.
   pop  hl                  ;1838; Fetch return address.
   ld   de,(d_err_sp)       ;1839; Fetch (D_ERR_SP).
   ld   a,d                 ;183D;
@@ -5787,7 +5787,7 @@ reset_vars:
   ld   a,b                 ;20B2;
   or   c                   ;20B3;
   jr   nz,reset_vars       ;20B4;
-  ld   (flags3),a           ;20B6; Clear FLAGS3.
+  ld   (flags3),a          ;20B6; Clear FLAGS3.
   ld   ix,dfca             ;20B9;
   pop  af                  ;20BD; Fetch the command.
   ld   ($3DFF),a           ;20BE; Store it.
@@ -7768,7 +7768,7 @@ move_run4:
 
 move_run5:
   xor  a                   ;2B75; Clear FLAGS3.
-  ld   (flags3),a           ;2B76;
+  ld   (flags3),a          ;2B76;
   ld   hl,(23631)          ;2B79; Store current (CHANS).
   push hl                  ;2B7C;
   call swap_ufias          ;2B7D; Exchange the UFIA's.
@@ -8287,8 +8287,8 @@ clear_2:
   jr   c,clear_2           ;2E4F; been CLOSEd.
   call recl_temp           ;2E51; Reclaim temporary channels.
   xor  a                   ;2E54;
-  ld   ($3DEF),a           ;2E55; Clear 'MAP_USED' (=POKE @7663,0).
-  ld   (flags3),a           ;2E58; Clear FLAGS3.
+  ld   (mapused),a         ;2E55; Clear 'MAP_USED' (=POKE @7663,0).
+  ld   (flags3),a          ;2E58; Clear FLAGS3.
   jp   the_end             ;2E5B; Finished.
 
 ; ----------------------------------------------
@@ -8955,6 +8955,7 @@ flags3:
   defs 510
 
 ; ----------------------------------------------
+; Internal variables
 
   org $3DD6
 d_ch_add:
@@ -8964,11 +8965,15 @@ sectors_used:
 control_port_status:
   db 0                     ;3DDA; control port status (of port 239)
 
-; ----------------------------------------------
-
   org $3DE5
 calbas_flag:
   db 0 ; 'G' ($47) = CALBAS executing; zero otherwise
+
+  org $3DEF
+mapused:
+  db 0                     ;3DEF; Number of files which are using
+                                ; the disk bitmap. When it reaches 0
+                                ; the bitmap has to be rebuild.
 
 ; ----------------------------------------------
 ; UFIA1 (User File Information Area 1)
