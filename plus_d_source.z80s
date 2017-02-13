@@ -8,7 +8,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-2017.
 
-; Last modified: 201702131843
+; Last modified: 201702131907
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -689,7 +689,7 @@ clr_ram:
   ld   a,$58               ;02D7; Signal 'minimal' system
   ld   ($3DE4),a           ;02D9;
   ld   hl,275              ;02DC; Disk buffer offset.
-  ld   ($3AD2),hl          ;02DF;
+  ld   ($3AD2),hl          ;02DF; XXX FIXME -- in DFCA?
   ret                      ;02E2;
 
   push bc                  ;02E3; Leftover routine?
@@ -904,7 +904,7 @@ run:
   ld   a,1                 ;0383; Signal 'drive 1 is being used'.
   ld   (ix+11),a           ;0385;
   ld   a,1                 ;0388; Set drive 1.
-  ld   ($3DDA),a           ;038A; Store it in the control port state.
+  ld   (control_port_status),a ;038A; Store it in the control port state.
   out  (239),a             ;038D; Activate.
   call rest                ;038F; Move drive head to track 0.
   ld   hl,sys_descr        ;0392; Copy the file description to UFIA1.
@@ -1711,18 +1711,18 @@ test_drv2:
 
 set_drvsd:
   ld   b,(ix+11)           ;071C; Fetch hardware drive representation.
-  ld   a,($3DDA)           ;071F; Fetch current control port status.
+  ld   a,(control_port_status) ;071F; Fetch current control port status.
   and  %00000011           ;0722; Keep only drive 1&2 select bits.
   cp   b                   ;0724; Set Zero flag if drive isn't changed.
   push af                  ;0725;
-  ld   a,($3DDA)           ;0726; Fetch current control port status
+  ld   a,(control_port_status) ;0726; Fetch current control port status
   and  %01111100           ;0729; again. Mask drive and side select bits.
   ld   c,a                 ;072B; Store result temporary.
   ld   a,d                 ;072C; Fetch track.
   and  %10000000           ;072D; Only keep side select.
   or   b                   ;072F; Include drive select.
   or   c                   ;0730; Include all other bits.
-  ld   ($3DDA),a           ;0731; Set current control port status.
+  ld   (control_port_status),a ;0731; Set current control port status.
   out  (239),a             ;0734; Activate settings.
   pop  af                  ;0736; Get Zero flag.
   ret  z                   ;0737; Exit if drive hasn't changed.
@@ -2222,7 +2222,7 @@ mk_all6:
 drv_cap:
   push hl                  ;0985;
   ld   hl,traks1           ;0986; This is TRAKS1, drive 1's capacity.
-  ld   a,($3DDA)           ;0989; Fetch current control port state.
+  ld   a,(control_port_status) ;0989; Fetch current control port state.
   bit  0,a                 ;098C;
   jr   nz,drv_cap1         ;098E; Jump if drive 1 selected.
   inc  hl                  ;0990; Otherwise point to TRAKS2.
@@ -3206,11 +3206,11 @@ sel_drive:
 sel_drive1:
   ld   b,a                 ;0E42;
   ld   ($3ACE),a           ;0E43;
-  ld   a,($3DDA)           ;0E46; Fetch current control port state.
+  ld   a,(control_port_status) ;0E46; Fetch current control port status.
   and  $FC                 ;0E49; Drop the drive select bits.
   or   b                   ;0E4B; Use the new drive.
-  ld   ($3DDA),a           ;0E4C; Exit setting both current control port
-  out  (239),a             ;0E4F; state and the control port itself.
+  ld   (control_port_status),a ;0E4C; Exit setting both current control port
+  out  (239),a             ;0E4F; status and the control port itself.
   ret                      ;0E51;
 
 ; ----------------------------------------------
@@ -3850,7 +3850,7 @@ find_f4:
   ld   a,b                 ;117F;
   cp   1                   ;1180;
   jr   z,find_f5           ;1182; Jump if second entry handled.
-  ld   a,($3DDA)           ;1184;
+  ld   a,(control_port_status) ;1184;
   and  $04                 ;1187; Jump if using single density, i.e.
   jr   nz,find_f5          ;1189; each sector holds one entry.
   ld   bc,256              ;118B; Otherwise examine second entry.
@@ -4849,7 +4849,7 @@ pntp_1:
   jr   nz,pntp_1           ;15DF;
   ld   a,($3E4F)           ;15E1; Send the code to the printer port.
   out  (247),a             ;15E4;
-  ld   a,($3DDA)           ;15E6; Fetch current control port status.
+  ld   a,(control_port_status) ;15E6; Fetch current control port status.
   or   $40                 ;15E9; Give a STROBE.
   out  (239),a             ;15EB;
   and  $BF                 ;15ED; Reset STROBE.
@@ -6362,7 +6362,7 @@ to_search2:
   ld   a,h                 ;2402;
   cp   1                   ;2403;
   jr   z,to_nxtsec         ;2405; Jump if second entry.
-  ld   a,($3DDA)           ;2407; Fetch current control port status.
+  ld   a,(control_port_status) ;2407; Fetch current control port status.
   and  $04                 ;240A;
   jr   nz,to_nxtsec        ;240C; Jump with single density.
   ld   hl,256              ;240E; Otherwise offset is for second entry.
@@ -6753,7 +6753,7 @@ expt_devn2:
 ; This subroutine is used whenever the last used drive is to be used again.
 
 last_drv:
-  ld   a,($3DDA)           ;2604; Fetch current control port status.
+  ld   a,(control_port_status) ;2604; Fetch current control port status.
   and  $01                 ;2607; Keep only drive select.
   add  a,$01               ;2609; A holds 1 for drive 2, 2 for drive 1.
   xor  $03                 ;260B; 1 becomes 2, 2 becomes 1.
@@ -6980,8 +6980,8 @@ xfile_1:
   defw rom_find_int2       ;273D;
 xfile_2:
   ld   ($3E13),bc          ;273F; Store it in FILE_ADDR1
-  ld   bc,510              ;2743; Length of execute file on double
-  ld   a,($3DDA)           ;2746; density disks.
+  ld   bc,510              ;2743; Length of execute file on double density disks.
+  ld   a,(control_port_status)  ;2746;
   and  $04                 ;2749;
   jr   z,xfile_3           ;274B; Jump if double density selected.
   ld   bc,254              ;274D; Otherwise this is the length of the
@@ -8951,10 +8951,11 @@ flags3:
 
   org $3DD6
 d_ch_add:
-  dw 0
-
-  org $3DD8 ; XXX TMP -- useless
-sectors_used: ; XXX TODO --
+  dw 0                     ;3DD6;
+sectors_used:
+  dw 0                     ;3DD8;
+control_port_status:
+  db 0                     ;3DDA; control port status (of port 239)
 
 ; ----------------------------------------------
 
