@@ -8,7 +8,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-2017.
 
-; Last modified: 201702131652
+; Last modified: 201702131827
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -76,7 +76,7 @@ start2:
 f_addr:
   ex   (sp),hl             ;0018; Exchange RETurn address and HL.
   push hl                  ;0019; Re-stack RETurn address.
-  ld   hl,$3ACF            ;001A; Address of FLAGS3.
+  ld   hl,flags3           ;001A; Address of FLAGS3.
   ret                      ;001D;
   defb $00,$00             ;001E; Unused locations.
 
@@ -431,7 +431,7 @@ start_4:
   cp   $47                 ;016B; ROM routine.
   jr   nz,start_5          ;016D; Jump if it didn't.
   xor  a                   ;016F;
-  ld   ($3ACF),a           ;0170; Clear CALBAS executing.
+  ld   (flags3),a          ;0170; Clear CALBAS executing.
   pop  hl                  ;0173; Fetch RETurn address.
   rst  calbas              ;0174; This CALL's a LD A,(HL) in the Spectrum
   defw $007B               ;0175; ROM, so the error code is fetched.
@@ -949,7 +949,7 @@ run_chksum:
   pop  af                  ;03DD;
   ld   (hl),a              ;03DE;
   xor  a                   ;03DF;
-  ld   ($3ACF),a           ;03E0; Clear FLAGS3.
+  ld   (flags3),a          ;03E0; Clear FLAGS3.
   ld   (d_err_sp),a        ;03E3;
   rst  calbas              ;03E6; Clear the whole display.
   defw rom_cl_all          ;03E7;
@@ -5372,7 +5372,7 @@ d_error:
   call bord_rest           ;182D; Restore normal border colour.
   ld   ($3DED),de          ;1830; Track & sector with sector error.
   xor  a                   ;1834;
-  ld   ($3ACF),a           ;1835; Clear FLAGS3.
+  ld   (flags3),a           ;1835; Clear FLAGS3.
   pop  hl                  ;1838; Fetch return address.
   ld   de,(d_err_sp)       ;1839; Fetch (D_ERR_SP).
   ld   a,d                 ;183D;
@@ -5787,7 +5787,7 @@ reset_vars:
   ld   a,b                 ;20B2;
   or   c                   ;20B3;
   jr   nz,reset_vars       ;20B4;
-  ld   ($3ACF),a           ;20B6; Clear FLAGS3.
+  ld   (flags3),a           ;20B6; Clear FLAGS3.
   ld   ix,dfca             ;20B9;
   pop  af                  ;20BD; Fetch the command.
   ld   ($3DFF),a           ;20BE; Store it.
@@ -7768,7 +7768,7 @@ move_run4:
 
 move_run5:
   xor  a                   ;2B75; Clear FLAGS3.
-  ld   ($3ACF),a           ;2B76;
+  ld   (flags3),a           ;2B76;
   ld   hl,(23631)          ;2B79; Store current (CHANS).
   push hl                  ;2B7C;
   call swap_ufias          ;2B7D; Exchange the UFIA's.
@@ -8288,7 +8288,7 @@ clear_2:
   call recl_temp           ;2E51; Reclaim temporary channels.
   xor  a                   ;2E54;
   ld   ($3DEF),a           ;2E55; Clear 'MAP_USED' (=POKE @7663,0).
-  ld   ($3ACF),a           ;2E58; Clear FLAGS3.
+  ld   (flags3),a           ;2E58; Clear FLAGS3.
   jp   the_end             ;2E5B; Finished.
 
 ; ----------------------------------------------
@@ -8934,7 +8934,9 @@ dfca:
                         ; bit 4 : load
                         ; bit 0 : other
   defw 0
-  defw 0
+flags3:
+  defb 0                ; FLAGS3 ($3ACF): CALBAS executing?
+  defb 0
   defb 0  ; current track
   defb 0  ; current sector
 
