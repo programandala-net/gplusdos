@@ -8,7 +8,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-2017.
 
-; Last modified: 201702131349
+; Last modified: 201702131353
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -863,7 +863,7 @@ default_GREYSCALE
 
 ram2063:
   defw p_all               ;0355; Address of 'output' routine for "P".
-ram2065:
+default_enter_flag:
   defb $00                 ;0357; The 'ENTER' flag.
 default_d_err_sp:
   defw $0000               ;0358; D_ERR_SP
@@ -4552,15 +4552,15 @@ p_noback:
   cp   13                  ;1459; This is "ENTER" or "CARRIAGE RETURN".
   jr   c,p_escape          ;145B; Jump with codes < 13.
   jr   nz,p_noenter        ;145D; Jump with codes > 13.
-  ld   hl,$2065            ;145F; This flag, when set, indicates that a
+  ld   hl,enter_flag       ;145F; This flag, when set, indicates that a
   bit  1,(hl)              ;1462; newline has already been send to the
-                                         ; printer. I.e. the previous line was
-                                         ; full (see $15C0).
+                                ; printer. I.e. the previous line was
+                                ; full (see $15C0).
   res  1,(hl)              ;1464; Reset the flag.
   ret  nz                  ;1466; Return if this newline has been send
                                          ; already.
 p_newline:
-  ld   hl,$2065            ;1467; Signal 'newline has been send'.
+  ld   hl,enter_flag       ;1467; Signal 'newline has been send'.
   res  1,(hl)              ;146A;
   ld   hl,$3E4E            ;146C;
   ld   (hl),0              ;146F; Set current position to 0.
@@ -4792,7 +4792,7 @@ p_graph3:
 ; Now deal with the printing of normal ASCII characters.
 
 p_ascii:
-  ld   hl,$2065            ;1582;
+  ld   hl,enter_flag       ;1582;
   res  1,(hl)              ;1585; Reset 'newline already send' flag.
   ld   ($3E4F),a           ;1587;
   ld   a,($200A)           ;158A; Fetch (GRAPH), when it's 1 the +D
@@ -4831,7 +4831,7 @@ p_up_pos:
   sub  (hl)                ;15BE;
   ret  c                   ;15BF; Return if the line isn't full yet.
   call p_newline           ;15C0; Otherwise someone has forgotten that
-  ld   hl,$2065            ;15C3; printer lines aren't endless, so print
+  ld   hl,enter_flag       ;15C3; printer lines aren't endless, so print
   set  1,(hl)              ;15C6; a 'NEWLINE' and signal 'ignore next
   ret                      ;15C8; character if it is a CR'.
 
@@ -5701,6 +5701,7 @@ greyscale:
   defb %00101011           ;2062;
 
   defw p_all               ;2063; Address of 'output' routine for "P".
+enter_flag:
   defb $00                 ;2065; The 'ENTER' flag.
 d_err_sp:
   defw $0000               ;2066; D_ERR_SP
