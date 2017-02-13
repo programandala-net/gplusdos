@@ -8,7 +8,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-2017.
 
-; Last modified: 201702112340
+; Last modified: 201702131349
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -250,12 +250,12 @@ snapshot:
   push ix                  ;007C; Save the index registers.
   push iy                  ;007E;
   di                       ;0080; Disable interrupts in case $0066 was
-                                         ; called normally. When a NMI occurs the
-                                         ; Z80 disables interrupts.
+                                ; called normally. When a NMI occurs the
+                                ; Z80 disables interrupts.
   ld   hl,snap_exit        ;0081;
   push hl                  ;0084; RETurn address from snapshot.
-  ld   ($2066),sp          ;0085; Store current stackpointer at D_ERR_SP
-                                         ; so an error will activate SNAP_EXIT.
+  ld   (d_err_sp),sp       ;0085; Store current stackpointer at D_ERR_SP
+                                ; so an error will activate SNAP_EXIT.
 snap_keys:
   ld   bc,$F7FE            ;0089; Keyboard port and key 1-5 I/O address.
   in   e,(c)               ;008C;
@@ -285,7 +285,7 @@ snap_key1:
 snap_exit:
   di                       ;00B1;
   ld   hl,$0000            ;00B2; Clear D_ERR_SP.
-  ld   ($2066),hl          ;00B5;
+  ld   (d_err_sp),hl       ;00B5;
   call bord_rest           ;00B8;
   ld   sp,$3FEA            ;00BB;
   pop  iy                  ;00BE; Restore the index registers.
@@ -446,7 +446,7 @@ start_4:
   rst  calbas              ;0174; This CALL's a LD A,(HL) in the Spectrum
   defw $007B               ;0175; ROM, so the error code is fetched.
   ld   (23610),a           ;0177; Store the error code in ERR_NR.
-  ld   hl,($2066)          ;017A; Fetch D_ERR_SP.
+  ld   hl,(d_err_sp)       ;017A; Fetch D_ERR_SP.
   ld   a,h                 ;017D;
   or   l                   ;017E; Jump if D_ERR_SP was zero, that is when
   jp   z,spec_err1         ;017F; the 'main' ROM has to handle the error.
@@ -865,7 +865,7 @@ ram2063:
   defw p_all               ;0355; Address of 'output' routine for "P".
 ram2065:
   defb $00                 ;0357; The 'ENTER' flag.
-ram2066:
+default_d_err_sp:
   defw $0000               ;0358; D_ERR_SP
 
 
@@ -958,7 +958,7 @@ run_chksum:
   ld   (hl),a              ;03DE;
   xor  a                   ;03DF;
   ld   ($3ACF),a           ;03E0; Clear FLAGS3.
-  ld   ($2066),a           ;03E3;
+  ld   (d_err_sp),a        ;03E3;
   rst  calbas              ;03E6; Clear the whole display.
   defw rom_cl_all          ;03E7;
   call take_prtr           ;03E9; If necessary takeover the "P" channel.
@@ -1543,7 +1543,7 @@ set_trksec:
   jr   nz,set_trk1         ;0669; Jump if DE<>0.
   call test_2              ;066B; Test the .. flag.
   jp   z,rep_27            ;066E; Give 'END of file' error when reset.
-  ld   sp,($2066)          ;0671; Otherwise clear the machine stack.
+  ld   sp,(d_err_sp)       ;0671; Otherwise clear the machine stack.
   ret                      ;0675;
 set_trk1:
   call set_drvsd           ;0676; Select drive, side and density.
@@ -4215,7 +4215,7 @@ hook_32:
 
 md_error:
   call bord_rest           ;12C3; Restore the border colour.
-  ld   hl,($2066)          ;12C6;
+  ld   hl,(d_err_sp)       ;12C6;
   ld   a,h                 ;12C9;
   or   l                   ;12CA;
   jr   z,md_err1           ;12CB; Jump if the stack isn't to be cleared.
@@ -5282,7 +5282,7 @@ prt_dig3:
 ; holds 32, signalling 'error during hook/command code execution' as usual.
 
 po_msg:
-  ld   hl,($2066)          ;177E; Fetch (D_ERR_SP).
+  ld   hl,(d_err_sp)       ;177E; Fetch (D_ERR_SP).
   ld   a,h                 ;1781;
   or   l                   ;1782;
   jr   z,po_msg1           ;1783; Jump if it isn't used.
@@ -5382,7 +5382,7 @@ d_error:
   xor  a                   ;1834;
   ld   ($3ACF),a           ;1835; Clear FLAGS3.
   pop  hl                  ;1838; Fetch return address.
-  ld   de,($2066)          ;1839; Fetch (D_ERR_SP).
+  ld   de,(d_err_sp)       ;1839; Fetch (D_ERR_SP).
   ld   a,d                 ;183D;
   or   e                   ;183E;
   ld   a,(hl)              ;183F; Fetch error code.
@@ -5392,7 +5392,7 @@ d_error:
 ; the calling routine by setting the carry flag. The A register holds the
 ; error code.
 
-  ld   sp,($2066)          ;1842; Clear the machine stack.
+  ld   sp,(d_err_sp)       ;1842; Clear the machine stack.
   scf                      ;1846; Carry set to signal 'error'.
   ret                      ;1847;
 
@@ -5702,6 +5702,7 @@ greyscale:
 
   defw p_all               ;2063; Address of 'output' routine for "P".
   defb $00                 ;2065; The 'ENTER' flag.
+d_err_sp:
   defw $0000               ;2066; D_ERR_SP
   defb $00                 ;2067;
 
@@ -6121,7 +6122,7 @@ code_cont:
   ld   d,(hl)              ;22AA;
   ld   hl,hook_ret         ;22AB; Return address after completion of
   push hl                  ;22AE; code.
-  ld   ($2066),sp          ;22AF; Set D_ERR_SP.
+  ld   (d_err_sp),sp       ;22AF; Set D_ERR_SP.
   ex   de,hl               ;22B3;
   ld   de,($3AC5)          ;22B4; Restore DE and A.
   ld   a,( $3E4F)          ;22B8;
@@ -6142,7 +6143,7 @@ comm_code:
 hook_ret:
   push hl                  ;22C8;
   ld   hl,$0000            ;22C9;
-  ld   ($2066),hl          ;22CC; Clear D_ERR_SP.
+  ld   (d_err_sp),hl       ;22CC; Clear D_ERR_SP.
   pop  hl                  ;22CF;
   call bord_rest           ;22D0; Return to the calling routine with the
   jp   unpage_1            ;22D3; 'main' ROM paged in.
@@ -6157,7 +6158,7 @@ hook_ret:
 patch:
   pop  hl                  ;22D6; Drop 'HOOK_RET' return address.
   ld   hl,$0000            ;22D7; Clear 'D_ERR_SP'.
-  ld   ($2066),hl          ;22DA;
+  ld   (d_err_sp),hl       ;22DA;
   ret                      ;22DD; HL=0, meaning 'this is a +D'.
 
 ; ----------------------------------------------
@@ -8873,7 +8874,7 @@ cl_patch:
 
 op_t_patch:
   push hl                  ;312A;
-  ld   hl,($2066)          ;312B;
+  ld   hl,(d_err_sp)       ;312B;
   ld   a,h                 ;312E;
   or   l                   ;312F; Jump back to the 'OP_TEMP' routine if
   pop  hl                  ;3130; 'D_ERR_SP' is zero (this isn't the case
