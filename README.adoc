@@ -1,28 +1,20 @@
 = Plus D Source
-:revdate: 2016-03-05
+:revdate: 2017-02-13
 :author: Marcos Cruz (programandala.net)
 
 The goal of this project is to convert the
 http://www.biehold.nl/rudy/plusd/plusd.htm[disassembly of the Plus D
-interface, done by JRB], from HTML into a single source code file more
-suitable for studying and editing it with the Vim editor.
+interface, done by JRB], from HTML to Z80 source file suitable for
+studying, editing and reassembling, in order to improve the G+DOS
+support of http://programandala.net/en.program.solo_forth.html[Solo
+Forth].
+
+== Tools used
+
+- Arno Unkrig's http://www.mbayer.de/html2text/files.shtml[html2text]
+for the first conversion.
+- Bram Moolenaar's http://vim.org/[Vim] for the rest.
 
 == History
 
-2016-03-05::
-
-- Copied the original HTML files, renamed them after their initial ROM
-  addresses, and converted them to one single text file with the help
-  of Arno Unkrig's `html2text`.
-- Converted routine titles and descriptions to Z80 assembler comments.
-- Fixed the splitted lines.
-- Changed the notation of hex numbers.
-- Added semicolon to line code comments.
-- Removed hex numbers used in the HTML links, leave just the labels.
-- Renamed some labels which used illegal characters.
-
-2016-03-06::
-
-- Added DFCA, UFIA1 and UFIA2.
-- Moved the assembling addresses to the line comments, thus getting an
-  actual Z80 source.
+The project started on 2016-03-05.
