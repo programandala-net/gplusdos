@@ -8,7 +8,7 @@
 ; This edited version by:
 ; Marcos Cruz (programandala.net), 2016-2017.
 
-; Last modified: 201702131840
+; Last modified: 201702131843
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -379,7 +379,7 @@ d_rombank:
 ; address.  In that case a CALBAS to that address is made.
 
 start_3:
-  ld   ($3DD6),hl          ;013B; +D's CH_ADD (D_CH_ADD).
+  ld   (d_ch_add),hl       ;013B; +D's CH_ADD (D_CH_ADD).
   ld   ($3E4F),a           ;013E;
   pop  hl                  ;0141; Get RETurn address (usually points to
   push hl                  ;0142; the error code).
@@ -592,7 +592,7 @@ rclm_num:
   rst  calbas              ;025C; Reclaim the 6 bytes forming a number
   defw rom_reclaim_2       ;025D; and the 'number marker'.
   push hl                  ;025F;
-  ld   de,($3DD6)          ;0260; Fetch D_CH_ADD.
+  ld   de,(d_ch_add)       ;0260; Fetch D_CH_ADD.
   and  a                   ;0264; Jump if the number bytes reclaimed were
   sbc  hl,de               ;0265; after the character pointed to by
   jr   nc,nxt_1            ;0267; D_CH_ADD.
@@ -600,7 +600,7 @@ rclm_num:
   ld   bc,6                ;026A;
   and  a                   ;026D; The character pointed by D_CH_ADD has
   sbc  hl,bc               ;026E; been moved '6' bytes down.
-  ld   ($3DD6),hl          ;0270; Update D_CH_ADD.
+  ld   (d_ch_add),hl       ;0270; Update D_CH_ADD.
 nxt_1:
   pop  hl                  ;0273;
   pop  bc                  ;0274;
@@ -1170,7 +1170,7 @@ poke_fetch
 ; be supressed.  This is indicated by a non zero value in 23728.
 
 spec_err:
-  ld   hl,($3DD6)          ;04F0; Fetch D_CH_ADD.
+  ld   hl,(d_ch_add)       ;04F0; Fetch D_CH_ADD.
   ld   (23645),hl          ;04F3; Restore CH_ADD.
   ld   (23647),hl          ;04F6; Restore X_PTR.
 spec_err1:
@@ -8949,8 +8949,11 @@ flags3:
 
 ; ----------------------------------------------
 
-  org $3DD8
+  org $3DD6
+d_ch_add:
+  dw 0
 
+  org $3DD8 ; XXX TMP -- useless
 sectors_used: ; XXX TODO --
 
 ; ----------------------------------------------
