@@ -6,7 +6,7 @@
 ; This edited version in source form by:
 ; Marcos Cruz (programandala.net), 2016, 2017.
 
-; Last modified: 201702140037
+; Last modified: 201702140136
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -30,9 +30,6 @@ power_up:
   ld   bc,$0101            ;0001;
   nop                      ;0004;
   jp   power_up2           ;0005; Jump to main routine.
-
-  ; XXX FIXME -- Pasmo assembler error: why error `power_up2` is not defined?
-  ; It seems the same happens with all of the labels.
 
 ; ----------------------------------------------
 ; THE 'USE G+DOS' RESTART
@@ -687,7 +684,7 @@ clr_ram:
   ld   a,system_status.minimal ;02D7; Signal 'minimal' system
   ld   (system_status),a   ;02D9;
   ld   hl,275              ;02DC; Disk buffer offset.
-  ld   ($3AD2),hl          ;02DF; XXX FIXME -- in DFCA?
+  ld   ($3AD2),hl          ;02DF;
   ret                      ;02E2;
 
   push bc                  ;02E3; Leftover routine?
@@ -8931,23 +8928,28 @@ disk_bitmap:
   org $3AC3
 
 dfca:
-  defw 0  ; length of file in sectors
-  defw 0  ; bytes left to load or save
-  defb 0  ; some flags
-  defw 0  ; load/save address
-  defb 0  ; drive
-  defb 0  ; operation flag
+  defw 0  ;3AC3; length of file in sectors
+  defw 0  ;3AC5; bytes left to load or save
+  defb 0  ;3AC7; some flags
+  defw 0  ;3AC8; load/save address
+  defb 0  ;3ACA; drive
+  defb 0  ;3ACB; operation flag
                         ; bit 7 : verify
                         ; bit 6 : merge
                         ; bit 5 : save
                         ; bit 4 : load
                         ; bit 0 : other
-  defw 0
+  defw 0  ;3ACC;
+  defb 0  ;3ACE;
 flags3:
-  defb 0                ; FLAGS3 ($3ACF)
-  defb 0
-  defb 0  ; current track
-  defb 0  ; current sector
+  defb 0  ;3ACF; FLAGS3 
+
+  defb 0  ;3AD0; current track  ; XXX TODO -- or RPT?
+  defb 0  ;3AD1: current sector
+
+  defw 0  ;3AD2;
+
+  defw 0  ;3AD4; XXX TODO -- track and sector number, backup?
 
 ; ----------------------------------------------
 ; Buffer for EXECUTE (type 11) files
