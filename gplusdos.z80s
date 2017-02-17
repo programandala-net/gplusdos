@@ -6,7 +6,7 @@
 ; This edited version in source form by:
 ; Marcos Cruz (programandala.net), 2016, 2017.
 
-; Last modified: 201702140136
+; Last modified: 201702170132
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -8952,6 +8952,13 @@ flags3:
   defw 0  ;3AD4; XXX TODO -- track and sector number, backup?
 
 ; ----------------------------------------------
+  org $3BD6
+
+sector_buffer:
+
+  defs 256
+
+; ----------------------------------------------
 ; Buffer for EXECUTE (type 11) files
 
   org $3DB6
@@ -8992,14 +8999,64 @@ mapused:
 
   org $3E01
 
-ufia1:   ; XXX TODO --
+ufia1:
+
+  ; XXX TODO -- check; replace literals with field symbols
+
+ufia1.dstr1:
+  defb 0                   ;3E01; drive: 1, 2 or '*'
+ufia1.fstr1:
+  defb 0                   ;3E02; file directory number
+ufia1.sstr1:
+  defb 0                   ;3E03; stream number
+ufia1.lstr1:
+  defb 0                   ;3E04; device: "D" or "d"
+ufia1.nstr1:
+  defb 0                   ;3E05; directory description
+ufia1.nstr2:
+  defs 10                  ;3E06; file name
+ufia1.hd00:
+  defb 0                   ;3E10; file type
+ufia1.hd0b:
+  defw 0                   ;3E11; file length
+ufia1.hd0d:
+  defw 0                   ;3E13; file start address
+ufia1.hd0f:
+  defw 0                   ;3E15; BASIC length without variables
+ufia1.hd11:
+  defw 0                   ;3E17; BASIC autorun line
 
 ; ----------------------------------------------
 ; UFIA2 (User File Information Area 2)
 
   org $3E1A
 
-ufia2:   ; XXX TODO --
+ufia2:
+
+  ; XXX TODO -- check; replace literals with field symbols
+
+ufia2.dstr1:
+  defb 0                   ;3E1A; drive: 1, 2 or '*'
+ufia2.fstr1:
+  defb 0                   ;3E1B; file directory number
+ufia2.sstr1:
+  defb 0                   ;3E1C; stream number
+ufia2.lstr1:
+  defb 0                   ;3E1D; device: "D" or "d"
+ufia2.nstr1:
+  defb 0                   ;3E1E; directory description
+ufia2.nstr2:
+  defs 10                  ;3E1F; file name
+ufia2.hd00:
+  defb 0                   ;3E29; file type
+ufia2.hd0b:
+  defw 0                   ;3E2A; file length
+ufia2.hd0d:
+  defw 0                   ;3E2C; file start address
+ufia2.hd0f:
+  defw 0                   ;3E2E; BASIC length without variables
+ufia2.hd11:
+  defw 0                   ;3E30; BASIC autorun line
 
 ; ----------------------------------------------
 ; Internal stack
