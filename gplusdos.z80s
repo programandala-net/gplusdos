@@ -6,7 +6,7 @@
 ; This edited version in source form by:
 ; Marcos Cruz (programandala.net), 2016, 2017.
 
-; Last modified: 201702170132
+; Last modified: 201703071116
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -1683,7 +1683,7 @@ ld_com_r2:
 ; hardware representation of the drive to be used.
 
 test_drv:
-  ld   a,(ufia1)           ;0702; Fetch drive number from UFIA1.
+  ld   a,(ufia1.dstr1)     ;0702; Fetch drive number from UFIA1.
 test_drv1:
   cp   1                   ;0705;
   jr   z,test_drv2         ;0707; Jump if drive one is to be used.
@@ -2792,7 +2792,7 @@ frmt_side1:
 
 frmt_done:
   call rest                ;0C79; Reset drive head.
-  ld   a,(ufia2)           ;0C7C;
+  ld   a,(ufia2.dstr1)     ;0C7C;
   cp   $FF                 ;0C7F;
   jr   z,frmt_chk          ;0C81; Jump if UFIA2 is empty.
 
@@ -2803,7 +2803,7 @@ frmt_copy:
   ld   hl,49152            ;0C83; Address of track buffer.
   ld   ($3AC5),hl          ;0C86; Store load address.
   ld   ($3AC8),hl          ;0C89; Store save address.
-  ld   a,(ufia2)           ;0C8C; Fetch source drive number from UFIA2.
+  ld   a,(ufia2.dstr1)     ;0C8C; Fetch source drive number from UFIA2.
   call test_drv1           ;0C8F; Check and set drive.
 frmt_c1:
   call rsad                ;0C92; Load a sector.
@@ -2818,7 +2818,7 @@ frmt_c1:
   call next_sec            ;0CA7; Compute next sector number.
   jr   nz,frmt_c1          ;0CAA; Jump if there is still a sector on this
                                 ; track.
-  ld   a,(ufia1)           ;0CAC; Fetch destination drive from UFIA1.
+  ld   a,(ufia1.dstr1)     ;0CAC; Fetch destination drive from UFIA1.
   call test_drv1           ;0CAF; Check and set drive.
 frmt_c2:
   push de                  ;0CB2; Store track and sector number.
@@ -6316,9 +6316,9 @@ to_exit:
 ; disc - press SPACE" are printed in turn.
 
 to_msg:
-  ld   a,(ufia1)           ;23CB; Fetch source drive.
+  ld   a,(ufia1.dstr1)     ;23CB; Fetch source drive.
   ld   b,a                 ;23CE;
-  ld   a,(ufia2)           ;23CF; Fetch destination drive.
+  ld   a,(ufia2.dstr1)     ;23CF; Fetch destination drive.
   cp   b                   ;23D2;
   ret  nz                  ;23D3; Return if they aren't equal.
   rst  calbas              ;23D4; Otherwise clear lower screen area.
@@ -6728,7 +6728,7 @@ expt_devn:
   call expt_num            ;25E9; Get the program number.
   ret  z                   ;25EC; Return if syntax checking.
   push af                  ;25ED;
-  ld   a,(ufia1)           ;25EE; Store program number.
+  ld   a,(ufia1)           ;25EE; Store program number. XXX TODO -- program number?
   ld   ($3E02),a           ;25F1;
   call last_drv            ;25F4; Drive is last drive.
   pop  af                  ;25F7;
@@ -6756,7 +6756,7 @@ last_drv:
   and  $01                 ;2607; Keep only drive select.
   add  a,$01               ;2609; A holds 1 for drive 2, 2 for drive 1.
   xor  $03                 ;260B; 1 becomes 2, 2 becomes 1.
-  ld   (ufia1),a           ;260D; Store drive number.
+  ld   (ufia1.dstr1),a     ;260D; Store drive number.
   ret                      ;2610;
 
 ; ----------------------------------------------
@@ -7237,7 +7237,7 @@ save:
   jr   nz,save_run         ;289D; Jump if the command wasn't 'SAVE @'.
   ld   ix,($3E15)          ;289F; Get address where sector is to be saved
   call get_tr_and_se       ;28A3; from. Get track and sector number.
-  ld   a,(ufia1)           ;28A6; Get drive number.
+  ld   a,(ufia1.dstr1)     ;28A6; Get drive number.
   call hwsad               ;28A9; Write the sector.
   jp   the_end             ;28AC; Finished.
 
@@ -7319,7 +7319,7 @@ ld_vf_mr1:
   jr   nz,ld_etc_run       ;28F6; Jump if it wasn't a '@' command.
   ld   ix,($3E15)          ;28F8; Get address where sector is to be
   call get_tr_and_se       ;28FC; loaded. Get track and sector number.
-  ld   a,(ufia1)           ;28FF; Get drive number.
+  ld   a,(ufia1.dstr1)     ;28FF; Get drive number.
   call hrsad               ;2902; Load the sector.
   jp   the_end             ;2905; Finished.
 
@@ -8044,7 +8044,7 @@ op_temp1:
   and  $5F                 ;2CF2; Clear bit 7 and make capital.
   cp   "D"                 ;2CF4;
   jr   nz,op_temp3         ;2CF6; Jump if this isn't a "D" channel.
-  ld   a,(ufia1)           ;2CF8; Fetch drive number.
+  ld   a,(ufia1.dstr1)     ;2CF8; Fetch drive number.
   cp   (ix+11)             ;2CFB; Jump if this channel uses a different
   jr   nz,op_temp3         ;2CFE; drive.
   push ix                  ;2D00;
