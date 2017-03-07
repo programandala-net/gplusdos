@@ -10,7 +10,7 @@
 ; This edited version in source form was prepared by Marcos Cruz
 ; (programandala.net), 2016, 2017, from the disassembly done by Rudy Biesma.
 
-; Last modified: 201703071427
+; Last modified: 201703071648
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -1686,18 +1686,18 @@ ld_com_r2:
 ; whenever the drive is specified in the A register. On exit (IX+11) holds the
 ; hardware representation of the drive to be used.
 
-test_drv:
+test_drive.ufia1:
   ld   a,(ufia1.dstr1)     ;0702; Fetch drive number from UFIA1.
-test_drv1:
+test_drive.a:
   cp   1                   ;0705;
-  jr   z,test_drv2         ;0707; Jump if drive one is to be used.
+  jr   z,test_drive.end    ;0707; Jump if drive one is to be used.
   cp   2                   ;0709; Otherwise give 'Wrong DRIVE' error if
   jp   nz,rep_22           ;070B; drive isn't drive two.
   ld   a,(traks2)          ;070E; Fetch (TRAKS2) system variable.
   cp   0                   ;0711;
   jp   z,rep_22            ;0713; Give error if drive isn't defined.
   ld   a,2                 ;0716; Select drive two.
-test_drv2:
+test_drive.end:
   ld   (ix+11),a           ;0718; Store hardware representation.
   ret                      ;071B;
 
@@ -2271,10 +2271,13 @@ prt_nam1:
 ;
 ; - bit 5 : Produce the disk bitmap.
 ;
-; - bit 6 : Find the first unused entry.  Note that some functions exclude
-; others. A return is made with DE holding the track and sector number of the
-; found entry, the data buffer holding the sector, RPT pointing to the entry
-; and the Zero flag signalling 'success' when set.
+; - bit 6 : Find the first unused entry.
+;
+; Note that some functions exclude others.
+;
+; A return is made with DE holding the track and sector number of the found
+; entry, the data buffer holding the sector, RPT pointing to the entry and the
+; Zero flag signalling 'success' when set.
 
 scan_cat:
   ld   ix,dfca             ;09A5;
@@ -2740,7 +2743,7 @@ load_1st:
 ; sectors.
 
 format_run:
-  call test_drv            ;0C2B; See if the drive is defined.
+  call test_drive.ufia1    ;0C2B; See if the drive is defined.
   call set_drvsd           ;0C2E;
   ld   b,20                ;0C31; First step 20 times inward.
 frmt_1:
@@ -2808,7 +2811,7 @@ frmt_copy:
   ld   ($3AC5),hl          ;0C86; Store load address.
   ld   ($3AC8),hl          ;0C89; Store save address.
   ld   a,(ufia2.dstr1)     ;0C8C; Fetch source drive number from UFIA2.
-  call test_drv1           ;0C8F; Check and set drive.
+  call test_drive.a        ;0C8F; Check and set drive.
 frmt_c1:
   call rsad                ;0C92; Load a sector.
   push de                  ;0C95; Store track and sector number.
@@ -2823,7 +2826,7 @@ frmt_c1:
   jr   nz,frmt_c1          ;0CAA; Jump if there is still a sector on this
                                 ; track.
   ld   a,(ufia1.dstr1)     ;0CAC; Fetch destination drive from UFIA1.
-  call test_drv1           ;0CAF; Check and set drive.
+  call test_drive.a        ;0CAF; Check and set drive.
 frmt_c2:
   push de                  ;0CB2; Store track and sector number.
   ld   hl,($3AC8)          ;0CB3; Fetch save address.
@@ -6229,7 +6232,7 @@ to_1:
   ld   hl,$0000            ;2342; Disk buffer offset $0000.
   ld   ($3DEB),hl          ;2345;
 to_2:
-  call test_drv            ;2348; Is the drive defined?
+  call test_drive.ufia1    ;2348; Is the drive defined?
   call to_search           ;234B; Search for a file to be copied.
   jp   nz,to_exit          ;234E; Jump if there are no files left.
   call load_1st            ;2351; Copy file description (directory
@@ -6288,7 +6291,7 @@ to_4:
   inc  de                  ;2397;
   djnz to_3                ;2398; Repeat for all 'normal' characters.
 to_5:
-  call test_drv            ;239A;
+  call test_drive.ufia1    ;239A;
   call ofsm_2              ;239D; Open the file for SAVEing.
   jr   nz,to_6             ;23A0; Jump if file existed already and the
                                 ; user didn't want to overwrite it.
@@ -6460,7 +6463,7 @@ cat_drv:
   rst  next_c              ;248E; Next character.
   call st_end_ram          ;248F; Confirm end of statement and exit when
                                 ; syntax checking.
-  call test_drv            ;2492; See if drive is defined.
+  call test_drive.ufia1    ;2492; See if drive is defined.
   ld   a,%00000010         ;2495; Signal 'small' CAT.
   jr   do_cat1             ;2497;
 
@@ -6471,7 +6474,7 @@ ext_cat_2499:
   rst  calbas              ;249C; Clear the screen by calling 'main' ROM
   defw rom_cl_all          ;249D; routine.
 do_cat:
-  call test_drv            ;249F; See if drive is defined.
+  call test_drive.ufia1    ;249F; See if drive is defined.
   ld   a,%00000100         ;24A2; Signal extended CAT.
 do_cat1:
   call cat_run             ;24A4; Give the CAT.
@@ -6573,7 +6576,7 @@ erase_250C:
 ; then SAVEd back to disc.
 
 erase_run:
-  call test_drv            ;2536; See if drive is defined.
+  call test_drive.ufia1    ;2536; See if drive is defined.
 erase_loop:
   call find_file_2559      ;2539; Find the file.
   jr   nz,not_found        ;253C; Jump if not found.
@@ -6627,7 +6630,7 @@ rename:
   cp   "M"                 ;2577;
   jp   nz,rep_10           ;2579; Give error if it wasn't a "M".
 rename_run:
-  call test_drv            ;257C; See if the drive is defined.
+  call test_drive.ufia1    ;257C; See if the drive is defined.
   call swap_ufias          ;257F; Swap UFIA 1 & 2 in the DFCA.
   call find_file_2559      ;2582; Give an error if the 2nd filename
   jp   z,rep_28            ;2585; already exists.
@@ -7235,7 +7238,7 @@ save:
   ld   ix,dfca             ;288B;
   call sign_5              ;288F; Signal 'SAVEing'.
   call expt_parms          ;2892; Evaluate & store all parameters.
-  call test_drv            ;2895; See if the drive is defined.
+  call test_drive.ufia1    ;2895; See if the drive is defined.
   ld   a,(ufia1.lstr1)     ;2898;
   cp   "@"                 ;289B;
   jr   nz,save_run         ;289D; Jump if the command wasn't 'SAVE @'.
@@ -7317,7 +7320,7 @@ ld_vf_mr:
   ld   ix,dfca             ;28E7;
   call expt_parms          ;28EB; Evaluate & store all parameters.
 ld_vf_mr1:
-  call test_drv            ;28EE; See if the drive is defined.
+  call test_drive.ufia1    ;28EE; See if the drive is defined.
   ld   a,(ufia1.lstr1)     ;28F1;
   cp   "@"                 ;28F4;
   jr   nz,ld_etc_run       ;28F6; Jump if it wasn't a '@' command.
@@ -7647,7 +7650,7 @@ format:
 format_1:
   call st_end_ram          ;2AD3; Confirm end of statement and exit when
                                 ; syntax checking.
-  call test_drv            ;2AD6; Check if the drive is defined.
+  call test_drive.ufia1    ;2AD6; Check if the drive is defined.
   rst  calbas              ;2AD9;
   defw rom_cls_lower       ;2ADA; Clear lower screen area.
   set  5,(iy+2)            ;2ADC; Signal 'lower screen has to be
@@ -7866,7 +7869,7 @@ op_move1:
   cp   "D"                 ;2BF4;
   jr   nz,op_move3         ;2BF6; Jump if it isn't a "D".
 op_move2:
-  call test_drv            ;2BF8; Check if the drive is defined.
+  call test_drive.ufia1    ;2BF8; Check if the drive is defined.
   call op_temp_d           ;2BFB; Open a temporary "D" channel.
   ld   a,(ufia1.nstr1)     ;2BFE; Save 'DIR_DESCR1' into 'PROG_NUM1'.
   ld   (ufia1.fstr1),a     ;2C01;
@@ -7988,7 +7991,7 @@ open_2:
   cp   "M"                 ;2CA0; Give an error if not opening a "M"
   jp   nz,rep_0            ;2CA2; channel.
 open_3:
-  call test_drv            ;2CA5; See if the drive is defined.
+  call test_drive.ufia1    ;2CA5; See if the drive is defined.
   ld   a,$0A               ;2CA8; Signal 'OPENTYPE file'.
   ld   (ufia1.nstr1),a     ;2CAA;
   call open_chan           ;2CAD; Open the channel.
@@ -8088,7 +8091,7 @@ op_temp4:
   call chan_spc            ;2D39; Create the room for the channel.
   call rpt_hl              ;2D3C; Make HL point to the CAT entry.
   pop  ix                  ;2D3F;
-  call test_drv            ;2D41; See if the drive is defined.
+  call test_drive.ufia1    ;2D41; See if the drive is defined.
   nop                      ;2D44;
   nop                      ;2D45;
   nop                      ;2D46;
@@ -8137,7 +8140,7 @@ op_temp6:
   ld   bc,787              ;2D8F; Length of OUTput channel.
   call chan_spc            ;2D92; Create the room for the channel.
   pop  ix                  ;2D95;
-  call test_drv            ;2D97; See if the drive is defined.
+  call test_drive.ufia1    ;2D97; See if the drive is defined.
   nop                      ;2D9A;
   nop                      ;2D9B;
   nop                      ;2D9C;
@@ -8567,7 +8570,7 @@ hxfer:
   ld   bc,24               ;2F91;
   ldir                     ;2F94; Transfer the UFIA to 'UFIA1'.
   ld   ix,dfca             ;2F96;
-  call test_drv            ;2F9A; Check if the specified drive is
+  call test_drive.ufia1    ;2F9A; Check if the specified drive is
   ret                      ;2F9D; defined.
 
 ; ----------------------------------------------
@@ -8677,7 +8680,7 @@ hrsad:
   push bc                  ;2FD4;
   push ix                  ;2FD5;
   ld   ix,dfca             ;2FD7;
-  call test_drv            ;2FDB; See if the drive held in the A register
+  call test_drive.ufia1    ;2FDB; See if the drive held in the A register
                                 ; is defined.
   call rsad                ;2FDE; Load the sector into the disk buffer.
   pop  hl                  ;2FE1;
@@ -8703,7 +8706,7 @@ hwsad:
   push ix                  ;2FF3;
   pop  hl                  ;2FF5;
   ld   ix,dfca             ;2FF6;
-  call test_drv            ;2FFA; See if the drive held in the A register
+  call test_drive.ufia1    ;2FFA; See if the drive held in the A register
   push de                  ;2FFD; is defined.
   ld   de,$3BD6            ;2FFE;
   ld   bc,512              ;3001; Sector length.
@@ -8911,7 +8914,7 @@ st_end_ram:
 ; code works.
 
 pcat:
-  call test_drv            ;3154; Drive defined?
+  call test_drive.ufia1    ;3154; Drive defined?
   ld   a,(ufia1.hd00)      ;3157; Get 'CAT' type.
   jp   cat_run             ;315A; Do the CAT.
 
