@@ -10,7 +10,7 @@
 ; This edited version in source form was prepared by Marcos Cruz
 ; (programandala.net), 2016, 2017, from the disassembly done by Rudy Biesma.
 
-; Last modified: 201703071156
+; Last modified: 201703071408
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -906,7 +906,7 @@ run:
   out  (239),a             ;038D; Activate.
   call rest                ;038F; Move drive head to track 0.
   ld   hl,sys_descr        ;0392; Copy the file description to UFIA1.
-  ld   de,$3E05            ;0395;
+  ld   de,ufia1.nstr1      ;0395;
   ld   bc,11               ;0398;
   ldir                     ;039B;
   ld   a,%00001000         ;039D; Signal 'matching name and directory
@@ -2293,7 +2293,7 @@ each_e1:
   jr   z,no_prgnum         ;09C2; Jump if not searching for a filenumber
   call prog_num            ;09C4; Otherwise load program number into A.
   ld   b,a                 ;09C7;
-  ld   a,($3E02)           ;09C8; Fetch specified program number.
+  ld   a,(ufia1.fstr1)     ;09C8; Fetch specified program number.
   cp   b                   ;09CB;
   ret  z                   ;09CC; Exit if they are equal.
   jp   scan_next           ;09CD; Otherwise continue scanning.
@@ -2335,7 +2335,7 @@ scan_1:
   bit  1,(ix+4)            ;0A15;
   jr   z,ext_cat_0A3F      ;0A19; Jump with extended CAT.
   ld   b,3                 ;0A1B; Otherwise print three columns wide.
-  ld   a,($3E03)           ;0A1D; Except when using stream 3.
+  ld   a,(ufia1.sstr1)     ;0A1D; Except when using stream 3.
   cp   3                   ;0A20;
   jr   nz,scan_2           ;0A22;
   sla  b                   ;0A24; Then print six columns wide.
@@ -2447,7 +2447,7 @@ match_name:
   call rpt_hl              ;0AB2; HL points to the start of the entry.
   ld   b,11                ;0AB5; Length of file description.
   bit  3,(ix+4)            ;0AB7;
-  ld   ix,$3E05            ;0ABB; IX points to the file description in
+  ld   ix,ufia1.nstr1      ;0ABB; IX points to the file description in
                                 ; UFIA1.
   jr   z,match_n2          ;0ABF; Jump if directory description doesn't
                                 ; need to match.
@@ -2537,7 +2537,7 @@ ofsm_clr_2:
   djnz ofsm_clr_2          ;0B28;
   pop  ix                  ;0B2A; Restore disk channel pointer.
   push ix                  ;0B2C;
-  ld   hl,$3E05            ;0B2E; HL points to the file descriptor in
+  ld   hl,ufia1.nstr1      ;0B2E; HL points to the file descriptor in
                                 ; UFIA1.
   ld   b,11                ;0B31; Length of file descriptor.
 ofsm_fdesc:
@@ -2674,7 +2674,7 @@ cfsm_entry:
 ; opened and the first sector is loaded into the data buffer.
 
 hgfle_2:
-  ld   a,($3E04)           ;0BCF; Fetch device description from UFIA1.
+  ld   a,(ufia1.lstr1)     ;0BCF; Fetch device description from UFIA1.
   and  $DF                 ;0BD2; Capitalize.
   cp   "P"                 ;0BD4;
   jr   nz,hgfl_nonum       ;0BD6; Jump if no program number specified.
@@ -2683,13 +2683,13 @@ hgfle_2:
   jp   nz,rep_26           ;0BDD; If file isn't found report 'File NOT
                                 ; FOUND'.
   call rpt_hl              ;0BE0; HL points to the entry.
-  ld   de,$3E05            ;0BE3; Copy the 11 byte file descriptor to
+  ld   de,ufia1.nstr1      ;0BE3; Copy the 11 byte file descriptor to
   ld   bc,11               ;0BE6; UFIA1.
   ldir                     ;0BE9;
   ld   (ix+13),211         ;0BEB; RPT points to the file header of the
                                 ; file.
   call rpt_hl1             ;0BEF; Make HL point to it.
-  ld   de,$3E10            ;0BF2; Copy the 9 byte file header to UFIA1.
+  ld   de,ufia1.hd00       ;0BF2; Copy the 9 byte file header to UFIA1.
   ld   bc,9                ;0BF5;
   ldir                     ;0BF8;
   jr   load_1st            ;0BFA; Jump forward to load the first sector.
@@ -5896,7 +5896,7 @@ snap_n1:
   add  a,64                ;216C; Add ASCII 'A' offset.
   ld   ($206E),a           ;216E; Store 'A' to 'T' in name-part of UFIA.
   ld   hl,snap_ufia        ;2171; Copy UFIA to DFCA.
-  ld   de,$3E05            ;2174;
+  ld   de,ufia1.nstr1      ;2174;
   ld   bc,20               ;2177;
   ldir                     ;217A;
   call ofsm_2              ;217C; Open the file.
@@ -6208,7 +6208,7 @@ to:
   and  $DF                 ;2313; Drop lower case bit.
   cp   "D"                 ;2315;
   jp   nz,rep_0            ;2317; Jump if 2nd device isn't "D".
-  ld   ($3E04),a           ;231A; Store it in DEV_TYPE1.
+  ld   (ufia1.lstr1),a     ;231A; Store it in DEV_TYPE1.
   call expt_devn           ;231D; Evaluate drive num., store it in UFIA1.
   call separator           ;2320; Test for a separator, jump if one
   jr   z,to_1              ;2323; found, i.e. a 2nd name is given.
@@ -6268,7 +6268,7 @@ to_2:
   call test_4              ;237F; Used here to test whether a 2nd
   jr   nz,to_5             ;2382; filename was given. Jump if not.
   ld   hl,$3E33            ;2384; Here the 2nd filename was stored.
-  ld   de,$3E06            ;2387; Start of filename of loaded file.
+  ld   de,ufia1.nstr2      ;2387; Start of filename of loaded file.
   ld   b,10                ;238A; Filename length.
 
 ; Now the characters from the filename of the loaded file are replaced by the
@@ -6295,7 +6295,7 @@ to_5:
   call save_head1          ;23A2; SAVE the 9 header bytes to the file.
   ld   hl,(23635)          ;23A5; Fetch start of BASIC (PROG), and add
   inc  h                   ;23A8; 256 to it. (here the file was loaded)
-  ld   de,($3E11)          ;23A9; Length of file.
+  ld   de,(ufia1.hd0b)     ;23A9; Length of file.
   call hsvbk_2             ;23AD; Save the file.
   call cfsm                ;23B0; Close the file.
 to_6:
@@ -6413,7 +6413,7 @@ to_copy:
 
 to_copy1:
   inc  hl                  ;2444; Step past directory descriptor.
-  ld   de,$3E06            ;2445; DE now points to FILE_NAME1.
+  ld   de,ufia1.nstr2      ;2445; DE now points to FILE_NAME1.
   ld   b,10                ;2448; A filename is 10 characters long.
 to_copy2:
   ld   a,(de)              ;244A; Fetch character.
@@ -6437,9 +6437,9 @@ to_copy3:
 
 cat:
   ld   ix,dfca             ;245B;
-  ld   hl,$3E06            ;245F; "*" is the default name of the files
+  ld   hl,ufia1.nstr2      ;245F; "*" is the default name of the files
   ld   (hl),"*"            ;2462; being CATted.
-  ld   hl,$3E03            ;2464; Just like #2 is the default output
+  ld   hl,ufia1.sstr1      ;2464; Just like #2 is the default output
   ld   (hl),2              ;2467; stream.
   rst  next_c              ;2469; Get next character.
   cp   13                  ;246A; Give an error if an 'end of line' (CR)
@@ -6484,14 +6484,14 @@ do_cat1:
 ; by calling the +D ROM routine 'SCAN_CAT'.
 
 cat_1:
-  ld   hl,$3E06            ;24AA; Point to name.
+  ld   hl,ufia1.nstr2      ;24AA; Point to name.
   ld   (hl),"*"            ;24AD; All files.
-  ld   hl,$3E03            ;24AF; Point to stream number.
+  ld   hl,ufia1.sstr1      ;24AF; Point to stream number.
   ld   a,2                 ;24B2; Make it stream 2.
   ld   (hl),a              ;24B4;
 cat_run:
   push af                  ;24B5;
-  ld   a,($3E03)           ;24B6;
+  ld   a,(ufia1.sstr1)     ;24B6;
   rst  calbas              ;24B9; Open the desired stream by calling
   defw rom_chan_open       ;24BA; 'CHAN_OPEN' in the 'main' ROM.
   ld   a,13                ;24BC;
@@ -6546,7 +6546,7 @@ cat_run2:
 erase_250C:
   ; XXX FIXME -- the original HTML defines `erase` twice
   rst  next_c              ;250C; Get next character.
-  ld   ($3E04),a           ;250D; Store the device descriptor.
+  ld   (ufia1.lstr1),a     ;250D; Store the device descriptor.
   cp   '"'                 ;2510; Test for Microdrive syntax if it was a
   call z,md_syn1           ;2512; quote.
   call expt_devn           ;2515; Evaluate the drive number.
@@ -6557,7 +6557,7 @@ erase_250C:
   jr   z,rename            ;2523; Jump if so, rename is wanted.
   call st_end_ram          ;2525; Confirm end of statement and exit
                                 ; during syntax checking.
-  ld   a,($3E04)           ;2528; Fetch device descriptor.
+  ld   a,(ufia1.lstr1)     ;2528; Fetch device descriptor.
   and  $DF                 ;252B; Drop lower case bit.
   cp   "D"                 ;252D;
   jr   z,erase_run         ;252F; Jump if it was "D".
@@ -6586,7 +6586,7 @@ not_found:
   call test_0              ;2548; Give an error if there wasn't at least
   jp   z,rep_26            ;254B; one file ERASEd.
 erase_exit:
-  ld   a,($3E04)           ;254E;
+  ld   a,(ufia1.lstr1)     ;254E;
   cp   "D"                 ;2551; If the device descriptor was a
   call z,cat_1             ;2553; (capital) "D", then give a CATalogue.
   jp   the_end             ;2556; Finished.
@@ -6620,7 +6620,7 @@ rename:
   call expt_2fnam          ;2568; Evaluate 2nd filename.
   call st_end_ram          ;256B; Confirm end of statement and exit when
                                 ; syntax checking.
-  ld   a,($3E04)           ;256E; Fetch device descriptor.
+  ld   a,(ufia1.lstr1)     ;256E; Fetch device descriptor.
   and  $DF                 ;2571; Drop lower case bit.
   cp   "D"                 ;2573;
   jr   z,rename_run        ;2575; Jump if it was a "D".
@@ -6710,7 +6710,7 @@ md_syn1:
   rst  calbas              ;25CF; Call 'ALPHA' to see if it's a valid
   defw rom_alpha           ;25D0; letter.
   jp   nc,rep_10           ;25D2; Give error if not a valid letter.
-  ld   ($3E04),a           ;25D5; Store the specifier in the UFIA.
+  ld   (ufia1.lstr1),a     ;25D5; Store the specifier in the UFIA.
   pop  af                  ;25D8; Restore next character.
 md_syn2:
   cp   ";"                 ;25D9;
@@ -6733,7 +6733,7 @@ expt_devn:
   ret  z                   ;25EC; Return if syntax checking.
   push af                  ;25ED;
   ld   a,(ufia1)           ;25EE; Store program number. XXX TODO -- program number?
-  ld   ($3E02),a           ;25F1;
+  ld   (ufia1.fstr1),a     ;25F1;
   call last_drv            ;25F4; Drive is last drive.
   pop  af                  ;25F7;
   ret                      ;25F8;
@@ -6838,14 +6838,14 @@ expt_fname:
   ld   hl,10               ;264A;
   sbc  hl,bc               ;264D;
   jp   c,rep_8             ;264F; Give error with string length > 10.
-  ld   hl,$3E05            ;2652; Clear the filename and the directory
+  ld   hl,ufia1.nstr1      ;2652; Clear the filename and the directory
   ld   a,11                ;2655; description of UFIA1.
 clr_fname:
   ld   (hl),32             ;2657;
   inc  hl                  ;2659;
   dec  a                   ;265A;
   jr   nz,clr_fname        ;265B; Repeat for all 11 bytes.
-  ld   hl,$3E06            ;265D; Copy the filename into UFIA1.
+  ld   hl,ufia1.nstr2      ;265D; Copy the filename into UFIA1.
   ex   de,hl               ;2660;
   ldir                     ;2661;
   pop  af                  ;2663;
@@ -6865,7 +6865,7 @@ expt_parms:
   jp   c,rep_0             ;2668; below 32, i.e. colour codes, etc.
   cp   token.screen_dollar ;266B; 'SCREEN$'
   jp   z,dump_scr          ;266D; Jump with 'SCREEN$'.
-  ld   ($3E04),a           ;2670; Otherwise store it in DEV_TYPE1.
+  ld   (ufia1.lstr1),a     ;2670; Otherwise store it in DEV_TYPE1.
   cp   "@"                 ;2673;
   jr   nz,not_at_sign      ;2675; Jump if not a '@'.
 
@@ -6888,14 +6888,14 @@ expt_parms:
                                 ; during syntax checking.
   rst  calbas              ;2698; Fetch the address from the calculator
   defw rom_find_int2       ;2699; stack.
-  ld   ($3E15),bc          ;269B; Store it in LENGTH1_2
+  ld   (ufia1.hd0f),bc     ;269B; Store it in LENGTH1_2
   rst  calbas              ;269F; Fetch sector.
   defw rom_find_int2       ;26A0;
-  ld   ($3E13),bc          ;26A2; Store it in FILE_ADDR1
+  ld   (ufia1.hd0d),bc     ;26A2; Store it in FILE_ADDR1
   rst  calbas              ;26A6; Fetch track.
   defw rom_find_int2       ;26A7;
   ; XXX FIXME -- the original HTML has a typo in the previous ROM label
-  ld   ($3E11),bc          ;26A9; Store it in LENGTH1_1
+  ld   (ufia1.hd0b),bc     ;26A9; Store it in LENGTH1_1
   ret                      ;26AD; Exit.
 
 not_at_sign:
@@ -6906,7 +6906,7 @@ not_at_sign:
   push af                  ;26B9;
   rst  syntax_z            ;26BA;
   jr   z,filename          ;26BB; Jump if syntax checking.
-  ld   a,($3E04)           ;26BD; Fetch device descriptor.
+  ld   a,(ufia1.lstr1)     ;26BD; Fetch device descriptor.
   and  $DF                 ;26C0; Only capitals.
   cp   "D"                 ;26C2;
   jr   z,not_at_sign1      ;26C4; Jump if device is disk.
@@ -6946,7 +6946,7 @@ params:
   call st_end_ram          ;2706; Confirm end of statement and exit
                                 ; during syntax checking.
   ld   a,5                 ;2709; Signal '48K Snapshot'.
-  ld   ($3E05),a           ;270B;
+  ld   (ufia1.nstr1),a     ;270B;
   ret                      ;270E; Finished.
 
 not_s:
@@ -6956,7 +6956,7 @@ not_s:
   call st_end_ram          ;2714; Confirm end of statement and exit
                                 ; during syntax checking.
   ld   a,9                 ;2717; Signal '128K Snapshot'.
-  ld   ($3E05),a           ;2719;
+  ld   (ufia1.nstr1),a     ;2719;
   ret                      ;271C; Finished.
 
 not_k:
@@ -6982,7 +6982,7 @@ xfile_1:
   rst  calbas              ;273C; Fetch the address.
   defw rom_find_int2       ;273D;
 xfile_2:
-  ld   ($3E13),bc          ;273F; Store it in FILE_ADDR1
+  ld   (ufia1.hd0d),bc     ;273F; Store it in FILE_ADDR1
   ld   bc,510              ;2743; Length of execute file on double density disks.
   ld   a,(control_port_status)  ;2746;
   and  $04                 ;2749;
@@ -6990,11 +6990,11 @@ xfile_2:
   ld   bc,254              ;274D; Otherwise this is the length of the
                                 ; execute file.
 xfile_3:
-  ld   ($3E11),bc          ;2750; Store length in LENGTH1_1.
+  ld   (ufia1.hd0b),bc     ;2750; Store length in LENGTH1_1.
   ld   a,3                 ;2754; File type is 'CODE'.
-  ld   ($3E10),a           ;2756; Store it in FILE_TYPE1.
+  ld   (ufia1.hd00),a      ;2756; Store it in FILE_TYPE1.
   ld   a,11                ;2759; Signal 'Execute file'.
-  ld   ($3E05),a           ;275B; Store in DIR_DESCR1
+  ld   (ufia1.nstr1),a     ;275B; Store in DIR_DESCR1
   ret                      ;275E; Finished.
 
 ; Now deal with LINE. The +D allows LOAD, VERIFY and MERGE .. LINE to be
@@ -7008,7 +7008,7 @@ line:
                                 ; during syntax checking.
   rst  calbas              ;2766; Fetch the autostart line number.
   defw rom_find_int2       ;2767;
-  ld   ($3E17),bc          ;2769; Store it in AUTOSTART1.
+  ld   (ufia1.hd11),bc     ;2769; Store it in AUTOSTART1.
   jr   prog                ;276D;
 
 ; If there are no parameters, as with a BASIC program, the syntax checking
@@ -7018,7 +7018,7 @@ no_params:
   call st_end_ram          ;276F; Confirm end of statement, exit when
                                 ; syntax checking.
 prog:
-  ld   a,($3E04)           ;2772;
+  ld   a,(ufia1.lstr1)     ;2772;
   and  $DF                 ;2775; Only capitals.
   cp   "P"                 ;2777; Jump if the device wasn't "P", i.e. no
   jr   nz,prog_1           ;2779; program number was specified.
@@ -7028,20 +7028,20 @@ prog:
 
 prog_1:
   xor  a                   ;2782; File type is 'BASIC'.
-  ld   ($3E10),a           ;2783;
+  ld   (ufia1.hd00),a      ;2783;
   ld   a,1                 ;2786; Signal 'BASIC file'.
-  ld   ($3E05),a           ;2788;
+  ld   (ufia1.nstr1),a     ;2788;
   ld   hl,(23641)          ;278B; Fetch (E_LINE), the first location past
                                 ; the variables area.
   ld   de,(23635)          ;278E; Fetch (PROG), the 'start' of the BASIC
-  ld   ($3E13),de          ;2792; program and store it in FILE_ADDR1
+  ld   (ufia1.hd0d),de     ;2792; program and store it in FILE_ADDR1
   scf                      ;2796; Calculate ((E_LINE)-(PROG)-1), i.e.  the
   sbc  hl,de               ;2797; length of the program and its
-  ld   ($3E11),hl          ;2799; variables. Store it in LENGTH1_1.
+  ld   (ufia1.hd0b),hl     ;2799; variables. Store it in LENGTH1_1.
   ld   hl,(23627)          ;279C; Fetch (VARS) and calculate
   sbc  hl,de               ;279F; (VARS)-(PROG), i.e. the length of the
                                 ; program without its variables.
-  ld   ($3E15),hl          ;27A1; Store it into LENGTH1_2.
+  ld   (ufia1.hd0f),hl     ;27A1; Store it into LENGTH1_2.
   ret                      ;27A4; Finished.
 
 ; If the token is SCREEN$, the parameters are entered directly into the file
@@ -7052,13 +7052,13 @@ screen_dollar:
   call st_end_ram          ;27A6; Confirm end of statement and exit
                                 ; during syntax checking.
   ld   hl,6912             ;27A9; The size of the display file is stored
-  ld   ($3E11),hl          ;27AC; into LENGTH1_1.
+  ld   (ufia1.hd0b),hl     ;27AC; into LENGTH1_1.
   ld   hl,16384            ;27AF; The startaddress is stored into
-  ld   ($3E13),hl          ;27B2; FILE_ADDR1
+  ld   (ufia1.hd0d),hl     ;27B2; FILE_ADDR1
   ld   a,3                 ;27B5; File type is 'CODE'.
-  ld   ($3E10),a           ;27B7;
+  ld   (ufia1.hd00),a      ;27B7;
   ld   a,7                 ;27BA; Signal 'SCREEN$'.
-  ld   ($3E05),a           ;27BC;
+  ld   (ufia1.nstr1),a     ;27BC;
   ret                      ;27BF;
 
 ; Now deal with CODE, three parameters are needed: "start", "length" and
@@ -7116,17 +7116,17 @@ code_7:
                                 ; during syntax checking.
   rst  calbas              ;27FA; Fetch the "autoexecute" address from
   defw rom_find_int2       ;27FB; the calculator stack and store it into
-  ld   ($3E17),bc          ;27FD; AUTOSTART1
+  ld   (ufia1.hd11),bc     ;27FD; AUTOSTART1
   rst  calbas              ;2801; Fetch the "length".
   defw rom_find_int2       ;2802;
-  ld   ($3E11),bc          ;2804; Store it into LENGTH1_1
+  ld   (ufia1.hd0b),bc     ;2804; Store it into LENGTH1_1
   rst  calbas              ;2808; Fetch the "start".
   defw rom_find_int2       ;2809;
-  ld   ($3E13),bc          ;280B; Store it into FILE_ADDR1
+  ld   (ufia1.hd0d),bc     ;280B; Store it into FILE_ADDR1
   ld   a,3                 ;280E; File type is 'CODE'.
-  ld   ($3E10),a           ;2811;
+  ld   (ufia1.hd00),a      ;2811;
   ld   a,4                 ;2814; Signal 'CODE file'.
-  ld   ($3E05),a           ;2816;
+  ld   (ufia1.nstr1),a     ;2816;
   ret                      ;2819; Finished.
 
 ; Finally the routine to evaluate DATA parameters.
@@ -7160,22 +7160,22 @@ data_1:
 data_2:
   inc  hl                  ;2843; Point to the 'length' of the array.
   ld   a,(hl)              ;2844; Store the length into LENGTH1_1.
-  ld   ($3E11),a           ;2845;
+  ld   (ufia1.hd0b),a      ;2845;
   inc  hl                  ;2848;
   ld   a,(hl)              ;2849;
   ld   ($3E12),a           ;284A;
   inc  hl                  ;284D; Advance to the start of the array.
 data_3:
   ld   a,c                 ;284E; Store array name into LSB of LENGTH1_2.
-  ld   ($3E15),a           ;284F;
+  ld   (ufia1.hd0f),a      ;284F;
   ld   a,1                 ;2852; File type is 'NUM ARRAY'.
   bit  6,c                 ;2854;
   jr   z,data_4            ;2856; Jump if really a numeric array.
   inc  a                   ;2858; File type is 'STR ARRAY'.
 data_4:
-  ld   ($3E10),a           ;2859; Store file type into FILE_TYPE1.
+  ld   (ufia1.hd00),a      ;2859; Store file type into FILE_TYPE1.
   inc  a                   ;285C; Signal: (A=2) 'Numeric array',
-  ld   ($3E05),a           ;285D; (A=3) 'String array'.
+  ld   (ufia1.nstr1),a     ;285D; (A=3) 'String array'.
 data_5:
   ex   de,hl               ;2860; DE holds 'start' of the array (or $0000
                                 ; with a 'new' array to be LOADed).
@@ -7185,7 +7185,7 @@ data_5:
   rst  next_c              ;2867; Next character.
   call st_end_ram          ;2868; Confirm end of statement and exit
                                 ; during syntax checking.
-  ld   ($3E13),de          ;286B; Store "start" of the array into
+  ld   (ufia1.hd0d),de     ;286B; Store "start" of the array into
   ret                      ;286F; FILE_ADDR1 and exit.
 
 
@@ -7200,9 +7200,9 @@ data_5:
 ; @.
 
 get_tr_and_se:
-  ld   a,($3E11)           ;2870; Get track from LSB of LENGTH1_1.
+  ld   a,(ufia1.hd0b)      ;2870; Get track from LSB of LENGTH1_1.
   ld   d,a                 ;2873;
-  ld   a,($3E13)           ;2874; Get sector from LSB of FILE_ADDR1.
+  ld   a,(ufia1.hd0d)      ;2874; Get sector from LSB of FILE_ADDR1.
   ld   e,a                 ;2877;
   ret                      ;2878;
 
@@ -7213,7 +7213,7 @@ get_tr_and_se:
 ; catalogue entry which is build up in the DFCA.
 
 save_head1:
-  ld   hl,$3E10            ;2879; Start of header 1.
+  ld   hl,ufia1.hd00       ;2879; Start of header 1.
   ld   de,$3BA9            ;287C; Address of header area of a catalogue
                                 ; entry
   ld   b,9                 ;287F; The headers length.
@@ -7236,10 +7236,10 @@ save:
   call sign_5              ;288F; Signal 'SAVEing'.
   call expt_parms          ;2892; Evaluate & store all parameters.
   call test_drv            ;2895; See if the drive is defined.
-  ld   a,($3E04)           ;2898;
+  ld   a,(ufia1.lstr1)     ;2898;
   cp   "@"                 ;289B;
   jr   nz,save_run         ;289D; Jump if the command wasn't 'SAVE @'.
-  ld   ix,($3E15)          ;289F; Get address where sector is to be saved
+  ld   ix,(ufia1.hd0f)     ;289F; Get address where sector is to be saved
   call get_tr_and_se       ;28A3; from. Get track and sector number.
   ld   a,(ufia1.dstr1)     ;28A6; Get drive number.
   call hwsad               ;28A9; Write the sector.
@@ -7254,11 +7254,11 @@ save_run:
   call ofsm_2              ;28AF; Open the file for 'SAVE'.
   jp   nz,erase_exit       ;28B2; Exit if the file isn't to be
                                 ; overwritten.
-  ld   a,($3E05)           ;28B5;
+  ld   a,(ufia1.nstr1)     ;28B5;
   cp   11                  ;28B8; Pass the header to the file unless it's
   call nz,save_head1       ;28BA; an 'execute' file.
-  ld   hl,($3E13)          ;28BD; Fetch the start address.
-  ld   de,($3E11)          ;28C0; Fetch the length.
+  ld   hl,(ufia1.hd0d)     ;28BD; Fetch the start address.
+  ld   de,(ufia1.hd0b)     ;28C0; Fetch the length.
   call hsvbk_2             ;28C4; Save the block.
   call cfsm                ;28C7; Close the file.
   jp   erase_exit          ;28CA; Exit via 'ERASE_EXIT'.
@@ -7318,10 +7318,10 @@ ld_vf_mr:
   call expt_parms          ;28EB; Evaluate & store all parameters.
 ld_vf_mr1:
   call test_drv            ;28EE; See if the drive is defined.
-  ld   a,($3E04)           ;28F1;
+  ld   a,(ufia1.lstr1)     ;28F1;
   cp   "@"                 ;28F4;
   jr   nz,ld_etc_run       ;28F6; Jump if it wasn't a '@' command.
-  ld   ix,($3E15)          ;28F8; Get address where sector is to be
+  ld   ix,(ufia1.hd0f)     ;28F8; Get address where sector is to be
   call get_tr_and_se       ;28FC; loaded. Get track and sector number.
   ld   a,(ufia1.dstr1)     ;28FF; Get drive number.
   call hrsad               ;2902; Load the sector.
@@ -7331,7 +7331,7 @@ ld_vf_mr1:
 
 ld_etc_run:
   call hgfle_2             ;2908; Open the file for loading.
-  ld   a,($3E05)           ;290B;
+  ld   a,(ufia1.nstr1)     ;290B;
   cp   5                   ;290E;
   jr   nz,ld_etc_r1        ;2910; Jump if it isn't a 'Snapshot 48K'.
   ld   sp,$3FEA            ;2912; Use internal stack.
@@ -7371,7 +7371,7 @@ ld_etc_r3:
 
 ld_etc_r4:
   call load_head2          ;2954; Load the header into UFIA2.
-  ld   a,($3E10)           ;2957; Fetch type of program to be LOADed.
+  ld   a,(ufia1.hd00)      ;2957; Fetch type of program to be LOADed.
   ld   b,a                 ;295A;
   ld   a,($3E29)           ;295B; Fetch type of program found.
   cp   b                   ;295E;
@@ -7394,7 +7394,7 @@ ld_etc_r4:
 ld_etc_r5:
   call test_6              ;2974;
   jp   nz,rep_14           ;2977; Give error if 'MERGE .. CODE' was used.
-  ld   hl,($3E11)          ;297A; Fetch length of requested file.
+  ld   hl,(ufia1.hd0b)     ;297A; Fetch length of requested file.
   ld   de,($3E2A)          ;297D; Fetch length of file found.
   ld   a,h                 ;2981;
   or   l                   ;2982;
@@ -7407,7 +7407,7 @@ ld_etc_r5:
   jp   rep_15              ;298F; 'CODE error' otherwise.
 
 ld_etc_r6:
-  ld   hl,($3E13)          ;2992; Fetch start address from FILE_ADDR1
+  ld   hl,(ufia1.hd0d)     ;2992; Fetch start address from FILE_ADDR1
   ld   a,h                 ;2995;
   or   l                   ;2996;
   jr   nz,ld_etc_r7        ;2997; Jump if a start address was specified.
@@ -7422,7 +7422,7 @@ ld_etc_r8:
   call lv_any              ;29A5; Load the file.
   call test_7              ;29A8;
   jp   nz,the_end          ;29AB; Exit when 'VERIFYing'.
-  ld   hl,($3E17)          ;29AE; Fetch execute address.
+  ld   hl,(ufia1.hd11)     ;29AE; Fetch execute address.
   call exec_code           ;29B1; Use it if it was specified.
   ld   hl,($3E30)          ;29B4; Otherwise use the files execute
   call exec_code           ;29B7; address.
@@ -7493,7 +7493,7 @@ merge_ctrl:
 
 load_ctrl:
   ld   de,($3E2A)          ;29FB; Fetch 'new' length.
-  ld   hl,($3E13)          ;29FF; Fetch 'old' start (=0 when loading a
+  ld   hl,(ufia1.hd0d)     ;29FF; Fetch 'old' start (=0 when loading a
   push hl                  ;2A02; 'new' array').
   ld   a,h                 ;2A03;
   or   l                   ;2A04;
@@ -7507,7 +7507,7 @@ load_ctrl:
 ; The array to be loaded replaces an existing array.
 
 load_c1:
-  ld   hl,($3E11)          ;2A0D; Fetch 'old' length (i.e. length of
+  ld   hl,(ufia1.hd0b)     ;2A0D; Fetch 'old' length (i.e. length of
                                 ; existing program or array) from UFIA1.
   ex   de,hl               ;2A10; Move 'new' length to HL.
   scf                      ;2A11; Jump if the program or array to be
@@ -7546,7 +7546,7 @@ load_c4:
   inc  bc                  ;2A3E; Include in the length one byte for the
   inc  bc                  ;2A3F; 'array name' and two bytes for the
   inc  bc                  ;2A40; 'array length'.
-  ld   a,($3E15)           ;2A41; Fetch the array name from 'LENGTH1_2'.
+  ld   a,(ufia1.hd0f)      ;2A41; Fetch the array name from 'LENGTH1_2'.
   push af                  ;2A44;
   rst  calbas              ;2A45; Call 'MAKE_ROOM' to create the space
   defw rom_make_room       ;2A46; for the array.
@@ -7680,7 +7680,7 @@ expt_stream_nr1:
   defw rom_find_int1       ;2AF7;
   cp   16                  ;2AF9; Give an error if it isn't in the range
   jp   nc,rep_9            ;2AFB; 0..15. ('Invalid station' ?)
-  ld   ($3E03),a           ;2AFE; Store stream number into 'STRM_NUM1'.
+  ld   (ufia1.sstr1),a     ;2AFE; Store stream number into 'STRM_NUM1'.
   pop  af                  ;2B01;
   ret                      ;2B02;
 
@@ -7709,15 +7709,15 @@ move:
 
   call sign_2              ;2B17; See above.
   ld   a,token.in          ;2B1A; This is the keyword 'IN', it is used to
-  ld   ($3E02),a           ;2B1C; signal 'READ channel'.
+  ld   (ufia1.fstr1),a     ;2B1C; signal 'READ channel'.
   call op_move             ;2B1F; Open the source channel/stream.
   ld   hl,(23631)          ;2B22; Save (CHANS).
   push hl                  ;2B25;
-  ld   a,($3E02)           ;2B26; Save 'DIR_DESCR1' into 'DIR_DESCR2'.
+  ld   a,(ufia1.fstr1)     ;2B26; Save 'DIR_DESCR1' into 'DIR_DESCR2'.
   ld   ($3E1E),a           ;2B29;
   call swap_ufias          ;2B2C; Exchange the UFIA's.
   ld   a,token.out         ;2B2F; This is the keyword 'OUT'.
-  ld   ($3E02),a           ;2B31; Signal 'WRITE channel'.
+  ld   (ufia1.fstr1),a     ;2B31; Signal 'WRITE channel'.
   ld   ix,dfca             ;2B34;
   call op_move             ;2B38; Open the destination channel/stream.
   jr   nc,move_run1        ;2B3B; Jump if opening was successfull. I.e.
@@ -7744,11 +7744,11 @@ move_run1:
   ld   hl,(23631)          ;2B4D; Fetch 'new' (CHANS).
   or   a                   ;2B50; Calculate the space which was inserted
   sbc  hl,de               ;2B51; under (CHANS).
-  ld   de,($3E05)          ;2B53; Adjust first channels address.
+  ld   de,(ufia1.nstr1)    ;2B53; Adjust first channels address.
   add  hl,de               ;2B57;
-  ld   ($3E05),hl          ;2B58;
+  ld   (ufia1.nstr1),hl    ;2B58;
 move_run2:
-  ld   hl,($3E05)          ;2B5B; Make 'current' the first channel.
+  ld   hl,(ufia1.nstr1)    ;2B5B; Make 'current' the first channel.
   ld   (23633),hl          ;2B5E; (CURCHL)
 move_run3:
   rst  calbas              ;2B61; Call 'INPUT_A' in the 'main' ROM to
@@ -7786,9 +7786,9 @@ move_run5:
   or   a                   ;2B8A; Calculate the amount of bytes reclaimed
   sbc  hl,de               ;2B8B; after the deletion of the second
   channel.
-  ld   de,($3E05)          ;2B8D; Calculate the new start address of the
+  ld   de,(ufia1.nstr1)    ;2B8D; Calculate the new start address of the
   add  hl,de               ;2B91; first channel.
-  ld   ($3E05),hl          ;2B92; And store it.
+  ld   (ufia1.nstr1),hl    ;2B92; And store it.
   call cl_move             ;2B95; Close the source channel.
   call recl_temp           ;2B98; Reclaim temporary channels.
   jp   the_end             ;2B9B; Finished.
@@ -7821,7 +7821,7 @@ expt_exp1:
   cp   "#"                 ;2BAE; Jump to 'EXPT_#_NR' to evaluate stream
   jp   z,expt_stream_nr    ;2BB0; number if character is a '#'.
 expt_exp2:
-  ld   ($3E04),a           ;2BB3; Otherwise store device letter.
+  ld   (ufia1.lstr1),a     ;2BB3; Otherwise store device letter.
   and  $DF                 ;2BB6; Only capitals.
   cp   "D"                 ;2BB8; If device letter isn't "D" then
   call nz,md_syn1          ;2BBA; evaluate microdrive syntax.
@@ -7831,7 +7831,7 @@ expt_exp2:
   rst  syntax_z            ;2BC6;
   ret  z                   ;2BC7; Return if checking syntax.
   push af                  ;2BC8;
-  ld   a,($3E04)           ;2BC9; Fetch device letter.
+  ld   a,(ufia1.lstr1)     ;2BC9; Fetch device letter.
   and  $DF                 ;2BCC; Only capitals.
   cp   "D"                 ;2BCE; If the device is "D" or "M" then there
   jp   z,rep_2             ;2BD0; must be a name present. Give an error
@@ -7848,18 +7848,18 @@ expt_exp2:
 ; fetch its start address.
 
 op_move:
-  ld   a,($3E03)           ;2BDA; Fetch stream number.
+  ld   a,(ufia1.sstr1)     ;2BDA; Fetch stream number.
   inc  a                   ;2BDD; Jump to open a temporary channel, i.e.
   jr   z,op_move1          ;2BDE; if the stream was nonexistent.
   dec  a                   ;2BE0;
   rst  calbas              ;2BE1; Open the channel attached to stream A.
   defw rom_chan_open       ;2BE2;
   ld   hl,(23633)          ;2BE4; Store the channels address (CURCHL)
-  ld   ($3E05),hl          ;2BE7; into UFIA1.
+  ld   (ufia1.nstr1),hl    ;2BE7; into UFIA1.
   ret                      ;2BEA; Return.
 
 op_move1:
-  ld   a,($3E04)           ;2BEB; Fetch device letter.
+  ld   a,(ufia1.lstr1)     ;2BEB; Fetch device letter.
   and  $DF                 ;2BEE; Capitals only.
   cp   "M"                 ;2BF0;
   jr   z,op_move2          ;2BF2; Jump if it's a "M".
@@ -7868,9 +7868,9 @@ op_move1:
 op_move2:
   call test_drv            ;2BF8; Check if the drive is defined.
   call op_temp_d           ;2BFB; Open a temporary "D" channel.
-  ld   a,($3E05)           ;2BFE; Save 'DIR_DESCR1' into 'PROG_NUM1'.
-  ld   ($3E02),a           ;2C01;
-  ld   ($3E05),ix          ;2C04; Store channels address.
+  ld   a,(ufia1.nstr1)     ;2BFE; Save 'DIR_DESCR1' into 'PROG_NUM1'.
+  ld   (ufia1.fstr1),a     ;2C01;
+  ld   (ufia1.nstr1),ix    ;2C04; Store channels address.
   ret                      ;2C08;
 
 op_move3:
@@ -7887,14 +7887,14 @@ op_move3:
 ; a stream was used, nothing is done.
 
 cl_move:
-  ld   a,($3E03)           ;2C12; Fetch stream number.
+  ld   a,(ufia1.sstr1)     ;2C12; Fetch stream number.
   inc  a                   ;2C15;
   ret  nz                  ;2C16; Return if a stream has been used.
-  ld   a,($3E04)           ;2C17; Otherwise fetch device letter.
+  ld   a,(ufia1.lstr1)     ;2C17; Otherwise fetch device letter.
   and  $DF                 ;2C1A; Only capitals.
   cp   "N"                 ;2C1C;
   jr   z,cl_move1          ;2C1E; Jump if it was "N".
-  ld   ix,($3E05)          ;2C20; Fetch channel address.
+  ld   ix,(ufia1.nstr1)    ;2C20; Fetch channel address.
   jp   close_chan          ;2C24; Close the channel and exit.
 cl_move1:
   ret                      ;2C27;
@@ -7968,20 +7968,20 @@ open:
   cp   token.out           ;2C7C;
   jp   nz,rep_2            ;2C7E; Give error if no 'OUT' specified.
 open_1:
-  ld   ($3E02),a           ;2C81; Store the channel type (IN or OUT) in
+  ld   (ufia1.fstr1),a     ;2C81; Store the channel type (IN or OUT) in
                                 ; 'PROG_NUM1'.
   rst  next_c              ;2C84; Advance CH_ADD.
 open_2:
   call st_end_ram          ;2C85; Confirm end of statement and exit
                                 ; during syntax checking.
-  ld   a,($3E03)           ;2C88; Fetch stream number.
+  ld   a,(ufia1.sstr1)     ;2C88; Fetch stream number.
   rst  calbas              ;2C8B; Call 'main' ROM 'STR_DATA1' routine; on
   defw rom_str_data1       ;2C8C; exit, BC holds 'stream data'.
   ld   hl,17               ;2C8E;
   and  a                   ;2C91;
   sbc  hl,bc               ;2C92; Give an error if the current stream was
   jp   c,rep_30            ;2C94; already used by the +D.
-  ld   a,($3E04)           ;2C97; Fetch channel specifier.
+  ld   a,(ufia1.lstr1)     ;2C97; Fetch channel specifier.
   and  $DF                 ;2C9A; Only capitals.
   cp   "D"                 ;2C9C;
   jr   z,open_3            ;2C9E; Jump if opening a "D" channel.
@@ -7990,7 +7990,7 @@ open_2:
 open_3:
   call test_drv            ;2CA5; See if the drive is defined.
   ld   a,$0A               ;2CA8; Signal 'OPENTYPE file'.
-  ld   ($3E05),a           ;2CAA;
+  ld   (ufia1.nstr1),a     ;2CAA;
   call open_chan           ;2CAD; Open the channel.
   jp   the_end             ;2CB0; Finished.
 
@@ -8000,7 +8000,7 @@ open_3:
 ; This is the actual OPEN routine referred to the "D" channel.
 
 open_chan:
-  ld   a,($3E03)           ;2CB3; Fetch stream number.
+  ld   a,(ufia1.sstr1)     ;2CB3; Fetch stream number.
   add  a,a                 ;2CB6; The streams area entries are two bytes
                                 ; each.
   ld   hl,23574            ;2CB7; Address of data for stream 0.
@@ -8056,7 +8056,7 @@ op_temp1:
   ld   de,20               ;2D03; Filename offset.
   add  hl,de               ;2D06;
   ex   de,hl               ;2D07; DE points to the name of this channel.
-  ld   hl,$3E06            ;2D08; HL points to the name of the channel to
+  ld   hl,ufia1.nstr2      ;2D08; HL points to the name of the channel to
   ld   b,10                ;2D0B; be opened.
 op_temp2:
   ld   a,(de)              ;2D0D;
@@ -8080,7 +8080,7 @@ op_temp4:
   push ix                  ;2D24;
   ld   a,%0001000          ;2D26; Scan the CATalogue for a matching
   call scan_cat            ;2D28; filename.
-  ld   a,($3E02)           ;2D2B; Get channel type (read/write).
+  ld   a,(ufia1.fstr1)     ;2D2B; Get channel type (read/write).
   jp   nz,op_temp5         ;2D2E; Jump if file not found.
   cp   token.out           ;2D31;
   jp   z,op_t_patch        ;2D33; Jump if OUTput channel.
@@ -8106,7 +8106,7 @@ op_temp4:
   pop  hl                  ;2D5E; Pointer to CAT entry.
   ld   bc,11               ;2D5F; Move the directory description and the
   ld   a,(hl)              ;2D62; filename to the channel.
-  ld   ($3E05),a           ;2D63; Store dir. descr. in UFIA1.
+  ld   (ufia1.nstr1),a     ;2D63; Store dir. descr. in UFIA1.
   ldir                     ;2D66;
   inc  hl                  ;2D68; Skip length in sectors, i.e. point to
   inc  hl                  ;2D69; track and sector bytes.
@@ -8254,7 +8254,7 @@ close:
   call expt_stream_nr1     ;2E25; Evaluate stream number.
   call st_end_ram          ;2E28; Confirm end of statement and exit when
                                 ; syntax checking.
-  ld   a,($3E03)           ;2E2B; Fetch stream number.
+  ld   a,(ufia1.sstr1)     ;2E2B; Fetch stream number.
   call close_strm          ;2E2E; Close the stream.
   jp   the_end             ;2E31; Finished.
 
@@ -8912,7 +8912,7 @@ st_end_ram:
 
 pcat:
   call test_drv            ;3154; Drive defined?
-  ld   a,($3E10)           ;3157; Get 'CAT' type.
+  ld   a,(ufia1.hd00)      ;3157; Get 'CAT' type.
   jp   cat_run             ;315A; Do the CAT.
 
   defs $39FF-$315D+1 ; $315D..$39FF Unused locations (all set to $00).
