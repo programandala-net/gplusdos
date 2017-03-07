@@ -1,13 +1,18 @@
 = G+DOS _Disassembled_
-:revdate: 2017-02-14
+:revdate: 2017-03-07
 :author: Marcos Cruz (programandala.net)
+
+G+DOS is a disk operating system for ZX Spectrum and ZX Spectrum 128.
+It was written by Bruce Gordon, from MGT (Miles Gordon Technology), in
+1987-1988, for the MGT's Plus D interface.
 
 The goal of this project is to convert the
 http://www.biehold.nl/rudy/plusd/plusd.htm[disassembly of G+DOS (by
-Rudy Biesma)], from HTML to a complete Z80 source suitable for
+Rudy Biesma, 2005)], from HTML to a complete Z80 source suitable for
 studying, editing and reassembling, in order to improve the G+DOS
 support of http://programandala.net/en.program.solo_forth.html[Solo
-Forth].
+Forth] (http://github.com/programandala-net/solo-forth[Solo Fortht in
+GitHub]).
 
 == Tools used
 
