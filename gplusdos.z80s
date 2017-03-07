@@ -1,12 +1,16 @@
 ; G+DOS Disassambled
 
-; Original disassembly by Rudy Biesma (JRB), 2005-11:
+; Disassembly of G+DOS version 2a (including +D ROM version 1.A)
+
+; G+DOS was written by Bruce Gordon, from Miles Gordon Technology, 1987, 1988.
+;
+; The original disassembly was done by Rudy Biesma (JRB), 2005-11:
 ; http://www.biehold.nl/rudy/plusd/plusd.htm
 ;
-; This edited version in source form by:
-; Marcos Cruz (programandala.net), 2016, 2017.
+; This edited version in source form was prepared by Marcos Cruz
+; (programandala.net), 2016, 2017, from the disassembly done by Rudy Biesma.
 
-; Last modified: 201703071116
+; Last modified: 201703071156
 
 ; ===============================================================
 ; ZX Spectrum symbols 
