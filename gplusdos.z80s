@@ -10,7 +10,7 @@
 ; This edited version in source form was prepared by Marcos Cruz
 ; (programandala.net), 2016, 2017, from the disassembly done by Rudy Biesma.
 
-; Last modified: 201703071408
+; Last modified: 201703071427
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -922,11 +922,11 @@ run:
                                 ; load the first sector of the file into
                                 ; the disk buffer.
   ld   hl,$3BD6            ;03AE; Copy the file header (the 9 bytes
-  ld   de,$3E29            ;03B1; consisting of filetype, length, etc.)
+  ld   de,ufia2.hd00       ;03B1; consisting of filetype, length, etc.)
   ld   bc,9                ;03B4; to UFIA2.
   ldir                     ;03B7;
   ld   (ix+13),9           ;03B9; Update the buffer pointer.
-  ld   de,($3E2A)          ;03BD; Fetch the systemfile's length.
+  ld   de,(ufia2.hd0b)     ;03BD; Fetch the systemfile's length.
   ld   hl,plus_d_ram       ;03C1; Loadaddress is $2000.
   call load_file           ;03C4; Load the system.
   ld   a,system_status.loaded ;03C7; Load the system.
@@ -2714,7 +2714,7 @@ hgfl_nonum:
 
 load_1st:
   call rpt_hl              ;0C04; HL points to the entry.
-  ld   de,$3E1E            ;0C07; Copy the 11 byte file descriptor to
+  ld   de,ufia2.nstr1      ;0C07; Copy the 11 byte file descriptor to
   ld   bc,11               ;0C0A; UFIA2.
   ldir                     ;0C0D;
   ld   (ix+13),220         ;0C0F; RPT points to the SNAPSHOT registers,
@@ -6220,7 +6220,7 @@ to_1:
   call swap_ufias          ;232B; Swap the UFIAS again.
   call st_end_ram          ;232E; Confirm end of statement and exit
                                 ; during syntax checking.
-  ld   hl,$3E1E            ;2331; Copy the second filename and directory
+  ld   hl,ufia2.nstr1      ;2331; Copy the second filename and directory
   ld   de,$3E32            ;2334; description.
   ld   bc,11               ;2337;
   ldir                     ;233A;
@@ -6236,7 +6236,7 @@ to_2:
                                 ; description and filename) to UFIA2 and
                                 ; load the first sector of the file into
                                 ; the disk buffer.
-  ld   a,($3E1E)           ;2354; Get directory description.
+  ld   a,(ufia2.nstr1)     ;2354; Get directory description.
   cp   5                   ;2357;
   jr   z,to_2              ;2359; Jump with 'Snapshot 48K'.
   cp   6                   ;235B;
@@ -6259,7 +6259,7 @@ to_2:
                                 ; to UFIA2.
   ld   hl,(23635)          ;236E; Fetch start of BASIC program (PROG).
   inc  h                   ;2371; Add 256 to it.
-  ld   de,($3E2A)          ;2372; Fetch length of file (LENGTH2_1).
+  ld   de,(ufia2.hd0b)     ;2372; Fetch length of file (LENGTH2_1).
   call load_file           ;2376; Load DE bytes, starting at address HL.
   call to_msg              ;2379; Print the message "CHANGE disc ...." if
                                 ; source drive is destination drive.
@@ -6636,7 +6636,7 @@ rename_run:
   jp   nz,rep_26           ;258E; doesn't exist.
   inc  hl                  ;2591;
   push de                  ;2592;
-  ld   de,$3E1F            ;2593; Rename the file by copying the 2nd to
+  ld   de,ufia2.nstr1      ;2593; Rename the file by copying the 2nd to
   ex   de,hl               ;2596; the 1st name.
   ld   bc,10               ;2597;
   ldir                     ;259A;
@@ -7269,7 +7269,7 @@ save_run:
 ; This subroutine LOADs a 9 bytes header into UFIA 2.
 
 load_head2:
-  ld   hl,$3E29            ;28CD; Start of HEADER 2.
+  ld   hl,ufia2.hd00       ;28CD; Start of HEADER 2.
   ld   b,9                 ;28D0; Length of a header.
 load_h21:
   call lbyt                ;28D2; Load a byte.
@@ -7373,7 +7373,7 @@ ld_etc_r4:
   call load_head2          ;2954; Load the header into UFIA2.
   ld   a,(ufia1.hd00)      ;2957; Fetch type of program to be LOADed.
   ld   b,a                 ;295A;
-  ld   a,($3E29)           ;295B; Fetch type of program found.
+  ld   a,(ufia2.hd00)      ;295B; Fetch type of program found.
   cp   b                   ;295E;
   jp   nz,rep_8            ;295F; Give an error if they aren't equal.
 
@@ -7395,7 +7395,7 @@ ld_etc_r5:
   call test_6              ;2974;
   jp   nz,rep_14           ;2977; Give error if 'MERGE .. CODE' was used.
   ld   hl,(ufia1.hd0b)     ;297A; Fetch length of requested file.
-  ld   de,($3E2A)          ;297D; Fetch length of file found.
+  ld   de,(ufia2.hd0b)     ;297D; Fetch length of file found.
   ld   a,h                 ;2981;
   or   l                   ;2982;
   jr   z,ld_etc_r6         ;2983; Jump if length unspecified.
@@ -7411,10 +7411,10 @@ ld_etc_r6:
   ld   a,h                 ;2995;
   or   l                   ;2996;
   jr   nz,ld_etc_r7        ;2997; Jump if a start address was specified.
-  ld   hl,($3E2C)          ;2999; Otherwise use the start address of the
+  ld   hl,(ufia2.hd0d)     ;2999; Otherwise use the start address of the
                                 ; found file.
 ld_etc_r7:
-  ld   a,($3E29)           ;299C; But if the file is a BASIC program the
+  ld   a,(ufia2.hd00)      ;299C; But if the file is a BASIC program the
   and  a                   ;299F; start address is held in (PROG).
   jr   nz,ld_etc_r8        ;29A0;
   ld   hl,(23635)          ;29A2; Fetch 'start' from (PROG).
@@ -7424,7 +7424,7 @@ ld_etc_r8:
   jp   nz,the_end          ;29AB; Exit when 'VERIFYing'.
   ld   hl,(ufia1.hd11)     ;29AE; Fetch execute address.
   call exec_code           ;29B1; Use it if it was specified.
-  ld   hl,($3E30)          ;29B4; Otherwise use the files execute
+  ld   hl,(ufia2.hd11)     ;29B4; Otherwise use the files execute
   call exec_code           ;29B7; address.
   jp   the_end             ;29BA; But if it hasn't one either, exit here.
 
@@ -7463,7 +7463,7 @@ exec_c1:
 ; CONTROL').
 
 merge_ctrl:
-  ld   bc,($3E2A)          ;29DF; Fetch the length of the program to be
+  ld   bc,(ufia2.hd0b)     ;29DF; Fetch the length of the program to be
   push bc                  ;29E3; MERGEd.
   inc  bc                  ;29E4; Extra location for the 'end marker'.
   rst  calbas              ;29E5; Call 'BC_SPACES' in the 'main' ROM to
@@ -7492,7 +7492,7 @@ merge_ctrl:
 ; at address $2A32 then fails, trying to reclaim something which isn't there.
 
 load_ctrl:
-  ld   de,($3E2A)          ;29FB; Fetch 'new' length.
+  ld   de,(ufia2.hd0b)     ;29FB; Fetch 'new' length.
   ld   hl,(ufia1.hd0d)     ;29FF; Fetch 'old' start (=0 when loading a
   push hl                  ;2A02; 'new' array').
   ld   a,h                 ;2A03;
@@ -7522,7 +7522,7 @@ load_c2:
   defw rom_test_room       ;2A1D; ROM 'TEST_ROOM' subroutine.
 load_c3:
   pop  hl                  ;2A1F; Restore 'old' start (=0 when handling
-  ld   a,($3E29)           ;2A20; a 'new' array).
+  ld   a,(ufia2.hd00)      ;2A20; a 'new' array).
   and  a                   ;2A23;
   jr   z,ld_prog           ;2A24; Jump if it's a BASIC program.
   ld   a,h                 ;2A26;
@@ -7541,7 +7541,7 @@ load_c3:
 load_c4:
   ld   hl,(23641)          ;2A35; (E_LINE) points to the end of variables
   dec  hl                  ;2A38; area+1.
-  ld   bc,($3E2A)          ;2A39; Fetch length of array to be loaded.
+  ld   bc,(ufia2.hd0b)     ;2A39; Fetch length of array to be loaded.
   push bc                  ;2A3D;
   inc  bc                  ;2A3E; Include in the length one byte for the
   inc  bc                  ;2A3F; 'array name' and two bytes for the
@@ -7570,25 +7570,25 @@ ld_prog:
   dec  hl                  ;2A5E; (E_LINE)-1.
   rst  calbas              ;2A5F; Delete the program by calling
   defw rom_reclaim_1       ;2A60; 'RECLAIM_1' in the 'main' ROM.
-  ld   bc,($3E2A)          ;2A62; Fetch length of program and variables.
+  ld   bc,(ufia2.hd0b)     ;2A62; Fetch length of program and variables.
   ld   hl,(23635)          ;2A66; Fetch (PROG), start of a BASIC program.
   rst  calbas              ;2A69; Create the required space by calling
   defw rom_make_room       ;2A6A; 'MAKE_ROOM'.
   inc  hl                  ;2A6C; Point to the first location.
-  ld   bc,($3E2E)          ;2A6D; Fetch length without variables.
+  ld   bc,(ufia2.hd0f)     ;2A6D; Fetch length without variables.
   add  hl,bc               ;2A71; Calculate and store the start of the
   ld   (23627),hl          ;2A72; variables area.
   ld   a,($3E31)           ;2A75; When no autostart is known this
   ld   h,a                 ;2A78; ('AUTOSTART2-hi') holds $FF.
   and  $C0                 ;2A79;
   jr   nz,ld_prog1         ;2A7B; Jump with no autostart.
-  ld   a,($3E30)           ;2A7D; Otherwise store the autostart line
+  ld   a,(ufia2.hd11)      ;2A7D; Otherwise store the autostart line
   ld   l,a                 ;2A80; number into 'NEWPPC' and clear 'NSPPC'.
   ld   (23618),hl          ;2A81; These hold the line and the statement
   ld   (iy+10),$00         ;2A84; to be executed respectively.
 ld_prog1:
   ld   hl,(23635)          ;2A88; Fetch the start of the BASIC program.
-  ld   de,($3E2A)          ;2A8B; Fetch the length + variables.
+  ld   de,(ufia2.hd0b)     ;2A8B; Fetch the length + variables.
   dec  hl                  ;2A8F; Reset the DATA pointer 'DATADD' to the
   ld   (23639),hl          ;2A90; beginning of the program.
   inc  hl                  ;2A93; Balance the 'DEC HL'.
@@ -7714,7 +7714,7 @@ move:
   ld   hl,(23631)          ;2B22; Save (CHANS).
   push hl                  ;2B25;
   ld   a,(ufia1.fstr1)     ;2B26; Save 'DIR_DESCR1' into 'DIR_DESCR2'.
-  ld   ($3E1E),a           ;2B29;
+  ld   (ufia2.nstr1),a     ;2B29;
   call swap_ufias          ;2B2C; Exchange the UFIA's.
   ld   a,token.out         ;2B2F; This is the keyword 'OUT'.
   ld   (ufia1.fstr1),a     ;2B31; Signal 'WRITE channel'.
@@ -7723,7 +7723,7 @@ move:
   jr   nc,move_run1        ;2B3B; Jump if opening was successfull. I.e.
                                 ; file was 'new' or 'old' file was
                                 ; overwritten.
-  ld   ix,($3E1E)          ;2B3D; Otherwise reclaim first channel (Second
+  ld   ix,(ufia2.nstr1)    ;2B3D; Otherwise reclaim first channel (Second
   call recl_chan           ;2B41; wasn't opened so nothing to reclaim).
   pop  hl                  ;2B44; Drop (CHANS) address.
   pop  hl                  ;2B45; ?? Drop what?
@@ -7761,7 +7761,7 @@ move_run3:
 ; An acceptable code has been found.
 
 move_run4:
-  ld   hl,($3E1E)          ;2B6A; Make 'current' the 2nd channel.
+  ld   hl,(ufia2.nstr1)    ;2B6A; Make 'current' the 2nd channel.
   ld   (23633),hl          ;2B6D; (CURCHL)
   rst  calbas              ;2B70; Use 'main' ROM 'PRINT_A_2' to send the
   defw rom_print_a_2       ;2B71; byte to the 2nd channel.
@@ -8168,7 +8168,7 @@ op_temp7:
   ld   de,230              ;2DC3;
   add  hl,de               ;2DC6;
   ex   de,hl               ;2DC7;
-  ld   hl,($3E1E)          ;2DC8;
+  ld   hl,(ufia2.nstr1)    ;2DC8;
   ld   bc,30               ;2DCB;
   add  hl,bc               ;2DCE;
   ld   bc,9                ;2DCF;
