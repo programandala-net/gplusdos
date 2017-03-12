@@ -10,7 +10,7 @@
 ; This edited version in source form was prepared by Marcos Cruz
 ; (programandala.net), 2016, 2017, from the disassembly done by Rudy Biesma.
 
-; Last modified: 201703071648
+; Last modified: 201703122004
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -6632,18 +6632,18 @@ rename:
 rename_run:
   call test_drive.ufia1    ;257C; See if the drive is defined.
   call swap_ufias          ;257F; Swap UFIA 1 & 2 in the DFCA.
-  call find_file_2559      ;2582; Give an error if the 2nd filename
-  jp   z,rep_28            ;2585; already exists.
+  call find_file_2559      ;2582; Does the 2nd filename exist?
+  jp   z,rep_28            ;2585; Error 28 if it does exist.
   call swap_ufias          ;2588; Swap UFIA 1 & 2 in the DFCA.
-  call find_file_2559      ;258B; Give an error if the 1st filename
-  jp   nz,rep_26           ;258E; doesn't exist.
-  inc  hl                  ;2591;
-  push de                  ;2592;
-  ld   de,ufia2.nstr1      ;2593; Rename the file by copying the 2nd to
-  ex   de,hl               ;2596; the 1st name.
-  ld   bc,10               ;2597;
-  ldir                     ;259A;
-  pop  de                  ;259C;
+  call find_file_2559      ;258B; Does the 1st filename exist?
+  jp   nz,rep_26           ;258E; Error 26 if it doesn't exist.
+  inc  hl                  ;2591; Point to the first filename
+  push de                  ;2592; Save track and sector of its catalogue entry.
+  ld   de,ufia2.nstr2      ;2593; Second filename.
+  ex   de,hl               ;2596; HL=second filename; DE=first filename.
+  ld   bc,10               ;2597; Filename length.
+  ldir                     ;259A; Rename.
+  pop  de                  ;259C; Restore track and sector.
   call wsad                ;259D; Write the CATalogue sector.
   jr   erase_exit          ;25A0; Exit via 'ERASE_EXIT'.
 
@@ -7717,7 +7717,10 @@ move:
   ld   hl,(23631)          ;2B22; Save (CHANS).
   push hl                  ;2B25;
   ld   a,(ufia1.fstr1)     ;2B26; Save 'DIR_DESCR1' into 'DIR_DESCR2'.
+  ; XXX FIXME -- Check if the original ROM is:
+  ; ld   a,(ufia1.nstr1)     ;2B26; Save 'DIR_DESCR1' into 'DIR_DESCR2'.
   ld   (ufia2.nstr1),a     ;2B29;
+
   call swap_ufias          ;2B2C; Exchange the UFIA's.
   ld   a,token.out         ;2B2F; This is the keyword 'OUT'.
   ld   (ufia1.fstr1),a     ;2B31; Signal 'WRITE channel'.
