@@ -1081,7 +1081,7 @@ the_end:
   ld   hl,rom_stmt_next    ;0484; Return address to 'main' ROM is
   rst  syntax_z            ;0487; 'STMT_NEXT' if syntax is being checked.
   jp   z,unpage_hl         ;0488;
-  call bord_rest           ;048B; Restore border color.
+  call bord_rest           ;048B; Restore border colour.
   call tst_break           ;048E; Test for BREAK.
   ld   hl,rom_stmt_r_1     ;0491; Return address during runtime is
   jp   unpage_hl           ;0494; 'STMT_R_1'.
@@ -5563,6 +5563,10 @@ system_variables:
 
 rbcc:
   defb $07                 ;2000; Flashing borders.
+                                ; This value is used as a bitmask
+                                ; of the sector number. Then resulting
+                                ; bits 0..2 are used as border colour.
+                                ; See `flash_bord` routine.
 traks1:
   defb 80+128              ;2001; Drive 1 80 tracks double sided.
 traks2:
@@ -8938,28 +8942,29 @@ disk_bitmap:
   org $3AC3
 
 dfca:
-  defw 0  ;3AC3; length of file in sectors
-  defw 0  ;3AC5; bytes left to load or save
-  defb 0  ;3AC7; some flags
-  defw 0  ;3AC8; load/save address
-  defb 0  ;3ACA; drive
-  defb 0  ;3ACB; operation flag
+  defw 0  ;3AC3; +0: length of file in sectors
+  defw 0  ;3AC5; +2: bytes left to load or save
+  defb 0  ;3AC7; +4: some flags
+  defw 0  ;3AC8; +5: load/save address
+  defb 0  ;3ACA; +7: drive
+  defb 0  ;3ACB; +8: operation flag
                         ; bit 7 : verify
                         ; bit 6 : merge
                         ; bit 5 : save
                         ; bit 4 : load
                         ; bit 0 : other
-  defw 0  ;3ACC;
-  defb 0  ;3ACE;
+  defw 0  ;3ACC; +9
+  defb 0  ;3ACE; +11: hardware representation of the drive being used
+                        ; 1 or 2
 flags3:
-  defb 0  ;3ACF; FLAGS3 
+  defb 0  ;3ACF; +12: FLAGS3 
 
-  defb 0  ;3AD0; current track  ; XXX TODO -- or RPT?
-  defb 0  ;3AD1: current sector
+  defb 0  ;3AD0; +13: current track  ; XXX TODO -- or RPT?
+  defb 0  ;3AD1: +14: current sector
 
-  defw 0  ;3AD2;
+  defw 0  ;3AD2; +15
 
-  defw 0  ;3AD4; XXX TODO -- track and sector number, backup?
+  defw 0  ;3AD4; +17: XXX TODO -- track and sector number, backup?
 
 ; ----------------------------------------------
   org $3BD6
