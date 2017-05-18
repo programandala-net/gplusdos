@@ -1,5 +1,5 @@
 = G+DOS _Disassembled_
-:revdate: 2017-03-07
+:revdate: 2017-05-18
 :author: Marcos Cruz (programandala.net)
 
 G+DOS is a disk operating system for ZX Spectrum and ZX Spectrum 128.
@@ -11,15 +11,15 @@ http://www.biehold.nl/rudy/plusd/plusd.htm[disassembly of G+DOS (by
 Rudy Biesma, 2005)], from HTML to a complete Z80 source suitable for
 studying, editing and reassembling, in order to improve the G+DOS
 support of http://programandala.net/en.program.solo_forth.html[Solo
-Forth] (http://github.com/programandala-net/solo-forth[Solo Fortht in
+Forth] (http://github.com/programandala-net/solo-forth[Solo Forth in
 GitHub]).
+
+The project was started on 2016-03-05. It was uploaded to GitHub on
+2017-05-18.
 
 == Tools used
 
 - Arno Unkrig's http://www.mbayer.de/html2text/files.shtml[html2text]
-for the first conversion.
+  for the first conversion.
 - Bram Moolenaar's http://vim.org/[Vim] for the rest.
 
-== History
-
-The project started on 2016-03-05.
