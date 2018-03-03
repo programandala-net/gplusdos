@@ -8,9 +8,14 @@
 ; http://www.biehold.nl/rudy/plusd/plusd.htm
 ;
 ; This edited version in source form was prepared by Marcos Cruz
-; (programandala.net), 2016, 2017, from the disassembly done by Rudy Biesma.
+; (programandala.net) in 2016-2018, from the disassembly done by Rudy Biesma.
 
-; Last modified: 201803030140
+; Credit:
+;
+; The following document was very useful: "DISCiPLE/+D Technical Guide"
+; Revision 8c (30 Jan 2004) by Luca Bisti et al. (Ramsoft).
+
+; Last modified: 201803030149
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -3279,7 +3284,7 @@ op_t_3:
   call scan_cat            ;0EA4;
   pop  ix                  ;0EA7;
   push ix                  ;0EA9;
-  ld   hl,$3AD6            ;0EAB; Points to dir. descr. of DFCA.
+  ld   hl,fd_file_type     ;0EAB; Points to dir. descr. of DFCA.
   ld   (hl),6              ;0EAE; File is a 'Microdrive file'.
   inc  hl                  ;0EB0;
   ld   b,10                ;0EB1; Copy the 10 characters of the name.
@@ -3295,7 +3300,7 @@ op_t_5:
   inc  hl                  ;0EC0;
   djnz op_t_5              ;0EC1;
   ld   hl,$0000            ;0EC3; Reset RPT.
-  ld   ($3AD0),hl          ;0EC6;
+  ld   (rpt),hl            ;0EC6;
   ld   hl,$3BD6            ;0EC9; Clear the first 256 bytes of the data
   ld   b,0                 ;0ECC; buffer.
 op_t_6:
@@ -3305,7 +3310,7 @@ op_t_6:
   ld   ix,dfca             ;0ED3;
   call mk_alloc            ;0ED7; Allocate the first free sector.
   ld   ($3AD4),de          ;0EDA; Store the track and sector number.
-  ld   ix,$3AD6            ;0EDE; Store them also into the CATalogue
+  ld   ix,file_descriptor  ;0EDE; Store them also into the CATalogue
   ld   (ix+13),d           ;0EE2; entry.
   ld   (ix+14),e           ;0EE5;
   pop  ix                  ;0EE8;
@@ -8934,7 +8939,7 @@ disk_bitmap_size: equ 1560/8 ; 1560 bits, 195 bytes
 
   org $3A00
 disk_bitmap:
-  ds disk_bitmap_size
+  defs disk_bitmap_size
 
 ; ----------------------------------------------
 ; Disk File Channel Area (DFCA)
@@ -8959,12 +8964,52 @@ dfca:
 flags3:
   defb 0  ;3ACF; +12: FLAGS3 
 
-  defb 0  ;3AD0; +13: current track  ; XXX TODO -- or RPT?
-  defb 0  ;3AD1: +14: current sector
+rpt:
+  ; RPT (RamPoinTer) - A system variable which points to a byte in the DRAM:
+  defb 0  ;3AD0; +13: RPT-lo
+  defb 0  ;3AD1: +14: RPT-hi
 
   defw 0  ;3AD2; +15
 
   defw 0  ;3AD4; +17: XXX TODO -- track and sector number, backup?
+
+; ----------------------------------------------
+  org $3AD6
+
+file_descriptor: ; XXX TMP -- directory description/entry?
+
+fd_file_type:
+  defb 0 ; +0
+
+fd_file_name:
+  defs 10 ; +1, name padded with spaces
+
+fd_file_sectors:
+  defw 0 ; +11, number of sectors occupated by the file (in Motorola byte order)
+
+fd_track:
+  defb 0  ; +13, track number of the first sector of the file
+
+fd_sector:
+  defb 0 ; +14, sector number of the first sector of the file
+
+fd_sector_allocation_bitmap:
+  defs 195 ; 15-209, sector allocation bitmap.  
+
+  ; Each bit corresponds to a disk sector.  A bit is set if the corresponding
+  ; sector belong to the file.  Examples: byte 15, bit 0 corresponds to track
+  ; 4, sector 1; byte 16, bit 3 means track 5, sector 2...
+  ;
+  ; IMPORTANT NOTE: The s.a.b. is used only during saving operations: the
+  ; s.a.b. of all the 80 files are merged together (OR) so that the system
+  ; knows which sectors are free (not allocated to any file).  During loading a
+  ; faster method is used: each sector contains only 510 bytes of data; the
+  ; last two bytes contain the track number and the sector number of the next
+  ; sector of the file, respectively. The last sector of the chain contains
+  ; (0,0) as the last two bytes.
+
+fd_unused:
+  defs 46 ; 210-255, depend on the file type.
 
 ; ----------------------------------------------
   org $3BD6
@@ -8985,11 +9030,11 @@ sector_buffer:
 
   org $3DD6
 d_ch_add:
-  dw 0                     ;3DD6;
+  defw 0                   ;3DD6;
 sectors_used:
-  dw 0                     ;3DD8;
+  defw 0                   ;3DD8;
 control_port_status:
-  db 0                     ;3DDA; control port status (of port 239)
+  defb 0                   ;3DDA; control port status (of port 239)
 
   org $3DE4
 
@@ -8997,15 +9042,15 @@ system_status.minimal: equ $58 ; 'X'
 system_status.loaded:  equ $44 ; 'D'
 
 system_status:
-  db 0                     ;3DE4; 'X' ($58) = minimal system
+  defb 0                   ;3DE4; 'X' ($58) = minimal system
                                 ; 'D' ($44) = system loaded
 calbas_flag:
-  db 0                     ;3DE5; 'G' ($47) = CALBAS executing;
+  defb 0                   ;3DE5; 'G' ($47) = CALBAS executing;
                                 ; zero otherwise
 
   org $3DEF
 mapused:
-  db 0                     ;3DEF; Number of files which are using
+  defb 0                   ;3DEF; Number of files which are using
                                 ; the disk bitmap. When it reaches 0
                                 ; the bitmap has to be rebuild.
 
@@ -9080,7 +9125,7 @@ ufia2.hd11:
 
 sp_backup:
 internal_stack:
-  dw 0 ; copy of SP
+  defw 0 ; copy of SP
   ; ... internal stack here, grows towards high memory
   ; ... size unknown
 
