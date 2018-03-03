@@ -10,7 +10,7 @@
 ; This edited version in source form was prepared by Marcos Cruz
 ; (programandala.net), 2016, 2017, from the disassembly done by Rudy Biesma.
 
-; Last modified: 201703122004
+; Last modified: 201803030140
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -1030,7 +1030,7 @@ init_prt1:
 ; ----------------------------------------------
 ; THE 'CHECK SYSTEM CHECKSUM' ROUTINE
 
-; This subroutine calculates the checksum of the system file in RAM. Its is
+; This subroutine calculates the checksum of the system file in RAM. It is
 ; used to check if the system isn't corrupted.
 
 system_ok:
@@ -1791,7 +1791,7 @@ sbyt:
   call sect_end_z          ;0765; Check if the data buffer is full.
   jr   nz,sbyt_1           ;0768; Jump if data buffer not full.
   call mk_alloc            ;076A; Allocate the first free sector.
-  ld   (hl),d              ;076D; Store it's track and sector number into
+  ld   (hl),d              ;076D; Store its track and sector number into
   inc  hl                  ;076E; the last two bytes of the data buffer.
   ld   (hl),e              ;076F;
   ex   de,hl               ;0770;
@@ -2992,7 +2992,7 @@ hl_buffer:
 ; THE 'FETCH RPT INTO HL' SUBROUTINE
 
 ; This subroutine returns with HL holding the RAM PoinTer, which points to the
-; next data byte in the data buffer. When entering at $0D97, RPT-lo is first
+; next data byte in the data buffer. When entering at $0D93, RPT-lo is first
 ; reset.
 
 rpt_hl:
@@ -4231,7 +4231,7 @@ md_err1:
 
 cops:
   call system_z            ;12D2; If a system file has been loaded
-  call z,jcops             ;12D5; call it's screendump routine.
+  call z,jcops             ;12D5; call its screendump routine.
   ld   hl,16384            ;12D8; Start of screen.
   ld   de,n_per_72_lspc    ;12DB; Print the escape sequence for n/72 inch
   call po_esc_seq          ;12DE; line feeds.
@@ -4306,7 +4306,7 @@ adv_paper:
 
 cops2:
   call system_z            ;133E; If a system file has been loaded
-  call z,jcops2            ;1341; call it's screendump routine.
+  call z,jcops2            ;1341; call its screendump routine.
   ld   hl,$57E0            ;1344; Address of the lowest pixelrow of the
                                 ; charactersquare in bottom left corner.
   ld   de,n_per_72_lspc    ;1347; Print the escape sequence for n/72
@@ -5468,7 +5468,7 @@ prt_msg_hl:
 ; THE 'ERROR MESSAGES' TABLE
 
 ; The following table contains the +D's error messages. Each message starts
-; with it's error number.
+; with its error number.
 
 err_msgs:
   defb $00                 ;18C2;
