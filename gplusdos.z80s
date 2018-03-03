@@ -15,7 +15,7 @@
 ; The following document was very useful: "DISCiPLE/+D Technical Guide"
 ; Revision 8c (30 Jan 2004) by Luca Bisti et al. (Ramsoft).
 
-; Last modified: 201803030149
+; Last modified: 201803032333
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -3524,7 +3524,7 @@ chk_name3:
 ; This routine is the same as the Interface 1 'CALL_INP' routine which handles
 ; all IF1's channels. The +D uses this routine only for "M" channels, for "D"
 ; channels a similar routine located in RAM is used. (The only difference is
-; the test of FLAGS3, i.e. IY+124 while emulating the IF1, $1ACF otherwise.)
+; the test of FLAGS3, i.e. IY+124 while emulating the IF1, $3ACF otherwise.)
 ; On entry HL holds the address of the service 'input' routine. The routine
 ; handles both INPUT and INKEY$ commands.
 
@@ -8962,7 +8962,21 @@ dfca:
   defb 0  ;3ACE; +11: hardware representation of the drive being used
                         ; 1 or 2
 flags3:
-  defb 0  ;3ACF; +12: FLAGS3 
+  defb 0  ;3ACF; +12: FLAGS3:
+               ; the bits are set by routines `sign_0`, `sign_1`, etc.,
+               ; and tested by routines `test_0`, `test_1`, etc.
+                        ; bit 7 : 1=verifyng
+                        ; bit 6 : 1=merging
+                        ; bit 5 : 1=saving
+                        ; bit 4 : 1=a second filename was given
+                        ;       : 1=use source filename for destination file
+                        ;       : 1=loading
+                        ; bit 3 : 1=using network
+                        ; bit 2 : 1=moving (?)
+                        ;       : 1=don't generate the 'END of file' error
+                        ; bit 1 : 1=`CLEAR #`, i.e. erase the remaining buffer contents
+                        ;            when a stream is closed
+                        ; bit 0 : 1=at least one file has been copied or erased
 
 rpt:
   ; RPT (RamPoinTer) - A system variable which points to a byte in the DRAM:

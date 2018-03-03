@@ -1,0 +1,7 @@
+= G+DOS Disassambled
+:author: Marcos Cruz (programandala.net)
+:revdate: 2018-03-03
+
+- There are two variables called `flags3`: G+DOS' ($3ACF) and
+  Interface 1's (IY+124), but it seems their usage is different.
+  Confirm it.
