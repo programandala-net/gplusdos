@@ -15,7 +15,7 @@
 ; The following document was very useful: "DISCiPLE/+D Technical Guide"
 ; Revision 8c (30 Jan 2004) by Luca Bisti et al. (Ramsoft).
 
-; Last modified: 201803032333
+; Last modified: 201803040002
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -1114,8 +1114,8 @@ tst_break:
 ; This routine calls the required 'main' ROM routine.
 
 calbas_2:
-  ld   ($3AC5),de          ;04A6; Free DE and HL.
-  ld   ($3AC8),hl          ;04AA;
+  ld   (dfca.left),de      ;04A6; Free DE and HL.
+  ld   (dfca.addr),hl      ;04AA;
   pop  hl                  ;04AD; Get return address, points to address
   ld   e,(hl)              ;04AE; of 'main' ROM routine to be called.
   inc  hl                  ;04AF; Fetch address of routine to be called.
@@ -1127,8 +1127,8 @@ calbas_2:
   ld   hl,$0066            ;04B8; Return address to +D system is
   push hl                  ;04BB; 'NMI_RAM'.
   push de                  ;04BC; Push address of routine to be called.
-  ld   hl,($3AC8)          ;04BD; Restore HL and DE.
-  ld   de,($3AC5)          ;04C0;
+  ld   hl,(dfca.addr)      ;04BD; Restore HL and DE.
+  ld   de,(dfca.left)      ;04C0;
   jp   unpage_1            ;04C4; Do the CALBAS.
 
 ; ----------------------------------------------
@@ -1850,12 +1850,12 @@ lbyt_1:
 ld_buf:
   ld   a,(hl)              ;0794; Fetch a byte from the data buffer.
   call inc_rpt             ;0795; Increment RPT.
-  ld   hl,($3AC8)          ;0798; Fetch load address.
+  ld   hl,(dfca.addr)      ;0798; Fetch load address.
   ld   (hl),a              ;079B; Load the byte into memory.
   inc  hl                  ;079C;
   dec  de                  ;079D;
 load_file:
-  ld   ($3AC8),hl          ;079E; Store load address into (FILEADDR).
+  ld   (dfca.addr),hl      ;079E; Store load address into (FILEADDR).
   ld   a,d                 ;07A1;
   or   e                   ;07A2;
   ret  z                   ;07A3; Exit if no more bytes left.
@@ -1863,7 +1863,7 @@ ld_buf1:
   call sect_end_z          ;07A4; The data buffer has to be empty before
   jr   nz,ld_buf           ;07A7; sectors can be loaded directly into
                                 ; memory. Jump if data buffer not empty.
-  ld   ($3AC5),de          ;07A9; Store the number of bytes left to load
+  ld   (dfca.left),de      ;07A9; Store the number of bytes left to load
                                 ; into (BYTESLEFT).
   ld   d,(hl)              ;07AD; Fetch next track and sector.
   inc  hl                  ;07AE;
@@ -1874,7 +1874,7 @@ ld_op:
   jp   c,ld_last           ;07B6; Jump if last sector.
   inc  hl                  ;07B9; Balance the Carry flag subtracted in
                                 ; 'LAST_SEC_C'.
-  ld   ($3AC5),hl          ;07BA; Store number of bytes left after this
+  ld   (dfca.left),hl      ;07BA; Store number of bytes left after this
                                 ; sector has been loaded.
   xor  a                   ;07BD; Clear retry counter.
   ld   ($3DDB),a           ;07BE;
@@ -1894,9 +1894,9 @@ ld_again:
   call hl_buffer           ;07D7; HL' points to the data buffer.
   exx                      ;07DA;
   ld   bc,251              ;07DB; I/O address of FDC's data register.
-  ld   de,($3ACA)          ;07DE; DE holds length of data buffer. DE +
+  ld   de,(dfca.buflen)    ;07DE; DE holds length of data buffer. DE +
                                 ; DE' hold the length of a sector.
-  ld   hl,($3AC8)          ;07E2; HL holds the load address.
+  ld   hl,(dfca.addr)      ;07E2; HL holds the load address.
   jr   ld_tst_drq          ;07E5; Jump into the load loop.
 
 ld_loop:
@@ -1935,7 +1935,7 @@ ld_tst_drq:
 ; If there are no errors the next sector can be loaded.
 
 ld_ok:
-  ld   ($3AC8),hl          ;081D; Store the load address into (FILEADDR).
+  ld   (dfca.addr),hl      ;081D; Store the load address into (FILEADDR).
   call hl_buffer           ;0820; Make HL point to the data buffer.
   ld   d,(hl)              ;0823; Fetch the next track and sector number.
   inc  hl                  ;0824;
@@ -1946,7 +1946,7 @@ ld_ok:
 
 ld_last:
   call rsad                ;0829; Load the last sector.
-  ld   de,($3AC5)          ;082C; Fetch number of bytes left (BYTESLEFT)
+  ld   de,(dfca.left)      ;082C; Fetch number of bytes left (BYTESLEFT)
   jp   ld_buf1             ;0830; and copy them to 'main' RAM.
 
 ; ----------------------------------------------
@@ -1957,7 +1957,7 @@ ld_last:
 
 sto_buflen:
   ld   bc,510              ;0833; Length of DD data buffer.
-  ld   ($3ACA),bc          ;0836; Store the length into (BUFLEN).
+  ld   (dfca.buflen),bc    ;0836; Store the length into (BUFLEN).
   ret                      ;083A;
 
 ; ----------------------------------------------
@@ -1967,9 +1967,9 @@ sto_buflen:
 ; loaded.
 
 last_sec_c:
-  ld   hl,($3AC5)          ;083B; Fetch the number of bytes left to be
+  ld   hl,(dfca.left)      ;083B; Fetch the number of bytes left to be
                                 ; loaded from (BYTESLEFT).
-  ld   bc,($3ACA)          ;083E; Fetch the data buffer length from
+  ld   bc,(dfca.buflen)    ;083E; Fetch the data buffer length from
                                 ; (BUFLEN).
   scf                      ;0842; Set the Carry flag, now the Carry flag
                                 ; will be set after the 'SBC' if HL=BC.
@@ -1991,7 +1991,7 @@ last_sec_c:
 sa_buf:
   ld   (hl),d              ;0846; Save the byte in the data buffer.
   call inc_rpt             ;0847; Increment RPT.
-  ld   hl,($3AC8)          ;084A; Fetch save address from (FILEADDR).
+  ld   hl,(dfca.addr)      ;084A; Fetch save address from (FILEADDR).
   inc  hl                  ;084D;
   pop  de                  ;084E;
   dec  de                  ;084F;
@@ -2001,12 +2001,12 @@ hsvbk_2:
   ret  z                   ;0852; Exit if no more bytes to save.
   push de                  ;0853;
   ld   d,(hl)              ;0854; Fetch a byte from memory.
-  ld   ($3AC8),hl          ;0855; Store save address into (FILEADDR).
+  ld   (dfca.addr),hl      ;0855; Store save address into (FILEADDR).
   call sect_end_z          ;0858; The data buffer has to be full before
   jr   nz,sa_buf           ;085B; the sector can be saved. Jump if data
                                 ; buffer isn't full.
   pop  de                  ;085D; Fetch number of bytes left to save and
-  ld   ($3AC5),de          ;085E; store it into (BYTESLEFT).
+  ld   (dfca.left),de      ;085E; store it into (BYTESLEFT).
   call mk_alloc            ;0862; Allocate the first free sector.
   ld   (hl),d              ;0865; Store track and sector number into the
   inc  hl                  ;0866; data buffer.
@@ -2030,7 +2030,7 @@ sa_alloc:
   pop  hl                  ;0885; Restore data buffer pointer.
   jr   c,sa_op             ;0886; Jump if all but last sector allocated.
   inc  de                  ;0888; Balance the Carry subtracted in
-  ld   ($3AC5),de          ;0889; 'LAST_SEC_C' before storing the number
+  ld   (dfca.left),de      ;0889; 'LAST_SEC_C' before storing the number
                                 ; of bytes left into (BYTESLEFT).
   call mk_alloc            ;088D; Allocate a sector.
   ld   (hl),d              ;0890; Store its track and sector number into
@@ -2061,8 +2061,8 @@ sa_again:
   ld   bc,251              ;08B5; BC' holds the I/O address of the FDC's
                                 ; data register.
   exx                      ;08B8;
-  ld   hl,($3AC8)          ;08B9; HL holds the save address.
-  ld   de,($3ACA)          ;08BC; DE holds the length of the data space
+  ld   hl,(dfca.addr)      ;08B9; HL holds the save address.
+  ld   de,(dfca.buflen)    ;08BC; DE holds the length of the data space
                                 ; inside a sector. DE+DE' hold the
                                 ; length of a complete sector.
   ld   bc,251              ;08C0; BC holds the same as BC'.
@@ -2104,7 +2104,7 @@ sa_tst_drq:
 ; sector number have to be retrieved.
 
 sa_ok:
-  ld   ($3AC8),hl          ;08FB; Store the save address into (FILEADDR)
+  ld   (dfca.addr),hl      ;08FB; Store the save address into (FILEADDR)
   exx                      ;08FE;
   dec  hl                  ;08FF; Fetch track and sector number of next
   ld   e,(hl)              ;0900; sector.
@@ -2122,8 +2122,8 @@ sa_ok:
   jp   nz,sa_op            ;0915; isn't the last one.
 sa_last:
   call res_rpt             ;0918; The bytes of the last sector are saved
-  ld   de,($3AC5)          ;091B; into the data buffer again. Fetch the
-  ld   hl,($3AC8)          ;091F; number of bytes left and the save
+  ld   de,(dfca.left)      ;091B; into the data buffer again. Fetch the
+  ld   hl,(dfca.addr)      ;091F; number of bytes left and the save
   jp   hsvbk_2             ;0922; address. Then save the bytes into the
                                 ; data buffer.
 
@@ -2657,7 +2657,7 @@ cfsm_save:
   call scan_cat            ;0BA9; entry.
   jp   nz,rep_25           ;0BAC; If none found report 'Directory FULL'.
   call rpt_hl              ;0BAF; HL points to the entry.
-  ld   ($3ACA),ix          ;0BB2; Store disk channel pointer 2, this one
+  ld   (dfca.buflen),ix    ;0BB2; Store disk channel pointer 2, this one
                                 ; points to the DFCA.
   pop  ix                  ;0BB6; Restore disk channel pointer 1, this
                                 ; one can point to 'main' RAM (OPENTYPE)
@@ -2669,7 +2669,7 @@ cfsm_entry:
   inc  ix                  ;0BC0;
   inc  hl                  ;0BC2;
   djnz cfsm_entry          ;0BC3;
-  ld   ix,($3ACA)          ;0BC5; Restore disk channel pointer 2.
+  ld   ix,(dfca.buflen)    ;0BC5; Restore disk channel pointer 2.
   call wsad                ;0BC9; Write the sector to disk.
   pop  ix                  ;0BCC; Restore disk channel pointer 1.
   ret                      ;0BCE; Finished.
@@ -2813,19 +2813,19 @@ frmt_done:
 
 frmt_copy:
   ld   hl,49152            ;0C83; Address of track buffer.
-  ld   ($3AC5),hl          ;0C86; Store load address.
-  ld   ($3AC8),hl          ;0C89; Store save address.
+  ld   (dfca.left),hl      ;0C86; Store load address.
+  ld   (dfca.addr),hl      ;0C89; Store save address.
   ld   a,(ufia2.dstr1)     ;0C8C; Fetch source drive number from UFIA2.
   call test_drive.a        ;0C8F; Check and set drive.
 frmt_c1:
   call rsad                ;0C92; Load a sector.
   push de                  ;0C95; Store track and sector number.
   ld   hl,$3BD6            ;0C96; DRAM sector buffer address.
-  ld   de,($3AC5)          ;0C99; Fetch load address.
+  ld   de,(dfca.left)      ;0C99; Fetch load address.
   ld   bc,512              ;0C9D; BC holds sector length.
   ldir                     ;0CA0; Copy the contents of the buffer to
                                 ; 'main' RAM.
-  ld   ($3AC5),de          ;0CA2; Store new load address.
+  ld   (dfca.left),de      ;0CA2; Store new load address.
   pop  de                  ;0CA6; Restore track and sector number.
   call next_sec            ;0CA7; Compute next sector number.
   jr   nz,frmt_c1          ;0CAA; Jump if there is still a sector on this
@@ -2834,11 +2834,11 @@ frmt_c1:
   call test_drive.a        ;0CAF; Check and set drive.
 frmt_c2:
   push de                  ;0CB2; Store track and sector number.
-  ld   hl,($3AC8)          ;0CB3; Fetch save address.
+  ld   hl,(dfca.addr)      ;0CB3; Fetch save address.
   ld   de,$3BD6            ;0CB6; DRAM sector buffer address.
   ld   bc,512              ;0CB9; BC holds sector length.
   ldir                     ;0CBC; Copy a sector to the sector buffer.
-  ld   ($3AC8),hl          ;0CBE; Store new save address.
+  ld   (dfca.addr),hl      ;0CBE; Store new save address.
   pop  de                  ;0CC1; Restore track and sector number.
   call wsad                ;0CC2; Save the sector.
   call next_sec            ;0CC5; Compute next sector number.
@@ -3211,7 +3211,7 @@ sel_drive:
   ret                      ;0E41; Otherwise exit.
 sel_drive1:
   ld   b,a                 ;0E42;
-  ld   ($3ACE),a           ;0E43;
+  ld   (dfca.drive),a      ;0E43;
   ld   a,(control_port_status) ;0E46; Fetch current control port status.
   and  $FC                 ;0E49; Drop the drive select bits.
   or   b                   ;0E4B; Use the new drive.
@@ -3820,7 +3820,7 @@ erase_1:
 find_file_1146:
   ; XXX FIXME -- the original HTML defines `find_file` twice
   call rest                ;1146; Reset drive to track 0.
-  ld   ($3ACA),ix          ;1149; Store the pointer to filename
+  ld   (dfca.buflen),ix    ;1149; Store the pointer to filename
                                 ; requested.
 find_f1:
   ld   ix,dfca             ;114D;
@@ -3833,7 +3833,7 @@ find_f2:
   cp   0                   ;115C;
   jr   z,find_f4           ;115E; Jump if the file is ERASEd.
   inc  hl                  ;1160; Point to the filename.
-  ld   ix,($3ACA)          ;1161; Fetch pointer to filename requested.
+  ld   ix,(dfca.buflen)    ;1161; Fetch pointer to filename requested.
   ld   a,10                ;1165; Length of filename.
   ld   ($3DF3),a           ;1167;
 find_f3:
@@ -5879,9 +5879,9 @@ snap_save:
   in   a,(c)               ;2146;
   bit  0,a                 ;2148;
   jr   nz,snap_name        ;214A; If CAPS is pressed the Snap goes to
-  ld   a,($3ACE)           ;214C; the other drive.
+  ld   a,(dfca.drive)      ;214C; the other drive.
   xor  $03                 ;214F;
-  ld   ($3ACE),a           ;2151;
+  ld   (dfca.drive),a      ;2151;
 snap_name:
   ld   a,%01000000         ;2154;
   call scan_cat            ;2156; Search first free catalogue entry.
@@ -6114,7 +6114,7 @@ sign_mouse:
 ; and consists of the addresses of the +D command code routines.
 
 hook_code:
-  ld   ($3AC5),de          ;228E;
+  ld   (dfca.left),de      ;228E;
   cp   24                  ;2292;
   jr   nc,comm_code        ;2294; Jump if code isn't a hook code.
   ld   de,if1_hook         ;2296; Address of hook (IF1) code table.
@@ -6134,7 +6134,7 @@ code_cont:
   push hl                  ;22AE; code.
   ld   (d_err_sp),sp       ;22AF; Set D_ERR_SP.
   ex   de,hl               ;22B3;
-  ld   de,($3AC5)          ;22B4; Restore DE and A.
+  ld   de,(dfca.left)      ;22B4; Restore DE and A.
   ld   a,( $3E4F)          ;22B8;
   jp   (hl)                ;22BB; Jump to the routine.
 
@@ -6509,7 +6509,7 @@ cat_run:
   ld   a,13                ;24BC;
   call prt_a               ;24BE; Printing starts on the next line.
   call msg_0               ;24C1; Print the 1st part of "DIR"-message.
-  ld   a,($3ACE)           ;24C4; Fetch current drive.
+  ld   a,(dfca.drive)      ;24C4; Fetch current drive.
   and  $03                 ;24C7; Only bits 0&1.
   or   $30                 ;24C9; Make ASCII "1" or "2".
   call prt_a               ;24CB; Print drive number.
@@ -8363,7 +8363,7 @@ close_1:
   xor  a                   ;2E91; Start with stream 0.
   ld   hl,23574            ;2E92; Address of data for stream 0.
 close_2:
-  ld   ($3AC8),hl          ;2E95; Use 'FILE_ADDR' as a temporary storage.
+  ld   (dfca.addr),hl      ;2E95; Use 'FILE_ADDR' as a temporary storage.
   ld   e,(hl)              ;2E98; Fetch stream data.
   inc  hl                  ;2E99;
   ld   d,(hl)              ;2E9A;
@@ -8375,12 +8375,12 @@ close_2:
   and  a                   ;2EA4;
   sbc  hl,bc               ;2EA5; Calculate the new stream data.
   ex   de,hl               ;2EA7; New stream data to DE.
-  ld   hl,($3AC8)          ;2EA8; Restore stream data address.
+  ld   hl,(dfca.addr)      ;2EA8; Restore stream data address.
   ld   (hl),e              ;2EAB; Store new stream data.
   inc  hl                  ;2EAC;
   ld   (hl),d              ;2EAD;
 close_3:
-  ld   hl,($3AC8)          ;2EAE; Make HL point to next stream data.
+  ld   hl,(dfca.addr)      ;2EAE; Make HL point to next stream data.
   inc  hl                  ;2EB1;
   inc  hl                  ;2EB2;
   inc  a                   ;2EB3; Increment stream number.
@@ -8873,7 +8873,7 @@ cl_patch:
   ld   e,(ix+17)           ;3117; Fetch sector and track.
   ld   d,(ix+18)           ;311A;
   ld   a,(ix+11)           ;311D; Fetch drive number.
-  ld   ($3ACE),a           ;3120;
+  ld   (dfca.drive),a      ;3120;
   call set_drvsd           ;3123; Select track, sector, side and drive.
   call cfsm                ;3126; Close the file sector map.
   ret                      ;3129; Finished.
@@ -8948,17 +8948,33 @@ disk_bitmap:
 
 dfca:
   defw 0  ;3AC3; +0: length of file in sectors
+dfca.left:
   defw 0  ;3AC5; +2: bytes left to load or save
-  defb 0  ;3AC7; +4: some flags
+  defb 0  ;3AC7; +4: scan type flags (bits set):
+                ;
+                ; bit 0 : Search for the file with the specified program number.
+                ;
+                ; bit 1 : Print a 'names only' CATalogue to the current stream. A
+                ; filename must be specified.
+                ;
+                ; bit 2 : Print an 'extended' CATalogue to the current stream. A
+                ; filename has to be specified.
+                ;
+                ; bit 3 : Search for a file with the specified type and name.
+                ;
+                ; bit 4 : Search for a file with the specified filename.
+                ;
+                ; bit 5 : Produce the disk bitmap.
+                ;
+                ; bit 6 : Find the first unused entry.
+                ;
+                ; Note that some functions exclude others.
+dfca.addr:
   defw 0  ;3AC8; +5: load/save address
-  defb 0  ;3ACA; +7: drive
-  defb 0  ;3ACB; +8: operation flag
-                        ; bit 7 : verify
-                        ; bit 6 : merge
-                        ; bit 5 : save
-                        ; bit 4 : load
-                        ; bit 0 : other
+dfca.buflen:
+  defw 0  ;3ACA; +7: length of data buffer
   defw 0  ;3ACC; +9
+dfca.drive:
   defb 0  ;3ACE; +11: hardware representation of the drive being used
                         ; 1 or 2
 flags3:

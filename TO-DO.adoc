@@ -5,3 +5,4 @@
 - There are two variables called `flags3`: G+DOS' ($3ACF) and
   Interface 1's (IY+124), but it seems their usage is different.
   Confirm it.
+- Check other usages of `dfca.buflen`. See `cfsm_entry`.
