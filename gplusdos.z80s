@@ -15,7 +15,7 @@
 ; The following document was very useful: "DISCiPLE/+D Technical Guide"
 ; Revision 8c (30 Jan 2004) by Luca Bisti et al. (Ramsoft).
 
-; Last modified: 201803041100
+; Last modified: 201803041141
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -164,12 +164,14 @@ int:
 ; $0049. That address contains a RET instruction so the effect is a jump to BC
 ; with the 128K ROM paged in.
 
+  org $0046                ; Make the `ret` be at $0049.
+
 unpage_bc:
   push bc                  ;0046; Stack return address.
 unpage_0:
   out  (231),a             ;0047; Page out +D system.
-  ret                      ;0049; ? This statement is not reached from
-                                ; above.
+  ret                      ;0049; This statement is not reached from above.
+
   defb $00,$00,$00,$00,$00 ;004A; Unused locations.
 
 ; ----------------------------------------------
@@ -179,11 +181,13 @@ unpage_0:
 ; address $0052.  That address contains a RET instruction so the effect is a
 ; jump to HL with the 'main' ROM paged in.
 
+  org $004F                ; Make the `ret` be at $0052.
+
 unpage_hl:
   push hl                  ;004F; Stack return address.
 unpage_1:
   out  (231),a             ;0050; Page out +D system.
-  ret                      ;0052;
+  ret                      ;0052; This statement is not reached from above.
 
 ; ===============================================================
 ; The Snapshot routines
@@ -8973,6 +8977,7 @@ dfca.left:
                 ; Note that some functions exclude others.
 dfca.addr:
   defw 0  ;3AC8; +5: load/save address
+               ;     also used as temporary storage
 dfca.buflen:
   defw 0  ;3ACA; +7: length of data buffer
   defw 0  ;3ACC; +9
