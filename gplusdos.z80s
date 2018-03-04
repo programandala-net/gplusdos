@@ -15,7 +15,7 @@
 ; The following document was very useful: "DISCiPLE/+D Technical Guide"
 ; Revision 8c (30 Jan 2004) by Luca Bisti et al. (Ramsoft).
 
-; Last modified: 201803040002
+; Last modified: 201803041100
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -725,7 +725,7 @@ default_traks1:
 default_traks2:
   defb 80+128    ;02F4; @2        Drive 2 80 tracks double sided.
 default_stprat:
-  defb 12        ;02F5; @3        "Steprate" 0 msec.
+  defb 12        ;02F5; @3        "Steprate" 0 ms.
 default_nstat:
   defb 1         ;02F6; @4        Network off.
 default_width:
@@ -1567,23 +1567,24 @@ set_trk2:
 ; being waited can be altered.
 
 step_delay:
-  ld   a,(stprat)          ;0692; Fetch (STPRAT).
+  ld   a,(stprat)          ;0692; Fetch milliseconds.
   and  a                   ;0695;
-step_d1:
-  ret  z                   ;0696; Exit if 'msec-counter' reaches zero.
-wait_1msec:
+step_delay_exit:
+  ret  z                   ;0696; Exit if counter reaches zero.
+
+wait_1_ms:
   push af                  ;0697;
   ld   bc,135              ;0698; With this value the following loop
-                                ; takes 3505 T states (about 1msec) to
+                                ; takes 3505 T states (about 1 ms) to
                                 ; complete.
-wait_1m1:
+wait_1_ms_loop:
   dec  bc                  ;069B;
   ld   a,b                 ;069C;
   or   c                   ;069D;
-  jr   nz,wait_1m1         ;069E; Repeat until counter reaches zero.
+  jr   nz,wait_1_ms_loop   ;069E; Repeat until counter reaches zero.
   pop  af                  ;06A0;
-  dec  a                   ;06A1; Decrease 'msec-counter'.
-  jr   step_d1             ;06A2;
+  dec  a                   ;06A1; Decrease counter.
+  jr   step_delay_exit     ;06A2;
 
 ; ----------------------------------------------
 ; THE 'TRACK_0' SUBROUTINE
@@ -1612,7 +1613,7 @@ rest:
 
   ld   c,%11010000         ;06BC; Terminate all operations.
   call ld_com_r1           ;06BE; Execute the FDC command.
-  ld   b,0                 ;06C1; Wait about 1 msec.
+  ld   b,0                 ;06C1; Wait about 1 ms.
 rest_1:
   djnz rest_1              ;06C3;
 
@@ -1685,7 +1686,7 @@ ld_com_r2:
 ; ----------------------------------------------
 ; THE 'TEST DRIVE' SUBROUTINE
 
-; This subroutine checks if the specified drive is defined (only if it's
+; This subroutine checks if the specified drive is defined (only if its
 ; number isn't 1, then it is accepted right away). The entry point at $0702 is
 ; used when the drive is specified in UFIA1. The entry point at $0705 is used
 ; whenever the drive is specified in the A register. On exit (IX+11) holds the
@@ -1733,8 +1734,8 @@ set_drvsd:
 ; NOTE: This would have been a nice place to update the FDC's track register,
 ; it is very unlikely that both drives are on the same track all the time.
 
-  ld   a,128               ;0738; Otherwise wait for 128 msec.
-  jp   wait_1msec          ;073A; Exit via 'WAIT_1MSEC'.
+  ld   a,128               ;0738; Otherwise wait for 128 ms
+  jp   wait_1_ms           ;073A; exiting via `wait_1_ms`
 
 ; ----------------------------------------------
 ; THE 'PROGRAM NUMBER' SUBROUTINE
@@ -3080,7 +3081,7 @@ step_in:
                                 ; step rate 6 ms.
 step:
   call ld_com_reg          ;0DD1; Execute the command, move one track.
-  jp   step_delay          ;0DD4; Wait for the number of msec's
+  jp   step_delay          ;0DD4; Wait for the number of milliseconds
                                 ; specified by (STPRAT).
 
 
@@ -5577,7 +5578,7 @@ traks1:
 traks2:
   defb 80+128              ;2002; Drive 2 80 tracks double sided.
 stprat:
-  defb 0                   ;2003; "Steprate" 0 msec.
+  defb 0                   ;2003; "Steprate" 0 ms.
 nstat:
   defb 1                   ;2004; Network on?
 width:
@@ -6120,7 +6121,7 @@ hook_code:
   ld   de,if1_hook         ;2296; Address of hook (IF1) code table.
 code_cont:
   ld   (iy+0),$FF          ;2299; Clear error.
-  set  2,(iy+1)            ;229D; What's the purpose of this?
+  set  2,(iy+1)            ;229D; What's the purpose of this? ; XXX TODO --
   inc  hl                  ;22A1; Advance return address past the code.
   push hl                  ;22A2;
   add  a,a                 ;22A3; Table is made of two byte addresses, so
@@ -8950,6 +8951,7 @@ dfca:
   defw 0  ;3AC3; +0: length of file in sectors
 dfca.left:
   defw 0  ;3AC5; +2: bytes left to load or save
+               ;     also used as temporary storage
   defb 0  ;3AC7; +4: scan type flags (bits set):
                 ;
                 ; bit 0 : Search for the file with the specified program number.
