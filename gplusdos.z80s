@@ -48,8 +48,8 @@ power_up:
 ; routine.
 
 start:
-  ld   hl,(23645)          ;0008; The address reached by the interpreter
-  ld   (23647),hl          ;000B; (CH_ADD) is copied to the error pointer
+  ld   hl,(sys_ch_add)     ;0008; The address reached by the interpreter
+  ld   (sys_x_ptr),hl      ;000B; (CH_ADD) is copied to the error pointer
   jr   start2              ;000E; (X_PTR) before proceeding.
 
 ; ----------------------------------------------
@@ -93,8 +93,8 @@ f_addr:
 ; flag set.
 
 disc_err:
-  ld   hl,(23645)          ;0020; The address reached by the interpreter
-  ld   (23647),hl          ;0023; is copied to the error pointer before
+  ld   hl,(sys_ch_add)     ;0020; The address reached by the interpreter
+  ld   (sys_x_ptr),hl      ;0023; is copied to the error pointer before
   jr   disc_err2           ;0026; proceeding.
 
 ; ----------------------------------------------
@@ -151,7 +151,7 @@ int:
 ; This is probably a piece of an older ROM version, it loads HL with (FRAMES)
 ; and CALLs another unused routine at $02E3.
 
-  ld   hl,(23672)          ;003A; Get the two LSBs of FRAMES.
+  ld   hl,(sys_frames)     ;003A; Get the two LSBs of FRAMES.
   call $02E3               ;003D;
   out  (231),a             ;0040; Page-out.
   defb $B5                 ;0042;
@@ -357,7 +357,7 @@ snap_ex5:
 ; printer buffer are saved.
 
 d_rombank:
-  ld   hl,23296            ;011D; Save the 10 bytes needed by the
+  ld   hl,sys_printer_buffer ;011D; Save the 10 bytes needed by the
   ld   de,$3BE6            ;0120; subroutine in +D RAM.
   ld   bc,10               ;0123;
   ldir                     ;0126;
@@ -368,7 +368,6 @@ d_rombank:
   ld   a,$47               ;0133; Signal 'CALBAS executing' (the NMI
   ld   (calbas_flag),a     ;0135; routine returns immediately).
   jp   det_rom_copy        ;0138; Exit via DET_ROM.
-
 
 ; ===============================================================
 ; The control routine
@@ -413,7 +412,7 @@ start_3:
 ; be handled separately.
 
   push bc                  ;0151;
-  ld   hl,(23631)          ;0152; Fetch CHANS.
+  ld   hl,(sys_chans)     ;0152; Fetch CHANS.
   ld   bc,16               ;0155; Point to "P" channel.
   add  hl,bc               ;0158;
   sbc  hl,de               ;0159; DE holds address of requested channel.
@@ -579,7 +578,7 @@ chkend_l:
 s_stat:
   djnz each_st             ;023F; Loop for every statement in the line.
   dec  hl                  ;0241; Update CH_ADD to the address of
-  ld   (23645),hl          ;0242; the statement found.
+  ld   (sys_ch_add),hl     ;0242; the statement found.
   rst  syntax_z            ;0245;
   jr   nz,cl_work          ;0246; Jump forward during runtime.
   bit  7,(iy+12)           ;0248; Give an error if the line is not in the
@@ -706,7 +705,7 @@ clr_ram:
   call keysc_2             ;02E6;
   pop  hl                  ;02E9;
   inc  hl                  ;02EA;
-  ld   (23672),hl          ;02EB;
+  ld   (sys_frames),hl     ;02EB;
   pop  de                  ;02EE;
   pop  bc                  ;02EF;
   ld   a,h                 ;02F0;
@@ -999,7 +998,7 @@ take_prtr:
   ret  nz                  ;0417; Return if the printer isn't to be
   and  a                   ;0418; handled by the +D.
   call nz,init_prt1        ;0419; If necessary initialize printer.
-  ld   hl,(23631)          ;041C; Get address of channel data. (CHANS)
+  ld   hl,(sys_chans)      ;041C; Get address of channel data. (CHANS)
   ld   bc,15               ;041F; Offset for channel "P".
   add  hl,bc               ;0422;
   ex   de,hl               ;0423;
@@ -1173,18 +1172,19 @@ poke_fetch
 ; THE 'SPECTRUM ERROR' ROUTINE
 
 ; This routine must be entered with the error code in (ERR_NR), and does the
-; same as the 'main' ROM  'ERROR' restart, except when error messages are to
-; be supressed.  This is indicated by a non zero value in 23728.
+; same as the 'main' ROM  'ERROR' restart, except when error messages are to be
+; supressed.  This is indicated by a non zero value in sys_unused1 (unused system
+; variable 23728).
 
 spec_err:
   ld   hl,(d_ch_add)       ;04F0; Fetch D_CH_ADD.
-  ld   (23645),hl          ;04F3; Restore CH_ADD.
-  ld   (23647),hl          ;04F6; Restore X_PTR.
+  ld   (sys_ch_add),hl     ;04F3; Restore CH_ADD.
+  ld   (sys_x_ptr),hl      ;04F6; Restore X_PTR.
 spec_err1:
   ld   hl,$0058            ;04F9;
   rst  syntax_z            ;04FC; RETurn to $58, which is in ERROR_2, in
   jp   z,unpage_hl         ;04FD; the Spectrum ROM when checking syntax.
-  ld   a,(23728)           ;0500;
+  ld   a,(sys_unused1)     ;0500;
   and  a                   ;0503; Also RETurn to $58 in 'main' ROM when
   jp   z,unpage_hl         ;0504; error messages aren't to be supressed.
   set  7,(iy+0)            ;0507; Otherwise signal 'Spectrum error'.
@@ -1198,20 +1198,20 @@ spec_err1:
 ; by the 'D_ROMBANK' subroutine.
 
 rest_pbuf:
-  ld   hl,$3BE6            ;0511;
-  ld   de,23296            ;0514;
-  ld   bc,10               ;0517;
-  ldir                     ;051A;
-  ret                      ;051C;
+  ld   hl,$3BE6              ;0511;
+  ld   de,sys_printer_buffer ;0514;
+  ld   bc,10                 ;0517;
+  ldir                       ;051A;
+  ret                        ;051C;
 
 ; ----------------------------------------------
 ; THE 'DETERMINE 48K OR 128K ROM' ROUTINE
 
-; This small routine is copied to 23296, it returns with the Zero flag set if
-; address $0001 in the 'main' ROM contains 175, that is when the 48K ROM bank
-; is paged in.
+; This small routine is copied to 23296 (the OS printer buffer), it returns
+; with the Zero flag set if address $0001 in the 'main' ROM contains 175, that
+; is when the 48K ROM bank is paged in.
 
-det_rom_copy: equ 23296
+det_rom_copy: equ sys_printer_buffer
 
 det_rom:
   out  (231),a             ;051D; Page +D out.
@@ -3152,7 +3152,7 @@ wtkey:
   defw rom_keyboard        ;0E0F; 'main' ROM.
   bit  5,(iy+1)            ;0E11; Repeat the scan until a key has been
   jr   z,wtkey             ;0E15; pressed.
-  ld   a,(23560)           ;0E17; Fetch the character code from (LAST_K)
+  ld   a,(sys_last_k)      ;0E17; Fetch the character code from (LAST_K)
   ret                      ;0E1A;
 
 ; ----------------------------------------------
@@ -3166,7 +3166,7 @@ cons_out:
   ld   a,254               ;0E1C; Use stream '-2' (attached to "S" the
                                 ; channel).
 out_code:
-  ld   hl,23692            ;0E1E; This is SCR_CT.
+  ld   hl,sys_scr_ct       ;0E1E; This is SCR_CT.
   ld   (hl),$FF            ;0E21; Set scroll counter.
   rst  calbas              ;0E23; Call 'CHAN_OPEN' in the 'main' ROM to
   defw rom_chan_open       ;0E24; make stream -2 the current.
@@ -3334,7 +3334,7 @@ op_t_6:
 ; stream.
 
 set_t_mch:
-  ld   ix,(23631)          ;0EF4; Fetch (CHANS), the start of the
+  ld   ix,(sys_chans)      ;0EF4; Fetch (CHANS), the start of the
                                 ; channel area.
   ld   de,20               ;0EF8; Make IX point to the start of the
   add  ix,de               ;0EFB; 'new' channels.
@@ -3417,7 +3417,7 @@ set_t_5:
   call setup_pre           ;0F7A; Set-up data block preamble.
   push ix                  ;0F7D; Make HL point to the start of the
   pop  hl                  ;0F7F; channel.
-  ld   de,(23631)          ;0F80; Calculate the required 'stream offset'
+  ld   de,(sys_chans)      ;0F80; Calculate the required 'stream offset'
   or   a                   ;0F84; into HL (i.e. channel start-(CHANS)+1)
   sbc  hl,de               ;0F85;
   inc  hl                  ;0F87;
@@ -4149,7 +4149,7 @@ send_pack:
 ; initialised to their default values.
 
 hook_31:
-  ld   hl,(23631)          ;127A; Fetch start of channel area (CHANS).
+  ld   hl,(sys_chans)      ;127A; Fetch start of channel area (CHANS).
   ld   de,$A349            ;127D; This is -23735.
   add  hl,de               ;1280; The Carry flag is now set if the CHANS
                                 ; area starts after address 23734, i.e.
@@ -5411,12 +5411,12 @@ d_error1:
   ld   hl,0                ;185A;
   ld   (iy+55),h           ;185D; Clear FLAGX.
   ld   (iy+38),h           ;1860; And X_PTR-hi.
-  ld   (23563),hl          ;1863; Clear DEFADD.
+  ld   (sys_defadd),hl     ;1863; Clear DEFADD.
   inc  l                   ;1866; Ensure that stream 0 points to channel
   ld   (23574),hl          ;1867; 'K'.
   rst  calbas              ;186A; Clear all the work areas and the
   defw rom_set_min         ;186B; calculator stack.
-  ld   a,(23728)           ;186D;
+  ld   a,(sys_unused1)     ;186D;
   and  a                   ;1870; Exit via 'END' if error messages are
   jp   nz,the_end          ;1871; to be supressed.
   res  5,(iy+55)           ;1874; Signal 'EDIT mode' FLAGX.
@@ -7728,7 +7728,7 @@ move:
   ld   a,token.in          ;2B1A; This is the keyword 'IN', it is used to
   ld   (ufia1.fstr1),a     ;2B1C; signal 'READ channel'.
   call op_move             ;2B1F; Open the source channel/stream.
-  ld   hl,(23631)          ;2B22; Save (CHANS).
+  ld   hl,(sys_chans)      ;2B22; Save (CHANS).
   push hl                  ;2B25;
   ld   a,(ufia1.fstr1)     ;2B26; Save 'DIR_DESCR1' into 'DIR_DESCR2'.
   ; XXX FIXME -- Check if the original ROM is:
@@ -7761,7 +7761,7 @@ move_run1:
 ; between 23734 and (CHANS).
 
   pop  de                  ;2B4C; Retrieve 'old' (CHANS).
-  ld   hl,(23631)          ;2B4D; Fetch 'new' (CHANS).
+  ld   hl,(sys_chans)      ;2B4D; Fetch 'new' (CHANS).
   or   a                   ;2B50; Calculate the space which was inserted
   sbc  hl,de               ;2B51; under (CHANS).
   ld   de,(ufia1.nstr1)    ;2B53; Adjust first channels address.
@@ -7792,7 +7792,7 @@ move_run4:
 move_run5:
   xor  a                   ;2B75; Clear FLAGS3.
   ld   (flags3),a          ;2B76;
-  ld   hl,(23631)          ;2B79; Store current (CHANS).
+  ld   hl,(sys_chans)      ;2B79; Store current (CHANS).
   push hl                  ;2B7C;
   call swap_ufias          ;2B7D; Exchange the UFIA's.
   call cl_move             ;2B80; Close the destination channel.
@@ -7802,7 +7802,7 @@ move_run5:
 ; aren't needed with the +D.
 
   pop  de                  ;2B86; Restore initial address of CHANS.
-  ld   hl,(23631)          ;2B87; Fetch current (CHANS).
+  ld   hl,(sys_chans)      ;2B87; Fetch current (CHANS).
   or   a                   ;2B8A; Calculate the amount of bytes reclaimed
   sbc  hl,de               ;2B8B; after the deletion of the second
   channel.
@@ -7874,7 +7874,7 @@ op_move:
   dec  a                   ;2BE0;
   rst  calbas              ;2BE1; Open the channel attached to stream A.
   defw rom_chan_open       ;2BE2;
-  ld   hl,(23633)          ;2BE4; Store the channels address (CURCHL)
+  ld   hl,(sys_curchl)     ;2BE4; Store the channels address (CURCHL)
   ld   (ufia1.nstr1),hl    ;2BE7; into UFIA1.
   ret                      ;2BEA; Return.
 
@@ -7926,7 +7926,7 @@ cl_move1:
 ; (i.e. with bit 7 of the channel specifier set).
 
 recl_temp:
-  ld   ix,(23631)          ;2C28; Point to the start of the channel area.
+  ld   ix,(sys_chans)      ;2C28; Point to the start of the channel area.
   ld   de,20               ;2C2C; IX now points to the first
   add  ix,de               ;2C2F; 'non-standard' channel.
 recl_t1:
@@ -7963,7 +7963,7 @@ recl_t3:
 close_chan:
   push ix                  ;2C57;
   pop  hl                  ;2C59;
-  ld   de,(23631)          ;2C5A; (CHANS).
+  ld   de,(sys_chans)      ;2C5A; (CHANS).
   or   a                   ;2C5E;
   sbc  hl,de               ;2C5F; Calculate channel offset.
   inc  hl                  ;2C61;
@@ -8057,7 +8057,7 @@ make_perm:
 ; This subroutine is used to open a temporary "D" channel in the CHANS area.
 
 op_temp_d:
-  ld   ix,(23631)          ;2CDF; Start of channel area (CHANS).
+  ld   ix,(sys_chans)      ;2CDF; Start of channel area (CHANS).
   ld   de,20               ;2CE3; Point to the first 'non-standard'
   add  ix,de               ;2CE6; channel.
 op_temp1:
@@ -8207,7 +8207,7 @@ op_temp8:
   ldir                     ;2DE5; channel area.
   push ix                  ;2DE7; Start of channel to HL.
   pop  hl                  ;2DE9;
-  ld   de,(23631)          ;2DEA; HL-(CHANS)+1 gives the required 'stream
+  ld   de,(sys_chans)      ;2DEA; HL-(CHANS)+1 gives the required 'stream
   or   a                   ;2DEE; offset'.
   sbc  hl,de               ;2DEF;
   inc  hl                  ;2DF1;
@@ -8331,7 +8331,7 @@ close_strm:
   ret  z                   ;2E63; (i.e. stream data = 0).
   ld   ($3DED),bc          ;2E64; Store stream data.
   push hl                  ;2E68;
-  ld   hl,(23631)          ;2E69; Make HL point to the start of the
+  ld   hl,(sys_chans)      ;2E69; Make HL point to the start of the
   dec  hl                  ;2E6C; channel attached to the stream to be
   add  hl,bc               ;2E6D; CLOSEd ((CHANS)+'stream data').
   ex   (sp),hl             ;2E6E; HL now holds the address of the stream
