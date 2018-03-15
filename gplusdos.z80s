@@ -15,7 +15,7 @@
 ; The following document was very useful: "DISCiPLE/+D Technical Guide"
 ; Revision 8c (30 Jan 2004) by Luca Bisti et al. (Ramsoft).
 
-; Last modified: 201803152329
+; Last modified: 201803152350
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -8114,9 +8114,9 @@ op_temp4:
   nop                      ;2D46;
   ld   a,0                 ;2D47; Signal 'READing'.
   ld   (ix+12),a           ;2D49;
-  ld   bc,39               ;2D4C; Offset of buffer from start of channel.
-  ld   (ix+15),c           ;2D4F;
-  ld   (ix+16),b           ;2D52;
+  ld   bc,39               ;2D4C; Offset of data buffer from start of channel,
+  ld   (ix+15),c           ;2D4F; 39 bytes above DFCA, in the sector
+  ld   (ix+16),b           ;2D52; allocation bitmap (?) XXX TODO -- confirm
   push hl                  ;2D55; HL points to the CATalogue entry.
   push ix                  ;2D56; IX points to the start of the channel.
   pop  hl                  ;2D58;
@@ -8164,8 +8164,8 @@ op_temp6:
   ld   a,1                 ;2D9D; Signal 'WRITEing'.
   ld   (ix+12),a           ;2D9F;
   ld   bc,275              ;2DA2; Offset of databuffer from the start of
-  ld   (ix+15),c           ;2DA5; the channel.
-  ld   (ix+16),b           ;2DA8;
+  ld   (ix+15),c           ;2DA5; the channel, pointing to the sector buffer,
+  ld   (ix+16),b           ;2DA8; which is 275 bytes above DFCA.
   call ofsm_2              ;2DAB; Open the file.
   jr   z,op_temp7          ;2DAE; Jump if file doesn't exist (anymore).
   ld   bc,787              ;2DB0; Length of an OUTput channel.
@@ -9013,7 +9013,14 @@ rpt:
   defb 0  ;3AD0; +13: RPT-lo
   defb 0  ;3AD1: +14: RPT-hi
 
-  defw 0  ;3AD2; +15
+  ; Data buffer offset. Used as a two-byte displacement from DFCA,
+  ; to get the address of the current data buffer:
+  ; - When it holds 275, it points to the start of the sector buffer.
+  ; - When it holds 39, it points into the sector allocation bitmap (?).
+  ;   XXX TODO -- confirm
+
+  defb 0  ;3AD2; +15: Data buffer offset - lo
+  defb 0  ;3AD3; +16: Data buffer offset - hi
 
   defw 0  ;3AD4; +17: XXX TODO -- track and sector number, backup?
 
