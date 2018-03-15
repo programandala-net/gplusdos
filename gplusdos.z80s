@@ -15,7 +15,7 @@
 ; The following document was very useful: "DISCiPLE/+D Technical Guide"
 ; Revision 8c (30 Jan 2004) by Luca Bisti et al. (Ramsoft).
 
-; Last modified: 201803041141
+; Last modified: 201803152320
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -9053,14 +9053,9 @@ fd_unused:
 
 sector_buffer:
 
-  defs 256
+  ; EXECUTE (type 11) files are run directly from the sector buffer.
 
-; ----------------------------------------------
-; Buffer for EXECUTE (type 11) files
-
-  org $3DB6
-
-  defs 510
+  defs 512
 
 ; ----------------------------------------------
 ; Internal variables
