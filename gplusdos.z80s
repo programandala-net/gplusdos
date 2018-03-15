@@ -15,7 +15,7 @@
 ; The following document was very useful: "DISCiPLE/+D Technical Guide"
 ; Revision 8c (30 Jan 2004) by Luca Bisti et al. (Ramsoft).
 
-; Last modified: 201803152320
+; Last modified: 201803152329
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -9002,7 +9002,14 @@ flags3:
                         ; bit 0 : 1=at least one file has been copied or erased
 
 rpt:
-  ; RPT (RamPoinTer) - A system variable which points to a byte in the DRAM:
+
+  ; RPT (RamPoinTer) - A system variable used as a two-byte displacement from
+  ; the sector buffer ($3BD6).
+  ;
+  ; Note: Each sector in the directory holds two entries. In order to examine
+  ; them, +14 will hold either 0 or 1, and +13 can be used as an offset from
+  ; either the first or the second entry.
+
   defb 0  ;3AD0; +13: RPT-lo
   defb 0  ;3AD1: +14: RPT-hi
 
