@@ -15,7 +15,7 @@
 ; The following document was very useful: "DISCiPLE/+D Technical Guide"
 ; Revision 8c (30 Jan 2004) by Luca Bisti et al. (Ramsoft).
 
-; Last modified: 201803211835
+; Last modified: 201803212158
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -387,7 +387,7 @@ d_rombank:
 
 start_3:
   ld   (d_ch_add),hl       ;013B; +D's CH_ADD (D_CH_ADD).
-  ld   ($3E4F),a           ;013E;
+  ld   (out_byte),a        ;013E;
   pop  hl                  ;0141; Get RETurn address (usually points to
   push hl                  ;0142; the error code).
   push de                  ;0143;
@@ -4265,15 +4265,15 @@ c1_pixrow:
   jr   nz,c1_adddot        ;12FF; Jump with colour codes 4-7 (no dot).
   scf                      ;1301; Set a dot for colour codes 0-3.
 c1_adddot:
-  ld   a,($3E4F)           ;1302; Incorporate one dot in dot column.
+  ld   a,(out_byte)        ;1302; Incorporate one dot in dot column.
   rla                      ;1305;
-  ld   ($3E4F),a           ;1306;
+  ld   (out_byte),a        ;1306;
   inc  h                   ;1309; Next pixel row.
   ld   a,h                 ;130A;
   and  $07                 ;130B;
   jr   nz,c1_pixrow        ;130D; Repeat until all eight pixelrows have
                                 ; been 'scanned'.
-  ld   a,($3E4F)           ;130F;
+  ld   a,(out_byte)        ;130F;
   call pntp                ;1312; Print the dot column.
   pop  hl                  ;1315; Repeat until all eight pixels in a byte
   djnz c1_pixel            ;1316; have been printed. One character cell
@@ -4507,9 +4507,9 @@ po_esc_seq:
 pchan_out:
   call system_z            ;1415; If the system file is loaded call the
   call z,jpchan            ;1418; alternative routine.
-  ld   a,($2006)           ;141B; This is PCODE.
+  ld   a,(pcode)           ;141B;
   and  a                   ;141E;
-  ld   a,($3E4F)           ;141F; Fetch the code to be send to the
+  ld   a,(out_byte)        ;141F; Fetch the code to be sent to the
   jp   nz,pntp             ;1422; printer, send it right away if
                                 ; (PCODE)=1, i.e. when the +D
                                 ; mustn't interfere.
@@ -4797,10 +4797,10 @@ p_graph3:
 p_ascii:
   ld   hl,enter_flag       ;1582;
   res  1,(hl)              ;1585; Reset 'newline already send' flag.
-  ld   ($3E4F),a           ;1587;
+  ld   (out_byte),a        ;1587;
   ld   a,(graph)           ;158A; Fetch (GRAPH), when it's 1 the +D
   and  a                   ;158D; has to generate the graphic
-  ld   a,($3E4F)           ;158E; representation of some characters.
+  ld   a,(out_byte)        ;158E; representation of some characters.
   jr   z,p_others          ;1591; Jump if the normal code has to be send
 
 ; Because some Spectrum characters aren't supported by all printers the +D can
@@ -4846,7 +4846,7 @@ p_up_pos:
 ; printer is busy. The BREAK key is tested.
 
 pntp:
-  ld   ($3E4F),a           ;15C9; Store the code temporarily.
+  ld   (out_byte),a        ;15C9; Store the code temporarily.
 pntp_1:
   call tst_break           ;15CC; Exit if the BREAK key is pressed.
   in   a,(247)             ;15CF; Test the BUSY line of the printer.
@@ -4858,14 +4858,14 @@ pntp_1:
   in   a,(247)             ;15DB;
   bit  7,a                 ;15DD;
   jr   nz,pntp_1           ;15DF;
-  ld   a,($3E4F)           ;15E1; Send the code to the printer port.
+  ld   a,(out_byte)        ;15E1; Send the code to the printer port.
   out  (247),a             ;15E4;
   ld   a,(control_port_status) ;15E6; Fetch current control port status.
   or   $40                 ;15E9; Give a STROBE.
   out  (239),a             ;15EB;
   and  $BF                 ;15ED; Reset STROBE.
   out  (239),a             ;15EF;
-  ld   a,($3E4F)           ;15F1; Return with the A register holding the
+  ld   a,(out_byte)        ;15F1; Return with the A register holding the
                                 ; outputted byte, 'RET' forgotten?
 
 
@@ -6140,7 +6140,7 @@ code_cont:
   ld   (d_err_sp),sp       ;22AF; Set D_ERR_SP.
   ex   de,hl               ;22B3;
   ld   de,(dfca.left)      ;22B4; Restore DE and A.
-  ld   a,( $3E4F)          ;22B8;
+  ld   a,(out_byte)        ;22B8;
   jp   (hl)                ;22BB; Jump to the routine.
 
 comm_code:
@@ -8202,7 +8202,7 @@ op_temp7:
 op_temp8:
   push ix                  ;2DDC;
   pop  de                  ;2DDE; Start of channel to DE.
-  ld   hl,d_ch_data        ;2DDF; Start of the "D" channel data.
+  ld   hl,d_chan_data      ;2DDF; Start of the "D" channel data.
   ld   bc,11               ;2DE2; Copy the 11 bytes channel data to the
   ldir                     ;2DE5; channel area.
   push ix                  ;2DE7; Start of channel to HL.
@@ -8220,7 +8220,7 @@ op_temp8:
 ; area (i.e. just before the BASIC program).
 
 chan_spc:
-  ld   ($2E14),bc          ;2DF3; Store the length of the channel into
+  ld   (d_chan_data.length),bc ;2DF3; Store the length of the channel into
                                 ; the "D" channel data table.
   ld   hl,(23635)          ;2DF7; Fetch the start address of the channel
   dec  hl                  ;2DFA; ((PROG)-1).
@@ -8245,12 +8245,13 @@ chan_spc1:
 ; The '11' bytes that compose the initial part of a "D" channel are as
 ; follows:
 
-d_ch_data:
+d_chan_data:
   defw $0008               ;2E0B; Main ROM 'output' routine.
   defw $0008               ;2E0D; Main ROM 'input' routine.
   defb "D"+128             ;2E0F; Channel specifier.
-  defw dchan_out           ;2E10; +D system 'output' routine.
-  defw d_input             ;2E12; +D system 'input' routine.
+  defw d_chan_output       ;2E10; +D system 'output' routine.
+  defw d_chan_input        ;2E12; +D system 'input' routine.
+d_chan_data.length:
   defw $0000               ;2E14; Length of a channel.
 
 ; ----------------------------------------------
@@ -8429,7 +8430,7 @@ cls:
 ; address $2EE3. From that address on it's largely the same as the Interface 1
 ; 'CALL_INP' routine, which routine handles all the IF1's channels.
 
-d_input:
+d_chan_input:
   ld   ix,(23633)          ;2EDC; IX points to the start of the current
                                 ; channel (CURCHL).
   ld   hl,dchan_in         ;2EE0; Address of "D" input service routine.
@@ -8452,7 +8453,7 @@ d_input:
   pop  de                  ;2EFB; Remove 'ED_ERROR'.
   pop  de                  ;2EFC;
   ld   (23613),de          ;2EFD; Restore the old value of ERR_SP.
-d_input1:
+d_chan_input1:
   push hl                  ;2F01; Store address of service routine.
   ld   de,d_inp_end        ;2F02; Return address is 'D_INP_END' below.
   push de                  ;2F05;
@@ -8467,18 +8468,18 @@ d_inp_end:
   jp   nz,rep_27           ;2F09; Give the 'END of file' error when the
                                 ; Zero flag is reset.
   pop  hl                  ;2F0C; Otherwise restore address of service
-  jr   d_input1            ;2F0D; routine and try again.
+  jr   d_chan_input1       ;2F0D; routine and try again.
 
 d_inp_acc:
   cp   13                  ;2F0F;
-  jr   z,d_input2          ;2F11; Jump if the code is ENTER.
+  jr   z,d_chan_input2     ;2F11; Jump if the code is ENTER.
   rst  calbas              ;2F13; Otherwise the byte is to be added to
   defw rom_add_char_keeping_current_mode ;2F14; the INPUT line. This is done by calling
                                 ; into the 'ADD_CHAR' subroutine.
   pop  hl                  ;2F16; Restore address of service routine and
-  jr   d_input1            ;2F17; read the next byte.
+  jr   d_chan_input1       ;2F17; read the next byte.
 
-d_input2:
+d_chan_input2:
   pop  hl                  ;2F19; Drop the address of the service routine
   jp   unpage_1            ;2F1A; and page-out the +D system.
 
@@ -8547,7 +8548,7 @@ dchan_in1:
 ; handles the saving of the byte.  The only thing done here is incrementing
 ; the file length bytes.
 
-dchan_out:
+d_chan_output:
   ld   ix,(23633)          ;2F5F; IX point to current channel (CURCHL).
   bit  0,(ix+12)           ;2F63; Give 'Writing a READ file' error if
   jp   z,rep_19            ;2F67; it's an INput channel.
@@ -8561,11 +8562,11 @@ dchan_out:
   ld   bc,229              ;2F76;
   add  ix,bc               ;2F79; IX now points to the file header.
   inc  (ix+2)              ;2F7B; Update file length, skip higher bytes
-  jr   nz,dchan_out1       ;2F7E; if it isn't necessary to update them.
+  jr   nz,d_chan_output1   ;2F7E; if it isn't necessary to update them.
   inc  (ix+3)              ;2F80;
-  jr   nz,dchan_out1       ;2F83;
+  jr   nz,d_chan_output1   ;2F83;
   inc  (ix+0)              ;2F85;
-dchan_out1:
+d_chan_output1:
   pop  ix                  ;2F88;
   ret                      ;2F8A; Finished.
 
@@ -9174,6 +9175,11 @@ ufia2.hd0f:
   defw 0                   ;3E2E; BASIC length without variables
 ufia2.hd11:
   defw 0                   ;3E30; BASIC autorun line
+
+  org $3E4F
+out_byte:
+  db 0                     ;3E4F; byte sent to the printer
+
 
 ; ----------------------------------------------
 ; Internal stack
