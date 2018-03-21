@@ -15,7 +15,7 @@
 ; The following document was very useful: "DISCiPLE/+D Technical Guide"
 ; Revision 8c (30 Jan 2004) by Luca Bisti et al. (Ramsoft).
 
-; Last modified: 201803152350
+; Last modified: 201803211835
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -929,7 +929,7 @@ run:
                                 ; description and filename) to UFIA2 and
                                 ; load the first sector of the file into
                                 ; the disk buffer.
-  ld   hl,$3BD6            ;03AE; Copy the file header (the 9 bytes
+  ld   hl,sector_buffer         ;03AE; Copy the file header (the 9 bytes
   ld   de,ufia2.hd00       ;03B1; consisting of filetype, length, etc.)
   ld   bc,9                ;03B4; to UFIA2.
   ldir                     ;03B7;
@@ -2293,7 +2293,7 @@ scan_cat:
   ld   ix,dfca             ;09A5;
   ld   (ix+4),a            ;09A9; Store scan-type.
   xor  a                   ;09AC; Clear column counter.
-  ld   ($3DEB),a           ;09AD;
+  ld   (column_counter),a  ;09AD;
   call rest                ;09B0; Reset drive head to track 0, DE = 1.
 each_entry:
   call rsad                ;09B3; Load a CATalogue sector.
@@ -2353,11 +2353,11 @@ scan_1:
   jr   nz,scan_2           ;0A22;
   sla  b                   ;0A24; Then print six columns wide.
 scan_2:
-  ld   a,($3DEB)           ;0A26; Increment column counter.
+  ld   a,(column_counter)  ;0A26; Increment column counter.
   inc  a                   ;0A29;
   cp   b                   ;0A2A;
   jr   z,scan_3            ;0A2B; Jump if last column reached.
-  ld   ($3DEB),a           ;0A2D; Otherwise store column counter and
+  ld   (column_counter),a  ;0A2D; Otherwise store column counter and
   ld   a,32                ;0A30; separate the columns with a SPACE.
   jr   scan_4              ;0A32;
 
@@ -2365,7 +2365,7 @@ scan_2:
 
 scan_3:
   xor  a                   ;0A34; Clear column counter.
-  ld   ($3DEB),a           ;0A35;
+  ld   (column_counter),a  ;0A35;
   ld   a,13                ;0A38; Print a NEWLINE.
 scan_4:
   call prt_a               ;0A3A;
@@ -2825,7 +2825,7 @@ frmt_copy:
 frmt_c1:
   call rsad                ;0C92; Load a sector.
   push de                  ;0C95; Store track and sector number.
-  ld   hl,$3BD6            ;0C96; DRAM sector buffer address.
+  ld   hl,sector_buffer    ;0C96; DRAM sector buffer address.
   ld   de,(dfca.left)      ;0C99; Fetch load address.
   ld   bc,512              ;0C9D; BC holds sector length.
   ldir                     ;0CA0; Copy the contents of the buffer to
@@ -2840,7 +2840,7 @@ frmt_c1:
 frmt_c2:
   push de                  ;0CB2; Store track and sector number.
   ld   hl,(dfca.addr)      ;0CB3; Fetch save address.
-  ld   de,$3BD6            ;0CB6; DRAM sector buffer address.
+  ld   de,sector_buffer    ;0CB6; DRAM sector buffer address.
   ld   bc,512              ;0CB9; BC holds sector length.
   ldir                     ;0CBC; Copy a sector to the sector buffer.
   ld   (dfca.addr),hl      ;0CBE; Store new save address.
@@ -3306,7 +3306,7 @@ op_t_5:
   djnz op_t_5              ;0EC1;
   ld   hl,$0000            ;0EC3; Reset RPT.
   ld   (rpt),hl            ;0EC6;
-  ld   hl,$3BD6            ;0EC9; Clear the first 256 bytes of the data
+  ld   hl,sector_buffer    ;0EC9; Clear the first 256 bytes of the data
   ld   b,0                 ;0ECC; buffer.
 op_t_6:
   ld   (hl),0              ;0ECE;
@@ -3803,7 +3803,7 @@ erase_111E:
   pop  ix                  ;112B; Restore channel pointer.
   push af                  ;112D; Save flags.
   jr   nz,erase_1          ;112E; Jump if the file wasn't found.
-  ld   hl,$3BD6            ;1130; Point to the start of the disk buffer.
+  ld   hl,sector_buffer    ;1130; Point to the start of the disk buffer.
   add  hl,bc               ;1133; BC holds the directory entries offset
                                 ; (i.e. 0 for first, 256 for second).
   ld   (hl),0              ;1134; Signal 'ERASEd file'.
@@ -3832,7 +3832,7 @@ find_f1:
   call rsad                ;1151; Load a sector to the disk buffer.
   ld   bc,0                ;1154; First entry's offset.
 find_f2:
-  ld   hl,$3BD6            ;1157; Point to the start of the disk buffer.
+  ld   hl,sector_buffer    ;1157; Point to the start of the disk buffer.
   add  hl,bc               ;115A; Point to directory entry.
   ld   a,(hl)              ;115B;
   cp   0                   ;115C;
@@ -4339,7 +4339,7 @@ c2_scrrow:
 c2_pixrow:
   push bc                  ;1364;
   push hl                  ;1365;
-  ld   de,$3BD6            ;1366; Clear the buffer for the 2 pixels.
+  ld   de,sector_buffer    ;1366; Clear the buffer for the 2 pixels.
   ld   b,3                 ;1369;
 c2_clrbuf:
   xor  a                   ;136B;
@@ -4362,7 +4362,7 @@ c2_mk_mask:
   rl   c                   ;137F;
   djnz c2_mk_mask          ;1381;
   ld   de,greyscale        ;1383; DE points to the 'GREYSCALE' table.
-  ld   hl,$3BD6            ;1386; HL points to the 2-pixel buffer.
+  ld   hl,sector_buffer    ;1386; HL points to the 2-pixel buffer.
   ld   b,3                 ;1389; Each pixel is printed as 3*3 dots.
 c2_dotcol:
   push bc                  ;138B;
@@ -4386,7 +4386,7 @@ c2_add_dot:
   dec  c                   ;13A0; Next pixel.
   djnz c2_2pix             ;13A1; Two pixels are handled at a time.
   ld   b,3                 ;13A3; Three dotcolumns are to be printed.
-  ld   hl,$3BD6            ;13A5;
+  ld   hl,sector_buffer    ;13A5;
 c2_prt3x3:
   ld   a,(hl)              ;13A8; Print each dotcolumn in turn.
   call pntp                ;13A9;
@@ -5381,7 +5381,7 @@ mesg_3:
 
 d_error:
   call bord_rest           ;182D; Restore normal border colour.
-  ld   ($3DED),de          ;1830; Track & sector with sector error.
+  ld   (track_and_sector),de ;1830; Track & sector with sector error.
   xor  a                   ;1834;
   ld   (flags3),a          ;1835; Clear FLAGS3.
   pop  hl                  ;1838; Fetch return address.
@@ -5430,7 +5430,7 @@ d_error1:
   cp   4                   ;1886;
   jr   nz,d_error2         ;1888; Jump if error isn't 'SECTOR error'.
   push af                  ;188A;
-  ld   de,($3DED)          ;188B; Fetch track and sector where error
+  ld   de,(track_and_sector) ;188B; Fetch track and sector where error
   ld   h,0                 ;188F; was signalled.
   ld   l,d                 ;1891;
   push de                  ;1892;
@@ -5925,7 +5925,7 @@ snap_n1:
   cp   9                   ;218D;
   jp   nz,no_snp128        ;218F; Jump if not a 128K Snapshot.
   ld   hl,49152            ;2192; Now the 5 first bytes of the current
-  ld   de,$3BD6            ;2195; RAM-page are saved in the +D RAM
+  ld   de,sector_buffer    ;2195; RAM-page are saved in the +D RAM
   ld   bc,5                ;2198; and replaced by the "BRUCE" message.
   ldir                     ;219B; This is done to determine the currently
   ld   hl,bruce            ;219D; paged in RAM-page.
@@ -5988,7 +5988,7 @@ bruce_2:
   inc  de                  ;21F4;
   inc  hl                  ;21F5;
   djnz bruce_1             ;21F6; All five characters have to match.
-  ld   hl,$3BD6            ;21F8; The active RAM bank has been found,
+  ld   hl,sector_buffer    ;21F8; The active RAM bank has been found,
   ld   de,49152            ;21FB; restore the original five bytes.
   ld   bc,5                ;21FE;
   ldir                     ;2201;
@@ -6242,9 +6242,9 @@ to_1:
   ld   bc,11               ;2337;
   ldir                     ;233A;
   ld   hl,$0001            ;233C; Track 0 sector 1.
-  ld   ($3DED),hl          ;233F;
+  ld   (track_and_sector),hl ;233F;
   ld   hl,$0000            ;2342; Disk buffer offset $0000.
-  ld   ($3DEB),hl          ;2345;
+  ld   (disk_buffer_offset),hl ;2345;
 to_2:
   call test_drive.ufia1    ;2348; Is the drive defined?
   call to_search           ;234B; Search for a file to be copied.
@@ -6364,7 +6364,7 @@ to_wspc:
 ; directory is searched the routine returns with Zero reset.
 
 to_search:
-  ld   de,($3DED)          ;23EC; Track & sector to DE.
+  ld   de,(track_and_sector) ;23EC; Track & sector to DE.
   ld   a,d                 ;23F0;
   cp   4                   ;23F1; Jump if not reached track 4, i.e.
   jr   nz,to_search1       ;23F3; directory hasn't been read completely.
@@ -6378,7 +6378,7 @@ to_search1:
 to_search2:
   call to_copy             ;23FB; Check if this file is to be copied.
   push af                  ;23FE; Store result (Zero flag).
-  ld   hl,($3DEB)          ;23FF; Disk buffer offset to HL.
+  ld   hl,(disk_buffer_offset) ;23FF; Disk buffer offset to HL.
   ld   a,h                 ;2402;
   cp   1                   ;2403;
   jr   z,to_nxtsec         ;2405; Jump if second entry.
@@ -6386,7 +6386,7 @@ to_search2:
   and  $04                 ;240A;
   jr   nz,to_nxtsec        ;240C; Jump with single density.
   ld   hl,256              ;240E; Otherwise offset is for second entry.
-  ld   ($3DEB),hl          ;2411;
+  ld   (disk_buffer_offset),hl ;2411;
   pop  af                  ;2414; Restore Zero flag.
   ret  z                   ;2415; Return if this file is to be copied.
   jr   to_search2          ;2416; Otherwise next file.
@@ -6396,7 +6396,7 @@ to_search2:
 
 to_nxtsec:
   ld   hl,0                ;2418; Offset is for first entry.
-  ld   de,($3DED)          ;241B; Fetch track and sector.
+  ld   de,(track_and_sector) ;241B; Fetch track and sector.
   inc  e                   ;241F; Next sector.
   ld   a,e                 ;2420;
   cp   11                  ;2421;
@@ -6404,8 +6404,8 @@ to_nxtsec:
   ld   e,1                 ;2425; Start with sector 1.
   inc  d                   ;2427; Next track.
 to_nxt1:
-  ld   ($3DED),de          ;2428; Store track & sector.
-  ld   ($3DEB),hl          ;242C; Store disk buffer offset.
+  ld   (track_and_sector),de ;2428; Store track & sector.
+  ld   (disk_buffer_offset),hl ;242C; Store disk buffer offset.
   pop  af                  ;242F; Restore Zero flag.
   ret  z                   ;2430; Return if previous file is to be
   jr   to_search           ;2431; copied. Otherwise jump.
@@ -6418,8 +6418,8 @@ to_nxt1:
 ; directory description of the file to be copied.
 
 to_copy:
-  ld   hl,$3BD6            ;2433; Point to start of sector.
-  ld   de,($3DEB)          ;2436; Offset to DE.
+  ld   hl,sector_buffer    ;2433; Point to start of sector.
+  ld   de,(disk_buffer_offset) ;2436; Offset to DE.
   ld   (ix+14),d           ;243A; Update RPT (RAM PoinTer (?)).
   add  hl,de               ;243D; Update HL.
   ld   a,(hl)              ;243E; Fetch directory description.
@@ -6986,7 +6986,7 @@ not_k:
   jp   nz,rep_2            ;272B; Give error if SAVEing.
   call st_end_ram          ;272E; Confirm end of statement and exit
                                 ; during syntax checking.
-  ld   bc,$3BD6            ;2731; Load address of execute file.
+  ld   bc,sector_buffer    ;2731; Load address of execute file.
   jr   xfile_2             ;2734; Jump forward.
 
 ; A separator has been found, so there should follow an address.
@@ -7383,7 +7383,7 @@ ld_etc_r2:
 ld_etc_r3:
   cp   11                  ;294A;
   jr   nz,ld_etc_r4        ;294C; Jump if it isn't a 'Execute' file.
-  call $3BD6               ;294E; Execute (this is the address of the
+  call sector_buffer       ;294E; Execute (this is the address of the
   jp   the_end             ;2951; disk buffer). Finished.
 
 ld_etc_r4:
@@ -7967,7 +7967,7 @@ close_chan:
   or   a                   ;2C5E;
   sbc  hl,de               ;2C5F; Calculate channel offset.
   inc  hl                  ;2C61;
-  ld   ($3DED),hl          ;2C62; The channel is CLOSEd by jumping into
+  ld   (channel_offset),hl ;2C62; The channel is CLOSEd by jumping into
   jp   close_0             ;2C65; the 'CLOSE' routine
 
 ; ----------------------------------------------
@@ -8329,7 +8329,7 @@ close_strm:
   ld   a,c                 ;2E61;
   or   b                   ;2E62; Return if the stream is already CLOSEd
   ret  z                   ;2E63; (i.e. stream data = 0).
-  ld   ($3DED),bc          ;2E64; Store stream data.
+  ld   (stream_data),bc    ;2E64; Store stream data.
   push hl                  ;2E68;
   ld   hl,(sys_chans)      ;2E69; Make HL point to the start of the
   dec  hl                  ;2E6C; channel attached to the stream to be
@@ -8372,7 +8372,7 @@ close_2:
   ld   e,(hl)              ;2E98; Fetch stream data.
   inc  hl                  ;2E99;
   ld   d,(hl)              ;2E9A;
-  ld   hl,($3DED)          ;2E9B; Fetch stream data for CLOSEd stream.
+  ld   hl,(stream_data)    ;2E9B; Fetch stream data for CLOSEd stream.
   and  a                   ;2E9E; Jump if the stream data found is lower
   sbc  hl,de               ;2E9F; than that of the CLOSEd stream (i.e.
   jr   nc,close_3          ;2EA1; channel has not been moved).
@@ -8702,7 +8702,7 @@ hrsad:
   call rsad                ;2FDE; Load the sector into the disk buffer.
   pop  hl                  ;2FE1;
   push de                  ;2FE2;
-  ld   de,$3BD6            ;2FE3; Start of disk buffer.
+  ld   de,sector_buffer    ;2FE3; Start of disk buffer.
   ex   de,hl               ;2FE6;
   ld   bc,512              ;2FE7; Sector length.
   ldir                     ;2FEA; Move sector to specified address.
@@ -8725,7 +8725,7 @@ hwsad:
   ld   ix,dfca             ;2FF6;
   call test_drive.ufia1    ;2FFA; See if the drive held in the A register
   push de                  ;2FFD; is defined.
-  ld   de,$3BD6            ;2FFE;
+  ld   de,sector_buffer    ;2FFE;
   ld   bc,512              ;3001; Sector length.
   ldir                     ;3004; Move BC bytes to the disk buffer.
   pop  de                  ;3006;
@@ -9094,7 +9094,17 @@ calbas_flag:
   defb 0                   ;3DE5; 'G' ($47) = CALBAS executing;
                                 ; zero otherwise
 
-  org $3DEF
+  org $3DEB
+
+disk_buffer_offset:
+column_counter:
+  defw 0                   ;3DEB;
+
+track_and_sector:
+stream_data:
+channel_offset:
+  defw 0                   ;3DED;
+
 mapused:
   defb 0                   ;3DEF; Number of files which are using
                                 ; the disk bitmap. When it reaches 0
@@ -9113,6 +9123,7 @@ ufia1.dstr1:
   defb 0                   ;3E01; drive: 1, 2 or '*'
 ufia1.fstr1:
   defb 0                   ;3E02; file directory number
+                                ; also channel type (IN or OUT)
 ufia1.sstr1:
   defb 0                   ;3E03; stream number
 ufia1.lstr1:
