@@ -1,6 +1,6 @@
 = G+DOS Disassambled
 :author: Marcos Cruz (programandala.net)
-:revdate: 2018-03-21
+:revdate: 2018-03-23
 
 - There are two variables called `flags3`: G+DOS' ($3ACF) and
   Interface 1's (IY+124), but it seems their usage is different.
@@ -8,3 +8,4 @@
 - Check `ufia1.nstr1` used as `prog_num1`. Example: `ld
   a,(ufia1.nstr1)     ;2BFE; Save 'DIR_DESCR1' into 'PROG_NUM1'.`
 - Check relation between `internal_stack` and $3FEA.
+- Label Interface 1's system variables, from address 23734.

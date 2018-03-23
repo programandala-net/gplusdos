@@ -15,7 +15,7 @@
 ; The following document was very useful: "DISCiPLE/+D Technical Guide"
 ; Revision 8c (30 Jan 2004) by Luca Bisti et al. (Ramsoft).
 
-; Last modified: 201803212158
+; Last modified: 201803231845
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -50,7 +50,7 @@ power_up:
 start:
   ld   hl,(sys_ch_add)     ;0008; The address reached by the interpreter
   ld   (sys_x_ptr),hl      ;000B; (CH_ADD) is copied to the error pointer
-  jr   start2              ;000E; (X_PTR) before proceeding.
+  jr   start_2             ;000E; (X_PTR) before proceeding.
 
 ; ----------------------------------------------
 ; THE 'CALL A MAIN ROM ROUTINE' RESTART
@@ -65,8 +65,7 @@ calbas:
 ; ----------------------------------------------
 ; THE 'START_2' ROUTINE
 
-
-start2:
+start_2:
   jp   start_3             ;0013; Continue with the +D systems main
                                 ; entry routine.
   defb $00,$00             ;0016; Unused locations.
@@ -412,7 +411,7 @@ start_3:
 ; be handled separately.
 
   push bc                  ;0151;
-  ld   hl,(sys_chans)     ;0152; Fetch CHANS.
+  ld   hl,(sys_chans)      ;0152; Fetch CHANS.
   ld   bc,16               ;0155; Point to "P" channel.
   add  hl,bc               ;0158;
   sbc  hl,de               ;0159; DE holds address of requested channel.
@@ -442,13 +441,13 @@ start_4:
   pop  hl                  ;0173; Fetch RETurn address.
   rst  calbas              ;0174; This CALL's a LD A,(HL) in the Spectrum
   defw $007B               ;0175; ROM, so the error code is fetched.
-  ld   (23610),a           ;0177; Store the error code in ERR_NR.
+  ld   (sys_err_nr),a      ;0177; Store the error code in ERR_NR.
   ld   hl,(d_err_sp)       ;017A; Fetch D_ERR_SP.
   ld   a,h                 ;017D;
   or   l                   ;017E; Jump if D_ERR_SP was zero, that is when
   jp   z,spec_err1         ;017F; the 'main' ROM has to handle the error.
   set  7,(iy+0)            ;0182; Signal 'Spectrum error'.
-  ld   a,(23610)           ;0186; Copy error code in A register.
+  ld   a,(sys_err_nr)      ;0186; Copy error code in A register.
   ld   sp,hl               ;0189; Clear stack.
   scf                      ;018A; Signal 'error and exit', someone else
   ret                      ;018B; has to handle the error.
@@ -461,7 +460,7 @@ start_5:
                                 ; code (the byte after RST $08).
   rst  calbas              ;018D; Fetch the byte.
   defw $007B               ;018E;
-  ld   (23610),a           ;0190; Store it in ERR_NR.
+  ld   (sys_err_nr),a      ;0190; Store it in ERR_NR.
   cp   255                 ;0193;
   jr   nz,start_7          ;0195; Jump if the error isn't 'OK'.
   call system_z            ;0197; System loaded?
@@ -469,7 +468,7 @@ start_5:
   jr   z,start_6           ;019D; Give 'OK G+DOS' message if so.
   bit  7,(iy+12)           ;019F; Give the message also if PPC-hi
   jr   z,start_6           ;01A3; indicates line is not in editing area.
-  ld   hl,(23641)          ;01A5; Fetch the command from the editing area
+  ld   hl,(sys_e_line)     ;01A5; Fetch the command from the editing area
   ld   a,(hl)              ;01A8;
   cp   token.run           ;01A9; 'RUN' command?
   jp   z,run               ;01AB; Load the system file if the command is 'RUN'.
@@ -527,14 +526,14 @@ runtime:
   jr   s_stat              ;01FD;
 
 prog_line:
-  ld   hl,(23635)          ;01FF; (PROG), start of the program area.
+  ld   hl,(sys_prog)       ;01FF; (PROG), start of the program area.
 sc_l_loop:
   ld   a,(iy+12)           ;0202; Give error if the current line number
   cp   (hl)                ;0205; is greater than that of the line to be
   jp   c,rep_0             ;0206; searched for.
   inc  hl                  ;0209; Point to low byte of line number.
   jr   nz,line_len         ;020A; Jump if not at expected line.
-  ld   a,(23621)           ;020C; Compare also the low byte of the line
+  ld   a,(sys_ppc)         ;020C; Compare also the low byte of the line
   cp   (hl)                ;020F; numbers (PPC-lo).
   jp   c,rep_0             ;0210; Give error if the line doesn't exist.
 line_len:
@@ -1084,7 +1083,7 @@ st_end1:
 ; next statement.
 
 the_end:
-  ld   sp,(23613)          ;047C; Clear machine stack. (ERR_SP)
+  ld   sp,(sys_err_sp)     ;047C; Clear machine stack. (ERR_SP)
   ld   (iy+0),$FF          ;0480; Clear error code. (ERR_NR)
   ld   hl,rom_stmt_next    ;0484; Return address to 'main' ROM is
   rst  syntax_z            ;0487; 'STMT_NEXT' if syntax is being checked.
@@ -3369,7 +3368,7 @@ set_t_2:
 ; Now the space for the new channel is created at the end of the CHANS area.
 
 set_t_3:
-  ld   hl,(23635)          ;0F34; Calculate end of CHANS area ((PROG)-1)
+  ld   hl,(sys_prog)       ;0F34; Calculate end of CHANS area ((PROG)-1)
   dec  hl                  ;0F37; i.e. the start of the channel.
   push hl                  ;0F38;
   ld   bc,595              ;0F39; Length is '595' bytes.
@@ -3482,7 +3481,7 @@ tst_place:
   scf                      ;0FBE; Allow for a further byte.
   sbc  hl,de               ;0FBF; No action is made if the filename is
   ret  nc                  ;0FC1; before the channel.
-  ld   hl,(23653)          ;0FC2; Or if it is after (STKEND).
+  ld   hl,(sys_stkend)     ;0FC2; Or if it is after (STKEND).
   sbc  hl,de               ;0FC5;
   ret  c                   ;0FC7;
   ex   de,hl               ;0FC8; Add to DE the number of 'inserted'
@@ -3537,7 +3536,7 @@ call_inp:
   res  3,(iy+2)            ;0FEF; Signal 'the mode is to be considered
                                 ; as being unchanged'.
   push hl                  ;0FF3; Store address of service routine.
-  ld   hl,(23613)          ;0FF4; HL points to error address (ERR_SP).
+  ld   hl,(sys_err_sp)     ;0FF4; HL points to error address (ERR_SP).
   ld   e,(hl)              ;0FF7; Fetch the error address.
   inc  hl                  ;0FF8;
   ld   d,(hl)              ;0FF9;
@@ -3549,10 +3548,10 @@ call_inp:
 ; Now deal with an 'INPUT #' command referring to a "M" channel.
 
   pop  hl                  ;1002; Restore address of service routine.
-  ld   sp,(23613)          ;1003; Clear the machine stack (ERR_SP).
+  ld   sp,(sys_err_sp)     ;1003; Clear the machine stack (ERR_SP).
   pop  de                  ;1007; Remove 'ED_ERROR'.
   pop  de                  ;1008;
-  ld   (23613),de          ;1009; Restore the old value of ERR_SP.
+  ld   (sys_err_sp),de     ;1009; Restore the old value of ERR_SP.
 in_again:
   push hl                  ;100D; Store address of service routine.
   ld   de,input_end        ;100E; Return address is 'INPUT_END' below.
@@ -3613,7 +3612,7 @@ inkey_dollar_end:
 ; 'MCHAN_IN' below.
 
 m_input:
-  ld   ix,(23633)          ;103C; Make IX point to start of channel.
+  ld   ix,(sys_curchl)     ;103C; Make IX point to start of channel.
   ld   hl,mchan_in         ;1040; Address of the service routine.
   jp   call_inp            ;1043; Jump to the control routine.
 
@@ -4155,11 +4154,11 @@ hook_31:
                                 ; area starts after address 23734, i.e.
                                 ; the 'new' variables exist already.
   jr   c,var_exist         ;1281; Jump if they exist already.
-  ld   hl,(23651)          ;1283; Clear the calculator stack by copying
-  ld   (23653),hl          ;1286; (STKBOT) into (STKEND).
-  ld   hl,23698            ;1289; Set (MEM) with the address of the
-  ld   (23656),hl          ;128C; MEMBOT area.
-  ld   hl,23733            ;128F; One location before the new space is
+  ld   hl,(sys_stkbot)     ;1283; Clear the calculator stack by copying
+  ld   (sys_stkend),hl     ;1286; (STKBOT) into (STKEND).
+  ld   hl,sys_membot       ;1289; Set (MEM) with the address of the
+  ld   (sys_mem),hl        ;128C; MEMBOT area.
+  ld   hl,sys_p_ramt.high  ;128F; One location before the new space is
                                 ; needed.
   ld   bc,58               ;1292; There are 58 new variables.
   rst  calbas              ;1295; Use 'main' ROM 'MAKE_ROOM' to create
@@ -4608,7 +4607,7 @@ p_noenter:
   ld   de,p_cont           ;149F; Otherwise the '"P" channel output'
                                 ; routine is to be changed to 'P_CONT'.
 p_tv_1:
-  ld   (23566),a           ;14A2; Store the control character code in
+  ld   (sys_tvdata),a      ;14A2; Store the control character code in
                                 ; (TVDATA-lo).
 
 ; The current 'output' routine address is changed temporarily.
@@ -4625,7 +4624,7 @@ p_change:
 p_cont:
   ld   de,p_all            ;14AC; Restore the original address for
   call p_change            ;14AF; 'P_ALL'.
-  ld   hl,(23566)          ;14B2; Fetch the control code and the first
+  ld   hl,(sys_tvdata)     ;14B2; Fetch the control code and the first
                                 ; operand if there are indeed two
                                 ; operands (TVDATA).
   ld   d,a                 ;14B5; The 'last' operand and the control
@@ -4648,7 +4647,7 @@ p_co_temps:
 
 p_tv_2:
   ld   de,p_cont           ;14C5; Store the first operand in TVDATA-hi
-  ld   (23567),a           ;14C8; and change the address of the 'output'
+  ld   (sys_tvdata.high),a ;14C8; and change the address of the 'output'
   jr   p_change            ;14CB; routine to 'P_CONT'.
 
 ; Enter here when handling the control codes AT & TAB.
@@ -4731,7 +4730,7 @@ p_noctrl:
   ld   b,a                 ;151F; Construct the graphic in the
   rst  calbas              ;1520; calculator's memory area by calling
   defw rom_po_gr_1         ;1521; 'PO_GR_1' in the 'main' ROM.
-  ld   hl,23698            ;1523; HL points to the start of the graphic
+  ld   hl,sys_membot       ;1523; HL points to the start of the graphic
                                 ; form; i.e. MEMBOT.
   jr   p_graph             ;1526; Jump to print the graphic character.
 
@@ -4746,7 +4745,7 @@ p_tokens_and_udg:
 
 p_udgs:
   add  a,21                ;1532; Adjust range, UDG's now from 0..20.
-  ld   bc,(23675)          ;1534; BC points to the start of the UDG area
+  ld   bc,(sys_udg)        ;1534; BC points to the start of the UDG area
   ld   h,0                 ;1538; (UDG).
   ld   l,a                 ;153A; Pass the code to HL.
   add  hl,hl               ;153B; Each UDG is made by eight bytes, so
@@ -5114,7 +5113,7 @@ flash_bord:
 
 bord_rest:
   push af                  ;168E;
-  ld   a,(23624)           ;168F; Fetch lower screen attribute (BORDCR).
+  ld   a,(sys_bordcr)      ;168F; Fetch lower screen attribute (BORDCR).
   and  $38                 ;1692; Only the border bits.
   rrca                     ;1694; Move the bits to 0-2.
   rrca                     ;1695;
@@ -5402,9 +5401,9 @@ d_error:
 ; The routine continues here when an error message is to be printed.
 
 d_error1:
-  ld   (23610),a           ;1848; Store error code into (ERR_NR).
+  ld   (sys_err_nr),a      ;1848; Store error code into (ERR_NR).
   res  5,(iy+1)            ;184B; Signal 'ready for a new key'.
-  ld   sp,(23613)          ;184F; Clear machine stack by using (ERR_SP).
+  ld   sp,(sys_err_sp)     ;184F; Clear machine stack by using (ERR_SP).
   rst  syntax_z            ;1853; Return via 'main' ROM 'SET_STK'
   ld   hl,rom_set_stk      ;1854; routine to the error handler during
   jp   z,unpage_hl         ;1857; syntax checking.
@@ -5412,8 +5411,8 @@ d_error1:
   ld   (iy+55),h           ;185D; Clear FLAGX.
   ld   (iy+38),h           ;1860; And X_PTR-hi.
   ld   (sys_defadd),hl     ;1863; Clear DEFADD.
-  inc  l                   ;1866; Ensure that stream 0 points to channel
-  ld   (23574),hl          ;1867; 'K'.
+  inc  l                   ;1866; Ensure that stream 0 (the third one)
+  ld   (sys_strms+3*2),hl  ;1867; points to channel 'K' (the first one).
   rst  calbas              ;186A; Clear all the work areas and the
   defw rom_set_min         ;186B; calculator stack.
   ld   a,(sys_unused1)     ;186D;
@@ -5426,7 +5425,7 @@ d_error1:
                                 ; clearing'. (TV_FLAG)
   res  3,(iy+2)            ;187F; Signal 'mode is to be considered
                                 ; unchanged'.
-  ld   a,(23610)           ;1883;
+  ld   a,(sys_err_nr)      ;1883;
   cp   4                   ;1886;
   jr   nz,d_error2         ;1888; Jump if error isn't 'SECTOR error'.
   push af                  ;188A;
@@ -6274,7 +6273,7 @@ to_2:
   call load_head2          ;236B; Copy the file header (the 9 bytes
                                 ; consisting of filetype, length, etc.)
                                 ; to UFIA2.
-  ld   hl,(23635)          ;236E; Fetch start of BASIC program (PROG).
+  ld   hl,(sys_prog)       ;236E; Fetch start of BASIC program (PROG).
   inc  h                   ;2371; Add 256 to it.
   ld   de,(ufia2.hd0b)     ;2372; Fetch length of file (LENGTH2_1).
   call load_file           ;2376; Load DE bytes, starting at address HL.
@@ -6310,7 +6309,7 @@ to_5:
   jr   nz,to_6             ;23A0; Jump if file existed already and the
                                 ; user didn't want to overwrite it.
   call save_head1          ;23A2; SAVE the 9 header bytes to the file.
-  ld   hl,(23635)          ;23A5; Fetch start of BASIC (PROG), and add
+  ld   hl,(sys_prog)       ;23A5; Fetch start of BASIC (PROG), and add
   inc  h                   ;23A8; 256 to it. (here the file was loaded)
   ld   de,(ufia1.hd0b)     ;23A9; Length of file.
   call hsvbk_2             ;23AD; Save the file.
@@ -7048,14 +7047,14 @@ prog_1:
   ld   (ufia1.hd00),a      ;2783;
   ld   a,1                 ;2786; Signal 'BASIC file'.
   ld   (ufia1.nstr1),a     ;2788;
-  ld   hl,(23641)          ;278B; Fetch (E_LINE), the first location past
+  ld   hl,(sys_e_line)     ;278B; Fetch (E_LINE), the first location past
                                 ; the variables area.
-  ld   de,(23635)          ;278E; Fetch (PROG), the 'start' of the BASIC
+  ld   de,(sys_prog)       ;278E; Fetch (PROG), the 'start' of the BASIC
   ld   (ufia1.hd0d),de     ;2792; program and store it in FILE_ADDR1
   scf                      ;2796; Calculate ((E_LINE)-(PROG)-1), i.e.  the
   sbc  hl,de               ;2797; length of the program and its
   ld   (ufia1.hd0b),hl     ;2799; variables. Store it in LENGTH1_1.
-  ld   hl,(23627)          ;279C; Fetch (VARS) and calculate
+  ld   hl,(sys_vars)       ;279C; Fetch (VARS) and calculate
   sbc  hl,de               ;279F; (VARS)-(PROG), i.e. the length of the
                                 ; program without its variables.
   ld   (ufia1.hd0f),hl     ;27A1; Store it into LENGTH1_2.
@@ -7434,7 +7433,7 @@ ld_etc_r7:
   ld   a,(ufia2.hd00)      ;299C; But if the file is a BASIC program the
   and  a                   ;299F; start address is held in (PROG).
   jr   nz,ld_etc_r8        ;29A0;
-  ld   hl,(23635)          ;29A2; Fetch 'start' from (PROG).
+  ld   hl,(sys_prog)       ;29A2; Fetch 'start' from (PROG).
 ld_etc_r8:
   call lv_any              ;29A5; Load the file.
   call test_7              ;29A8;
@@ -7462,7 +7461,7 @@ exec_code:
   cp   $FF                 ;29C6; $FFFF.
   ret  z                   ;29C8;
 exec_c1:
-  ld   sp,(23613)          ;29C9; Clear the stack. (ERR_SP)
+  ld   sp,(sys_err_sp)     ;29C9; Clear the stack. (ERR_SP)
   ld   (iy+0),$FF          ;29CD; Clear the error.
   call bord_rest           ;29D1; Restore the border colour.
   ld   bc,rom_stmt_r_1     ;29D4; Return to 'STMT_R_1' in the 'main' ROM
@@ -7491,7 +7490,7 @@ merge_ctrl:
   push hl                  ;29EC;
   call lv_any              ;29ED; Load the file.
   pop  hl                  ;29F0; Fetch 'start' of new program.
-  ld   de,(23635)          ;29F1; Fetch 'start' of old program (PROG).
+  ld   de,(sys_prog)       ;29F1; Fetch 'start' of old program (PROG).
   rst  calbas              ;29F5; Do the MERGEing by calling the 'main'
   defw rom_me_new_lp       ;29F6; ROM 'MERGE' routine.
   jp   the_end             ;29F8; Finished.
@@ -7556,7 +7555,7 @@ load_c3:
   rst  calbas              ;2A32; Call 'RECLAIM_2' in the 'main' ROM to
   defw rom_reclaim_2       ;2A33; delete the array.
 load_c4:
-  ld   hl,(23641)          ;2A35; (E_LINE) points to the end of variables
+  ld   hl,(sys_e_line)     ;2A35; (E_LINE) points to the end of variables
   dec  hl                  ;2A38; area+1.
   ld   bc,(ufia2.hd0b)     ;2A39; Fetch length of array to be loaded.
   push bc                  ;2A3D;
@@ -7582,32 +7581,32 @@ load_c4:
 ; Now deal with the LOADing of a BASIC program and its variables.
 
 ld_prog:
-  ld   de,(23635)          ;2A57; Fetch start of existing program.  (PROG)
-  ld   hl,(23641)          ;2A5B; Fetch end of existing program. I.e.
+  ld   de,(sys_prog)       ;2A57; Fetch start of existing program.  (PROG)
+  ld   hl,(sys_e_line)     ;2A5B; Fetch end of existing program. I.e.
   dec  hl                  ;2A5E; (E_LINE)-1.
   rst  calbas              ;2A5F; Delete the program by calling
   defw rom_reclaim_1       ;2A60; 'RECLAIM_1' in the 'main' ROM.
   ld   bc,(ufia2.hd0b)     ;2A62; Fetch length of program and variables.
-  ld   hl,(23635)          ;2A66; Fetch (PROG), start of a BASIC program.
+  ld   hl,(sys_prog)       ;2A66; Fetch (PROG), start of a BASIC program.
   rst  calbas              ;2A69; Create the required space by calling
   defw rom_make_room       ;2A6A; 'MAKE_ROOM'.
   inc  hl                  ;2A6C; Point to the first location.
   ld   bc,(ufia2.hd0f)     ;2A6D; Fetch length without variables.
   add  hl,bc               ;2A71; Calculate and store the start of the
-  ld   (23627),hl          ;2A72; variables area.
+  ld   (sys_vars),hl       ;2A72; variables area.
   ld   a,($3E31)           ;2A75; When no autostart is known this
   ld   h,a                 ;2A78; ('AUTOSTART2-hi') holds $FF.
   and  $C0                 ;2A79;
   jr   nz,ld_prog1         ;2A7B; Jump with no autostart.
   ld   a,(ufia2.hd11)      ;2A7D; Otherwise store the autostart line
   ld   l,a                 ;2A80; number into 'NEWPPC' and clear 'NSPPC'.
-  ld   (23618),hl          ;2A81; These hold the line and the statement
+  ld   (sys_newppc),hl     ;2A81; These hold the line and the statement
   ld   (iy+10),$00         ;2A84; to be executed respectively.
 ld_prog1:
-  ld   hl,(23635)          ;2A88; Fetch the start of the BASIC program.
+  ld   hl,(sys_prog)       ;2A88; Fetch the start of the BASIC program.
   ld   de,(ufia2.hd0b)     ;2A8B; Fetch the length + variables.
   dec  hl                  ;2A8F; Reset the DATA pointer 'DATADD' to the
-  ld   (23639),hl          ;2A90; beginning of the program.
+  ld   (sys_datadd),hl     ;2A90; beginning of the program.
   inc  hl                  ;2A93; Balance the 'DEC HL'.
   call lv_any              ;2A94; Load the file.
   jp   the_end             ;2A97; Finished.
@@ -7769,7 +7768,7 @@ move_run1:
   ld   (ufia1.nstr1),hl    ;2B58;
 move_run2:
   ld   hl,(ufia1.nstr1)    ;2B5B; Make 'current' the first channel.
-  ld   (23633),hl          ;2B5E; (CURCHL)
+  ld   (sys_curchl),hl     ;2B5E; (CURCHL)
 move_run3:
   rst  calbas              ;2B61; Call 'INPUT_A' in the 'main' ROM to
   defw rom_input_ad        ;2B62; read a byte.
@@ -7782,7 +7781,7 @@ move_run3:
 
 move_run4:
   ld   hl,(ufia2.nstr1)    ;2B6A; Make 'current' the 2nd channel.
-  ld   (23633),hl          ;2B6D; (CURCHL)
+  ld   (sys_curchl),hl     ;2B6D; (CURCHL)
   rst  calbas              ;2B70; Use 'main' ROM 'PRINT_A_2' to send the
   defw rom_print_a_2       ;2B71; byte to the 2nd channel.
   jr   move_run2           ;2B73; Repeat until EOF.
@@ -8023,7 +8022,7 @@ open_chan:
   ld   a,(ufia1.sstr1)     ;2CB3; Fetch stream number.
   add  a,a                 ;2CB6; The streams area entries are two bytes
                                 ; each.
-  ld   hl,23574            ;2CB7; Address of data for stream 0.
+  ld   hl,sys_strms+3*2    ;2CB7; Address of data for stream 0 (the third one)
   ld   e,a                 ;2CBA;
   ld   d,0                 ;2CBB;
   add  hl,de               ;2CBD; Index into STRMS area.
@@ -8056,6 +8055,9 @@ make_perm:
 
 ; This subroutine is used to open a temporary "D" channel in the CHANS area.
 
+out_chan_len: equ 787
+in_chan_len:  equ 551
+
 op_temp_d:
   ld   ix,(sys_chans)      ;2CDF; Start of channel area (CHANS).
   ld   de,20               ;2CE3; Point to the first 'non-standard'
@@ -8075,9 +8077,9 @@ op_temp1:
   pop  hl                  ;2D02; Start of channel to HL.
   ld   de,20               ;2D03; Filename offset.
   add  hl,de               ;2D06;
-  ex   de,hl               ;2D07; DE points to the name of this channel.
-  ld   hl,ufia1.nstr2      ;2D08; HL points to the name of the channel to
-  ld   b,10                ;2D0B; be opened.
+  ex   de,hl               ;2D07; DE points to name of this channel.
+  ld   hl,ufia1.nstr2      ;2D08; HL points to name of channel to be opened.
+  ld   b,10                ;2D0B; Filename length.
 op_temp2:
   ld   a,(de)              ;2D0D;
   xor  (hl)                ;2D0E;
@@ -8104,7 +8106,7 @@ op_temp4:
   jp   nz,op_temp5         ;2D2E; Jump if file not found.
   cp   token.out           ;2D31;
   jp   z,op_t_patch        ;2D33; Jump if OUTput channel.
-  ld   bc,551              ;2D36; Length of INput channel.
+  ld   bc,in_chan_len      ;2D36; Length of INput channel.
   call chan_spc            ;2D39; Create the room for the channel.
   call rpt_hl              ;2D3C; Make HL point to the CAT entry.
   pop  ix                  ;2D3F;
@@ -8116,7 +8118,7 @@ op_temp4:
   ld   (ix+12),a           ;2D49;
   ld   bc,39               ;2D4C; Offset of data buffer from start of channel,
   ld   (ix+15),c           ;2D4F; 39 bytes above DFCA, in the sector
-  ld   (ix+16),b           ;2D52; allocation bitmap (?) XXX TODO -- confirm
+  ld   (ix+16),b           ;2D52; allocation itmap (?) XXX TODO -- confirm
   push hl                  ;2D55; HL points to the CATalogue entry.
   push ix                  ;2D56; IX points to the start of the channel.
   pop  hl                  ;2D58;
@@ -8154,7 +8156,7 @@ op_temp5:
   cp   token.in            ;2D8A;
   jp   z,rep_26            ;2D8C; Give error if it is an INput channel.
 op_temp6:
-  ld   bc,787              ;2D8F; Length of OUTput channel.
+  ld   bc,out_chan_len     ;2D8F; Length of OUTput channel.
   call chan_spc            ;2D92; Create the room for the channel.
   pop  ix                  ;2D95;
   call test_drive.ufia1    ;2D97; See if the drive is defined.
@@ -8168,7 +8170,7 @@ op_temp6:
   ld   (ix+16),b           ;2DA8; which is 275 bytes above DFCA.
   call ofsm_2              ;2DAB; Open the file.
   jr   z,op_temp7          ;2DAE; Jump if file doesn't exist (anymore).
-  ld   bc,787              ;2DB0; Length of an OUTput channel.
+  ld   bc,out_chan_len     ;2DB0; Length of an OUTput channel.
   push ix                  ;2DB3; Start of the channel to HL.
   pop  hl                  ;2DB5;
   rst  calbas              ;2DB6; Reclaim the channel.
@@ -8222,7 +8224,7 @@ op_temp8:
 chan_spc:
   ld   (d_chan_data.length),bc ;2DF3; Store the length of the channel into
                                 ; the "D" channel data table.
-  ld   hl,(23635)          ;2DF7; Fetch the start address of the channel
+  ld   hl,(sys_prog)       ;2DF7; Fetch the start address of the channel
   dec  hl                  ;2DFA; ((PROG)-1).
   push hl                  ;2DFB;
   push bc                  ;2DFC;
@@ -8367,7 +8369,7 @@ close_1:
 ; updated.
 
   xor  a                   ;2E91; Start with stream 0.
-  ld   hl,23574            ;2E92; Address of data for stream 0.
+  ld   hl,sys_strms+3*2    ;2E92; Address of data for stream 0 (the third one).
 close_2:
   ld   (dfca.addr),hl      ;2E95; Use 'FILE_ADDR' as a temporary storage.
   ld   e,(hl)              ;2E98; Fetch stream data.
@@ -8410,8 +8412,8 @@ cls:
   call st_end_ram          ;2EC0; Confirm end of statement and exit
                                 ; during syntax checking.
   ld   hl,56               ;2EC3; The 'initial' attribute value.
-  ld   (23693),hl          ;2EC6; Store 56 into ATTR_P, clear MASK_P.
-  ld   (23695),hl          ;2EC9; Store 56 into ATTR_T, clear MASK_T.
+  ld   (sys_attr_p),hl     ;2EC6; Store 56 into ATTR_P, clear MASK_P.
+  ld   (sys_attr_t),hl     ;2EC9; Store 56 into ATTR_T, clear MASK_T.
   ld   (iy+14),l           ;2ECC; Store 56 also for lower screen
                                 ; attribute.
   ld   (iy+87),h           ;2ECF; Clear P_FLAG.
@@ -8431,13 +8433,13 @@ cls:
 ; 'CALL_INP' routine, which routine handles all the IF1's channels.
 
 d_chan_input:
-  ld   ix,(23633)          ;2EDC; IX points to the start of the current
+  ld   ix,(sys_curchl)     ;2EDC; IX points to the start of the current
                                 ; channel (CURCHL).
   ld   hl,dchan_in         ;2EE0; Address of "D" input service routine.
   res  3,(iy+2)            ;2EE3; Signal 'the mode is to be considered as
                                 ; being unchanged'.
   push hl                  ;2EE7; Store address of service routine.
-  ld   hl,(23613)          ;2EE8; HL points to error address (ERR_SP).
+  ld   hl,(sys_err_sp)     ;2EE8; HL points to error address (ERR_SP).
   ld   e,(hl)              ;2EEB; Fetch the error address.
   inc  hl                  ;2EEC;
   ld   d,(hl)              ;2EED;
@@ -8449,10 +8451,10 @@ d_chan_input:
 ; Now deal with an 'INPUT #' command referred to a "D" channel.
 
   pop  hl                  ;2EF6; Restore address of service routine.
-  ld   sp,(23613)          ;2EF7; Clear the machine stack (ERR_SP).
+  ld   sp,(sys_err_sp)     ;2EF7; Clear the machine stack (ERR_SP).
   pop  de                  ;2EFB; Remove 'ED_ERROR'.
   pop  de                  ;2EFC;
-  ld   (23613),de          ;2EFD; Restore the old value of ERR_SP.
+  ld   (sys_err_sp),de     ;2EFD; Restore the old value of ERR_SP.
 d_chan_input1:
   push hl                  ;2F01; Store address of service routine.
   ld   de,d_inp_end        ;2F02; Return address is 'D_INP_END' below.
@@ -8549,7 +8551,7 @@ dchan_in1:
 ; the file length bytes.
 
 d_chan_output:
-  ld   ix,(23633)          ;2F5F; IX point to current channel (CURCHL).
+  ld   ix,(sys_curchl)     ;2F5F; IX point to current channel (CURCHL).
   bit  0,(ix+12)           ;2F63; Give 'Writing a READ file' error if
   jp   z,rep_19            ;2F67; it's an INput channel.
   call sbyt                ;2F6A; Save the byte in the A register.
