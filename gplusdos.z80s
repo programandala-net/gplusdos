@@ -15,7 +15,7 @@
 ; The following document was very useful: "DISCiPLE/+D Technical Guide"
 ; Revision 8c (30 Jan 2004) by Luca Bisti et al. (Ramsoft).
 
-; Last modified: 201803242208
+; Last modified: 201803282155
 
 ; ===============================================================
 ; ZX Spectrum symbols 
@@ -2325,9 +2325,9 @@ print_cat:
   inc  hl                  ;09E4;
   ld   c,(hl)              ;09E5;
   ld   (dfca),bc           ;09E6; Store it for printing.
-  ld   hl,($3DD8)          ;09EA; Add it to total number of sectors used
+  ld   hl,(sectors_used)   ;09EA; Add it to total number of sectors used
   add  hl,bc               ;09ED;
-  ld   ($3DD8),hl          ;09EE;
+  ld   (sectors_used),hl   ;09EE;
   bit  7,a                 ;09F1;
   jp   nz,scan_next        ;09F3; Jump if this entry is hidden.
   call match_name          ;09F6;
@@ -6519,7 +6519,7 @@ cat_run:
   call prt_a               ;24CB; Print drive number.
   call msg_1               ;24CE; Print the 2nd part of "DIR"-message.
   ld   hl,0                ;24D1; Reset 'total number of sectors'
-  ld   ($3DD8),hl          ;24D4; occupied.
+  ld   (sectors_used),hl   ;24D4; occupied.
   pop  af                  ;24D7; Restore 'CAT' type.
   call scan_cat            ;24D8; Print the CAT entries.
   call msg_2               ;24DB; Print "Free ..." message.
@@ -6541,7 +6541,7 @@ cat_run2:
   pop  bc                  ;24F4;
   nop                      ;24F5; New code is two bytes shorter.
   nop                      ;24F6;
-  ld   de,($3DD8)          ;24F7; Get number of used sectors.
+  ld   de,(sectors_used)   ;24F7; Get number of used sectors.
   xor  a                   ;24FB; Clear carry.
   sbc  hl,de               ;24FC; Calculate number of free sectors.
   srl  h                   ;24FE; Divide it by two to get number of free
